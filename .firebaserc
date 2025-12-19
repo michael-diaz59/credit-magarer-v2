@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "credit-manager-v2",
+    "credit-manager-v2": "credit-manager-v2"
+  },
+  "targets": {},
+  "etags": {}
+}
