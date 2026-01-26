@@ -5,31 +5,54 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import GavelIcon from "@mui/icons-material/Gavel";
 import PeopleIcon from "@mui/icons-material/People";
+import { getAuth, signOut } from "firebase/auth";
 import { CustomSx } from "../../sub_atomic_particles/Custom_sx";
+import { ScreenPaths } from "../../../core/helpers/name_routes";
 
 const Dashboard: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const auth = getAuth();
 
   const buttons = [
     {
       label: "Ventas",
-      icon: <MonetizationOnIcon fontSize="large" sx={{ color: theme.palette.primary.contrastText }} />,
-      path: "/sales",
+      icon: (
+        <MonetizationOnIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path:ScreenPaths.advisor.home,
     },
     {
       label: "Contabilidad",
-      icon: <AccountBalanceIcon fontSize="large" sx={{ color: theme.palette.primary.contrastText }} />,
+      icon: (
+        <AccountBalanceIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
       path: "/accounting",
     },
     {
       label: "Auditoría",
-      icon: <GavelIcon fontSize="large" sx={{ color: theme.palette.primary.contrastText }} />,
+      icon: (
+        <GavelIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
       path: "/audit",
     },
     {
       label: "Cobradores",
-      icon: <PeopleIcon fontSize="large" sx={{ color: theme.palette.primary.contrastText }} />,
+      icon: (
+        <PeopleIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
       path: "/Debt_collectors",
     },
   ];
@@ -58,7 +81,18 @@ const Dashboard: React.FC = () => {
         {buttons.map((btn) => (
           <ButtonBase
             key={btn.label}
-            onClick={() => navigate(btn.path)}
+            onClick={() => {
+              if (btn.label === "Contabilidad") {
+                signOut(auth)
+                  .then(() => {
+                    // Sign-out successful.
+                  })
+                  .catch(() => {
+                    // An error happened.
+                  });
+              }
+              navigate(btn.path);
+            }}
             sx={{
               width: { xs: "100%", sm: "45%" }, // responsive: full width en mobile, ~2 por fila en desktop
               height: 150,

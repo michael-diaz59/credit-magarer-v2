@@ -7,10 +7,10 @@ import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router-dom";
 
 import { setPersistence, browserLocalPersistence } from "firebase/auth";
-import { auth } from "./store/firebase/firebase.ts";
+import { firebaseAuth } from "./store/firebase/firebase.ts";
 import { AuthProvider } from "./features/userAuthentication/provider/firebase/AuthProviderfirebase.tsx";
 
-setPersistence(auth, browserLocalPersistence);
+setPersistence(firebaseAuth, browserLocalPersistence);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -117,7 +117,6 @@ export const ScrollProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
   // 👇 función estable para pasar al add/removeEventListener
   const onScroll = useCallback(() => {
-    console.log("onScroll");
     if (targetRef.current) handleScroll(targetRef.current);
   }, [handleScroll]);
 
@@ -127,7 +126,6 @@ export const ScrollProvider: React.FC<{ children: React.ReactNode }> = ({
       // Limpia el anterior
       if (targetRef.current) {
         targetRef.current.removeEventListener("scroll", onScroll);
-        console.log("removeEventListener");
       }
 
       // Actualiza referencia
@@ -136,7 +134,6 @@ export const ScrollProvider: React.FC<{ children: React.ReactNode }> = ({
       // Si hay nuevo main, escucha su scroll
       if (el) {
         el.addEventListener("scroll", onScroll, { passive: true });
-        console.log("addEventListener");
         const currentY = el.scrollTop;
         prevScrollY.current = currentY;
         setScrollY(currentY);
@@ -144,8 +141,6 @@ export const ScrollProvider: React.FC<{ children: React.ReactNode }> = ({
         const clientHeight = el.clientHeight;
         const scrollHeight = el.scrollHeight;
         setAtBottom(currentY + clientHeight >= scrollHeight - 200);
-        console.log("setAtBottom");
-        console.log(currentY + clientHeight >= scrollHeight - 200);
       }
     },
     [onScroll] // depende del listener estable
@@ -161,7 +156,6 @@ export const ScrollProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       if (targetRef.current)
         targetRef.current.removeEventListener("scroll", onScroll);
-      console.log("Limpieza global");
     };
   }, [onScroll]);
 

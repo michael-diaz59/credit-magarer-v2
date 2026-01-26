@@ -1,36 +1,44 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../../../store/firebase/firebase";
-import {
-  clearUser,
-  setUser,
-  type UserState,
-} from "../../../../store/redux/authsliceFirebase";
+import { firebaseAuth } from "../../../../store/firebase/firebase";
+
 import { useAppDispatch } from "../../../../store/redux/coreRedux";
+import type { UserAuthentication } from "../../domain/business/entities/UserAuthentication";
+import {
+   clearAuthUser,
+    setAuthUser } from "../../slices/authSliceFirebase";
+import UserOrchestrator from "../../../users/domain/infraestructure/UserOrchestrator";
 
-
-
+//componente encargado de proveer el contexto de autenticacion a la aplicacion y dejar el oyente activo para cambios de estado de autenticacion
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
+  const userOrchestrator = useMemo(
+    () => new UserOrchestrator (dispatch),
+    [dispatch]
+  )
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+
+    onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+
+      console.log("firebaseUser+"+firebaseUser)
+   
       if (firebaseUser) {
-        const user: UserState = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          emailVerified: firebaseUser.emailVerified,
+
+        const user: UserAuthentication = {
+          id: firebaseUser.uid===null? "":firebaseUser.uid,
         };
-        dispatch(setUser(user));
+         userOrchestrator.getUser({
+          id: firebaseUser.uid,
+        })
+        dispatch(setAuthUser(user));
       } else {
-        dispatch(clearUser());
+        dispatch(clearAuthUser());
       }
     });
+        
 
-    return unsubscribe;
-  }, [dispatch]);
+  }, [dispatch,userOrchestrator]);
 
   return <>{children}</>;
 }

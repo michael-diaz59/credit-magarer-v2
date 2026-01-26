@@ -4,12 +4,10 @@ import {
   Typography,
   Box,
 } from '@mui/material';
+import type { Costumer } from '../../../features/costumers/domain/business/entities/Costumer';
 
 interface Props {
-  client: {
-    fullName: string;
-    idNumber: string;
-  };
+  client: Costumer
   onClick: () => void;
 }
 
@@ -28,7 +26,7 @@ export const ClientCard = ({ client, onClick }: Props) => {
     >
       <CardContent>
         <Typography variant="subtitle1" fontWeight={600}>
-          {client.fullName || 'Unnamed client'}
+          {client.applicant?.fullName || 'Unnamed client'}
         </Typography>
 
         <Box mt={0.5}>
@@ -36,7 +34,7 @@ export const ClientCard = ({ client, onClick }: Props) => {
             variant="body2"
             color="text.secondary"
           >
-            ID: {client.idNumber || '-'}
+            ID: {client.applicant?.idNumber || '-'}
           </Typography>
         </Box>
       </CardContent>

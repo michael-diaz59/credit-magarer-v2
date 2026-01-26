@@ -11,29 +11,22 @@ import {
   InputAdornment,
 } from "@mui/material";
 import { Visibility, VisibilityOff, LockOutlined } from "@mui/icons-material";
-import type { LoginFormValues } from "./LoginFormValues";
-import type {
-  FieldErrors,
-  UseFormHandleSubmit,
-  UseFormRegister,
-} from "react-hook-form";
+import { useFormContext } from "react-hook-form";
+import type { LoginFormValues } from "../../../routes/login/LoginController";
 
 interface LoginViewProps {
   onSubmit: (data: LoginFormValues) => void;
-  register: UseFormRegister<LoginFormValues>;
-  handleSubmit: UseFormHandleSubmit<LoginFormValues>;
-  errors: FieldErrors<LoginFormValues>;
-  isSubmitting: boolean;
 }
 
-export function LoginView({
-  onSubmit,
-  register,
-  handleSubmit,
-  errors,
-  isSubmitting,
-}: LoginViewProps) {
+export function LoginView({ onSubmit }: LoginViewProps) {
   const [showPassword, setShowPassword] = React.useState(false);
+
+  //extraccion de datos globales, se consumen con el useFormContext
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useFormContext<LoginFormValues>();
 
   return (
     <Container
@@ -50,8 +43,9 @@ export function LoginView({
             Sign in with your email and password
           </Typography>
         </Box>
-
+{/* handleSubmit: valida el formulario si hay errores no llama a onSubmit*/}
         <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+           {/* helperText: ayuda a manejar el mostrador de mensajes de error */}
           <TextField
             fullWidth
             label="Email"
@@ -88,7 +82,7 @@ export function LoginView({
               },
             }}
           />
-
+  {/* isSubmitting: ayuda a evitar clicks dobles inabilitando el boton al procesar datos*/}
           <Button
             type="submit"
             fullWidth

@@ -1,16 +1,12 @@
-import { Timestamp } from 'firebase/firestore';
 import type { PersonFirestore } from './PersonFirestore';
-import type { VehicleForm } from '../../domain/VehicleForm';
-import type { FamilyReferenceForm } from '../../domain/FamilyReferenceForm';
+import type { Vehicle } from '../../domain/business/entities/Vehicle';
+import type { FamilyReference } from '../../domain/business/entities/FamilyReference';
 
 export interface ClientFirestore {
   applicant: PersonFirestore;
-  coSigner?: PersonFirestore;
+  coSigner?: PersonFirestore[];
 
-  vehicle?: VehicleForm;
-  familyReference?: FamilyReferenceForm;
-
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  vehicle?: Vehicle[];
+  familyReference?: FamilyReference[];
   active: boolean;
 }

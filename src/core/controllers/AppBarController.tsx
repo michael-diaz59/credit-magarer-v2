@@ -5,7 +5,7 @@ import { useLocation } from "react-router-dom";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { baseAppBar, nameRoutesMap } from "../../core/helpers/name_routes";
 
-import { useAppSelector } from "../../store/redux/coreRedux";
+//import { useAppSelector } from "../../store/redux/coreRedux";
 import { CustomSx } from "../../atomic_design/sub_atomic_particles/Custom_sx";
 import { FloatAppBarView } from "../../atomic_design/organisms/FloatAppBarViewProps ";
 
@@ -17,7 +17,7 @@ export default function FloatAppBarContainer() {
   const location = useLocation();
   const { hasScrolled, scrollDirection } = useScroll();
 
-  const userEmail = useAppSelector((state) => state.auth.user?.email);
+  //const userEmail = useAppSelector((state) => state.auth.user?.email);
 
   const showFloatAppBar = hasScrolled && scrollDirection === "up";
   const elevationAppBar: number = useMemo(
@@ -107,7 +107,7 @@ export default function FloatAppBarContainer() {
       sxMenuItem={sxMenuItem}
       title="blade manager"
       routeName={nameRoutesMap.get(location.pathname)}
-      userEmail={userEmail ?? undefined}
+      userEmail={"userEmail" }
       expandedMenu={expandedMenu}
       expandedAccessibility={expandedAccessibility}
       onToggleMenu={() => setExpandedMenu((v) => !v)}

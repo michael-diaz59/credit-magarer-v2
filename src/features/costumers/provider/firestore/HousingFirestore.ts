@@ -1,4 +1,6 @@
-import type { HousingType } from "../../domain/utilities";
+import type { HousingType } from "../../domain/business/entities/HousingInfo";
+
+
 
 
 export interface HousingFirestore {

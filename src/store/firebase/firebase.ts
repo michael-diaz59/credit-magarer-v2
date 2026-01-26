@@ -1,27 +1,28 @@
 
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+import { getStorage } from "firebase/storage";
+import {REACT_APP_FIREBASE_API_KEY, REACT_APP_FIREBASE_APP_ID, REACT_APP_FIREBASE_AUTH_DOMAIN, REACT_APP_FIREBASE_MEASUREMENT_ID, REACT_APP_FIREBASE_MESSAGING_SENDER_ID, REACT_APP_FIREBASE_PROJECT_ID, REACT_APP_FIREBASE_STORAGE_BUCKET} from "../../../env"
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBQX0bvkc1B1oLJ2B36uMpT0OzH4oivY4g",
-  authDomain: "credit-manager-v2.firebaseapp.com",
-  projectId: "credit-manager-v2",
-  storageBucket: "credit-manager-v2.firebasestorage.app",
-  messagingSenderId: "246380120002",
-  appId: "1:246380120002:web:111b49eff5802308f4785b",
-  measurementId: "G-K4ME1KD4WC"
+  apiKey: REACT_APP_FIREBASE_API_KEY,
+  authDomain: REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId:  REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId:  REACT_APP_FIREBASE_APP_ID,
+  measurementId: REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
-export const app = initializeApp(firebaseConfig);
+export const firebaseApp = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+// obtener autenticacion
+export const firebaseAuth = getAuth(firebaseApp);
+
+// obtener firestore database
+export const firestore = getFirestore(firebaseApp);
+
+export const storage = getStorage(firebaseApp);

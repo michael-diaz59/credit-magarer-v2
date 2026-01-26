@@ -13,7 +13,6 @@ export default function ThemedAppWrapper() {
     () => resolveThemeMode(mode, contrast),
     [mode, contrast]
   );
-
   const theme = useMemo(() => getTheme(paletteMode), [paletteMode]);
 
   useEffect(() => {

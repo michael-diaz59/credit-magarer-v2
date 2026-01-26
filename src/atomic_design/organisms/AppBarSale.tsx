@@ -14,7 +14,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../sub_atomic_particles/Custom_sx";
 import { MenuNavLinkItems, NavLinkItems } from "../atoms/NavLinkItems";
-import { saleAppBar } from "../../core/helpers/name_routes";
+import { officeAdvisorAppBar } from "../../core/helpers/name_routes";
 
 export default function SaleAppBar() {
   const [expandedMenu, setExpandedMenu] = useState(false);
@@ -110,7 +110,7 @@ export default function SaleAppBar() {
               alignItems: "end",
             }}
           >
-            <NavLinkItems items={saleAppBar}></NavLinkItems>
+            <NavLinkItems items={officeAdvisorAppBar}></NavLinkItems>
           </Box>
 
           {/* Botón hamburguesa (mobile) */}
@@ -182,7 +182,7 @@ export default function SaleAppBar() {
             role="menu"
           >
             <MenuNavLinkItems
-              items={saleAppBar}
+              items={officeAdvisorAppBar}
               callback={() => setExpandedMenu(false)}
             ></MenuNavLinkItems>
           </Box>

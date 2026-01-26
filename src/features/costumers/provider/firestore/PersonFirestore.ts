@@ -1,8 +1,8 @@
 import type { Timestamp } from "firebase/firestore";
 import type { AddressFirestore } from "./AddressFirestore";
 import type { HousingFirestore } from "./HousingFirestore";
-import type { MaritalStatus } from "../../domain/utilities";
 import type { WorkInfoFirestore } from "./WorkInfoFirestore";
+import type { MaritalStatus } from "../../domain/business/entities/PersonalInfo";
 
 
 export interface PersonFirestore {
@@ -12,12 +12,13 @@ export interface PersonFirestore {
   birthCity: string;
   birthDate: Timestamp;
   issueCity: string;
+  issueDate: Timestamp
 
   maritalStatus: MaritalStatus;
   childrenCount: number;
   phone: string;
 
-  residenceAddress: AddressFirestore;
+  address: AddressFirestore;
   housing: HousingFirestore;
   workInfo: WorkInfoFirestore;
 }

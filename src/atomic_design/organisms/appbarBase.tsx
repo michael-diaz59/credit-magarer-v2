@@ -19,11 +19,12 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../sub_atomic_particles/Custom_sx";
 import AccessibilityDialog from "../atoms/AccessibilityDialog";
-import { useAppSelector } from "../../store/redux/coreRedux";
 import { useNavigate } from "react-router";
+import { useAppSelector } from "../../store/redux/coreRedux";
+import { ScreenPaths } from "../../core/helpers/name_routes";
 
 export default function AppBarBase() {
-  const userEmail = useAppSelector((state) => state.auth.user?.email);
+  const userEmail:string | undefined= useAppSelector(state => state.user.user?.email);
   const [expandedMenu, setExpandedMenu] = useState(false);
   const [expandedAccessibility, setExpandedAccessibility] = useState(false);
   const theme = useTheme();
@@ -33,7 +34,7 @@ export default function AppBarBase() {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate("/configuration"); // ruta a donde quieres enviar al usuario
+    navigate(ScreenPaths.home)
   };
 
   return (

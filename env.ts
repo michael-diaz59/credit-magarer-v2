@@ -1,0 +1,8 @@
+
+export const REACT_APP_FIREBASE_API_KEY="AIzaSyBQX0bvkc1B1oLJ2B36uMpT0OzH4oivY4g"
+export const REACT_APP_FIREBASE_AUTH_DOMAIN="credit-manager-v2.firebaseapp.com"
+export const REACT_APP_FIREBASE_PROJECT_ID="credit-manager-v2"
+export const REACT_APP_FIREBASE_STORAGE_BUCKET="credit-manager-v2.firebasestorage.app"
+export const REACT_APP_FIREBASE_MESSAGING_SENDER_ID="246380120002"
+export const REACT_APP_FIREBASE_APP_ID="1:246380120002:web:111b49eff5802308f4785b"
+export const REACT_APP_FIREBASE_MEASUREMENT_ID="G-K4ME1KD4WC"
