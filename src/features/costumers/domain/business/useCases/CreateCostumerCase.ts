@@ -1,3 +1,4 @@
+import type { PendingDocuments } from "../../../../../atomic_design/molecules/CustomerDocumentActions"
 import { fail, ok, type Result } from "../../../../../core/helpers/ResultC"
 import type CostumerGateway from "../../infraestructure/CostumerGateway"
 import type { Costumer } from "../entities/Costumer"
@@ -5,7 +6,9 @@ import type { SaveCostumerError } from "../entities/utilities"
 
 export interface SaveCostumerInput {
     costumer: Costumer,
-    companyId:string
+    updateFiles:boolean,
+    companyId:string,
+    pendingDocs: PendingDocuments
 }
 
 export class CreateCostumerCase {
@@ -17,7 +20,7 @@ export class CreateCostumerCase {
     }
 
     async execute(saveCostumerInput: SaveCostumerInput): Promise<Result<null, SaveCostumerError>> {
-        const saveResult = await this.costumerGateway.createCostumer(saveCostumerInput.costumer,saveCostumerInput.companyId)
+        const saveResult = await this.costumerGateway.createCostumer(saveCostumerInput)
 
         if (!saveResult.ok) {
             return fail({ code: saveResult.error.code })

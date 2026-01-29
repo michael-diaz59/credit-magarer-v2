@@ -76,10 +76,11 @@ useEffect(() => {
       ) : (
         <Stack spacing={2}>
           {debts.map((debt:Debt) => (
+    
             <DebtCard
               key={debt.id}
               debt={debt}
-              onClick={(d) => navigate(`/debts/${d.id}`)}
+              onClick={(d) => navigate(ScreenPaths.advisor.office.debit.debit(d.id))}
             />
           ))}
         </Stack>

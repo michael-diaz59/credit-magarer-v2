@@ -5,6 +5,7 @@ import {
   Divider,
   CircularProgress,
   TextField,
+  Grid,
 } from "@mui/material";
 import {
   useForm,
@@ -35,18 +36,33 @@ import { ConfirmDialog } from "../../atoms/ConfirmDialog";
 import { BaseDialog } from "../../atoms/BaseDialog";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { UploadDocumentButton } from "../../molecules/UploadDocumentButton";
-import { CustomerDocumentActions } from "../../molecules/CustomerDocumentActions";
+import {
+  CustomerDocumentActions,
+  type PendingDocuments,
+} from "../../molecules/CustomerDocumentActions";
+import type { DocumentTypeG } from "../../../features/costumers/repository/FirebaseCostumerRepository";
 export type CostumerFormValues = z.infer<typeof costumerSchema>;
 
 export const CostumerForm = () => {
   const { costumerId } = useParams<{ costumerId?: string }>();
   const { visitId } = useParams<{ visitId?: string }>();
   const [paramsReady, setParamsReady] = React.useState(false);
+  const [updateFiles, setUpdateFiles] = React.useState(false);
 
   const location = useLocation();
   const isOfficeVisit = location.pathname.includes(
     ScreenPaths.advisor.office.costumer.costumers,
   );
+
+  const [pendingDocs, setPendingDocs] = React.useState<PendingDocuments>({});
+
+  const handleSelectDocument = (type: DocumentTypeG, file: File) => {
+    setUpdateFiles(true);
+    setPendingDocs((prev) => ({
+      ...prev,
+      [type]: file,
+    }));
+  };
 
   useEffect(() => {
     setParamsReady(true);
@@ -182,8 +198,11 @@ export const CostumerForm = () => {
           costumer: costumer,
           companyId: userCompanieId ?? "",
           idUser: "",
+          updateFiles: updateFiles,
+          pendingDocs: pendingDocs,
         });
         if (result.ok) {
+          setUpdateFiles(false)
           setBaseDIlogText("el cliente se actualizo con exito");
           setBaseDIlogOpen(true);
           setstillInPage(false);
@@ -203,14 +222,17 @@ export const CostumerForm = () => {
           setstillInPage(true);
         }
       } else {
-        const result = await orchestratorRef.createCostumer(
-          userCompanieId ?? "",
-          costumer,
-        );
+        const result = await orchestratorRef.createCostumer({
+          companyId: userCompanieId ?? "",
+          costumer: costumer,
+          updateFiles: updateFiles,
+          pendingDocs: pendingDocs,
+        });
 
         if (result.ok) {
           setBaseDIlogText("el cliente se creo con exito");
           setBaseDIlogOpen(true);
+          setUpdateFiles(false)
           setstillInPage(false);
         } else {
           if (result.error.code == "DOCUMENT_EXISTING") {
@@ -322,55 +344,76 @@ export const CostumerForm = () => {
 
         <Typography variant="h5">Documentos del cliente</Typography>
 
-        <Box display="flex" gap={2} mt={2}>
-          <UploadDocumentButton
-            label="Subir cédula"
-            type="cedula"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? "TEMP"}
-          />
-          <CustomerDocumentActions
-            label="Cédula"
-            type="cedula"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? ""}
-          />
+        <Grid container spacing={2}>
+          <Grid>
+            <UploadDocumentButton
+              label="Subir cédula"
+              type="cedula"
+              onSelect={handleSelectDocument}
+            />
+          </Grid>
+          <Grid>
+            <CustomerDocumentActions
+              label="Cédula"
+              type="cedula"
+              companyId={userCompanieId ?? ""}
+              costumerId={costumerId ?? ""}
+              pendingFile={pendingDocs["cedula"]}
+            />
+          </Grid>
 
-          <UploadDocumentButton
-            label="Subir carta laboral"
-            type="carta_laboral"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? "TEMP"}
-          />
-          <CustomerDocumentActions
-            label="Carta laboral"
-            type="carta_laboral"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? ""}
-          />
+          <Grid>
+            <UploadDocumentButton
+              label="Subir carta laboral"
+              type="carta_laboral"
+              onSelect={handleSelectDocument}
+            />
+          </Grid>
+          <Grid>
+            <CustomerDocumentActions
+              label="Carta laboral"
+              type="carta_laboral"
+              companyId={userCompanieId ?? ""}
+              costumerId={costumerId ?? ""}
+              pendingFile={pendingDocs["carta_laboral"]}
+            />
+          </Grid>
+          <Grid>
+            <UploadDocumentButton
+              label="Subir documento X"
+              type="documento_x"
+              onSelect={handleSelectDocument}
+            />
+          </Grid>
+          <Grid>
+            <CustomerDocumentActions
+              label="Documento X"
+              type="documento_x"
+              companyId={userCompanieId ?? ""}
+              costumerId={costumerId ?? ""}
+              pendingFile={pendingDocs["documento_x"]}
+            />
+          </Grid>
+        </Grid>
 
-          <UploadDocumentButton
-            label="Subir documento X"
-            type="documento_x"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? "TEMP"}
-          />
-          <CustomerDocumentActions
-            label="Documento X"
-            type="documento_x"
-            companyId={userCompanieId ?? ""}
-            costumerId={costumerId ?? ""}
-          />
-        </Box>
         <PersonalInfoForm control={control} prefix="applicant" />
         <Typography variant="h5">Vehículos</Typography>
-        {vehicleArray.fields.map((_, i) => (
-          <VehicleForm key={i} control={control} index={i} />
+        {vehicleArray.fields.map((field, index) => (
+          <Box key={field.id}>
+            <VehicleForm control={control} index={index} />
+
+            {vehicleArray.fields.length > 1 && (
+              <Button
+                color="error"
+                size="small"
+                onClick={() => vehicleArray.remove(index)}
+              >
+                Quitar vehículo
+              </Button>
+            )}
+          </Box>
         ))}
-        <Button
-          disabled={vehicleArray.fields.length >= 3}
-          onClick={() => vehicleArray.append(emptyVehicle())}
-        >
+        <Button onClick={() => vehicleArray.append(emptyVehicle())}>
           Añadir vehículo
         </Button>
         <Divider sx={{ my: 3 }} />
@@ -378,18 +421,26 @@ export const CostumerForm = () => {
         <Typography variant="h4" color="primary">
           Codeudores
         </Typography>
-        {coSignerArray.fields.map((_, i) => (
-          <PersonalInfoForm
-            key={i}
-            control={control}
-            prefix={`coSigner.${i}`}
-            index={i}
-          />
+        {coSignerArray.fields.map((field, index) => (
+          <Box key={field.id} sx={{ position: "relative", mb: 3 }}>
+            <PersonalInfoForm
+              control={control}
+              prefix={`coSigner.${index}`}
+              index={index}
+            />
+
+            {coSignerArray.fields.length > 1 && (
+              <Button
+                color="error"
+                size="small"
+                onClick={() => coSignerArray.remove(index)}
+              >
+                Quitar codeudor
+              </Button>
+            )}
+          </Box>
         ))}
-        <Button
-          disabled={coSignerArray.fields.length >= 3}
-          onClick={() => coSignerArray.append(emptyPersonalInfo())}
-        >
+        <Button onClick={() => coSignerArray.append(emptyPersonalInfo())}>
           Añadir codeudor
         </Button>
 
@@ -398,13 +449,22 @@ export const CostumerForm = () => {
         <Typography variant="h4" color="primary">
           Referencias familiares
         </Typography>
-        {familyArray.fields.map((_, i) => (
-          <FamilyReferenceForm key={i} control={control} index={i} />
+        {familyArray.fields.map((field, index) => (
+          <Box key={field.id} sx={{ mb: 3 }}>
+            <FamilyReferenceForm control={control} index={index} />
+
+            {familyArray.fields.length > 1 && (
+              <Button
+                color="error"
+                size="small"
+                onClick={() => familyArray.remove(index)}
+              >
+                Quitar referencia
+              </Button>
+            )}
+          </Box>
         ))}
-        <Button
-          disabled={familyArray.fields.length >= 3}
-          onClick={() => familyArray.append(emptyFamilyReference())}
-        >
+        <Button onClick={() => familyArray.append(emptyFamilyReference())}>
           Añadir referencia
         </Button>
 

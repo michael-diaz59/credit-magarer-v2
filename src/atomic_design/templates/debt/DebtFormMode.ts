@@ -1,0 +1,1 @@
+export type DebtFormMode = "create" | "view" | "edit";

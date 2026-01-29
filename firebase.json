@@ -2,12 +2,10 @@
   "firestore": {
     "database": "(default)",
     "location": "nam5",
-    "cleanUrls": true,
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
     "public": "dist",
-    "rules": "firestore.rules",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -19,8 +17,5 @@
         "destination": "/index.html"
       }
     ]
-  },
-  "database": {
-    "rules": "database.rules.json"
   }
 }

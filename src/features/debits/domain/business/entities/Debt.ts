@@ -23,6 +23,11 @@ export interface Debt {
 
   type: DebtType;
 
+  /**indica que la deuda esta relacionada con una visita, util para crear una deuda a la vez que una visita, una visita puede tener varias deudas */
+  idVisit:string
+
+
+
   //para calcular cuanto paga el installment en base al interestRate y la frecuencia seleccionada para los pagos de las cuotas
   debtTerms:DebtTerms
 

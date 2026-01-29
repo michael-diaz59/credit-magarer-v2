@@ -8,6 +8,7 @@ import {
   Button,
   CircularProgress,
   MenuItem,
+  Grid,
 } from "@mui/material";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import type Visit from "../../../../features/visits/domain/business/entities/Visit";
@@ -23,6 +24,8 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
 import type { User } from "../../../../features/users/domain/business/entities/User";
+import { DebtForm } from "../../debt/DebtFormM";
+import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 
 export const OfficeVisit = () => {
 
@@ -33,12 +36,30 @@ export const OfficeVisit = () => {
   const isOfficeVisit = location.pathname.includes(pathOfficeVisits);
 
   const [loading, setLoading] = useState(false);
+    const [debtForm, setDebtForm] = useState<Omit<Debt, "id">>({
+      name: "",
+      collectorId: "",
+      clientId: "",
+      costumerDocument: "",
+      costumerName: "",
+      type: "credito",
+      idVisit:"",
+      debtTerms: "diario",
+      status: "tentativa",
+      interestRate: 0,
+      totalAmount: 0,
+      installmentCount: 1,
+      startDate: "",
+      firstDueDate: "",
+      createdAt: new Date().toISOString().split("T")[0],
+    });
   const [visitForm, setVisitForm] = useState<Visit>({
     id: "",
     customerName: "",
     customerDocument: "",
     custumerAddres: "",
     customerId: "",
+    hasdebt:false,
     observations: "",
     userAssigned: "",
     createdAt: "",
@@ -49,6 +70,7 @@ export const OfficeVisit = () => {
   console.log(visitForm);
   const [fieldAdvisors, setFieldAdvisors] = useState<User[]>([]);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [expandDebt, setExpandDebt] = useState(false);
   const [bodyDialogOpen, setBodyDialogOpen] = useState("");
 
   const companyId = useAppSelector((state) => state.user.user?.companyId || "");
@@ -85,6 +107,7 @@ useEffect(() => {
     }
 
     setLoading(false);
+
   };
 
   loadVisit();
@@ -115,8 +138,24 @@ useEffect(() => {
     loadUsers();
   }, [isOfficeVisit, companyId, userOrchestrator]);
 
+const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+
+    setDebtForm((prev) => ({
+      ...prev,
+      [name]:
+        name === "totalAmount" ||
+        name === "installmentCount" ||
+        name === "interestRate"
+          ? Number(value)
+          : value,
+    }));
+  };
+
   //crear visita
-  const handleCreateVisit = async () => {
+  const handleAction = async () => {
     if (!companyId) return;
 
     if (!visitForm.userAssigned) {
@@ -174,7 +213,7 @@ useEffect(() => {
     setErrorDialogOpen(true);
   };
 
-  const handleChange = <K extends keyof Visit>(field: K, value: Visit[K]) => {
+  const handleVisitChange = <K extends keyof Visit>(field: K, value: Visit[K]) => {
     if (!visitForm) return;
 
     setVisitForm({
@@ -203,7 +242,7 @@ useEffect(() => {
                 rows={3}
                 value={visitForm.observations}
                 disabled={!isOfficeVisit}
-                onChange={(e) => handleChange("observations", e.target.value)}
+                onChange={(e) => handleVisitChange("observations", e.target.value)}
               />
 
                <TextField
@@ -212,7 +251,7 @@ useEffect(() => {
                 rows={3}
                 value={visitForm.observations}
                 disabled={!isOfficeVisit}
-                onChange={(e) => handleChange("observations", e.target.value)}
+                onChange={(e) => handleVisitChange("observations", e.target.value)}
               />
 
               {/* ----------- Selector FIELD_ADVISOR ----------- */}
@@ -226,7 +265,7 @@ useEffect(() => {
                     : ""
                 }
                 disabled={!isOfficeVisit}
-                onChange={(e) => handleChange("userAssigned", e.target.value)}
+                onChange={(e) => handleVisitChange("userAssigned", e.target.value)}
               >
                 <MenuItem value="">
                   <em>Seleccione un asesor</em>
@@ -268,17 +307,31 @@ useEffect(() => {
                 )}
 
                 {isOfficeVisit && (
+                  /**crea o actualiza una visita en base a la existencia de un idVisit */
                   <Button
                     variant="contained"
                     onClick={() => {
-                      handleCreateVisit();
+                      handleAction();
                     }}
                   >
                     {actionButon}
                   </Button>
                 )}
+
+                <Button variant="contained" onClick={() =>setExpandDebt(true)}>
+                 agregar deuda
+                </Button>
+               
               </Stack>
             </Stack>
+            <Grid sx={{mt:3}}>
+              <Grid>
+                 {expandDebt && (
+                 
+                  DebtForm( { mode:"create",form:debtForm,onChange:(debt)=>{handleChange(debt)}})           
+                )}
+              </Grid>
+            </Grid>
           </CardContent>
         </Card>
       </Box>

@@ -18,7 +18,7 @@ export const pathOfficeAdvisor = pathAdvisor + "/office"
 
 const pathOfficeDebits=pathOfficeAdvisor+"/debits"
 const pathOfficeCreateDebit=pathOfficeAdvisor+"/debits/create"
-const pathOfficeDebit=pathOfficeAdvisor+"/debits/"
+const pathOfficeDebit=pathOfficeAdvisor+"/debits"
 
 //lista de clinetes
 export const pathOfficeCostumers = pathOfficeAdvisor + "/costumers"
@@ -115,7 +115,7 @@ export const ScreenPaths = {
        debit: {
         debits: pathOfficeDebits,
         CreateDebits: pathOfficeCreateDebit,
-        debit:(id: string) => `${pathOfficeDebit}/${id}`,
+        debit:(debitId: string) => `${pathOfficeDebit}/${debitId}`,
       },
     },
     field: {

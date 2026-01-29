@@ -65,9 +65,9 @@ export const costumerSchema = z.object({
     observations: z.string(),
     debtCounter: z.number(),
     applicant: personalInfoSchema,
-    coSigner: z.array(personalInfoSchema).min(1).max(3),
-    vehicle: z.array(vehicleSchema).min(1).max(3),
-    familyReference: z.array(familyReferenceSchema).min(1).max(3),
+    coSigner: z.array(personalInfoSchema).min(1).max(5),
+    vehicle: z.array(vehicleSchema).min(1).max(5),
+    familyReference: z.array(familyReferenceSchema).min(1).max(5),
 });
 
 export type CostumerFormValues = z.infer<typeof costumerSchema>;

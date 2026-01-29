@@ -4,7 +4,7 @@ import type { Costumer } from "../business/entities/Costumer"
 import type { GetCostumersErrors, SaveCostumerError } from "../business/entities/utilities"
 import { GetCostumerByIdCase } from "../business/useCases/GetCostumerByIdCase"
 import { GetCostumersCase } from "../business/useCases/GetCostumersCase"
-import { CreateCostumerCase } from "../business/useCases/CreateCostumerCase"
+import { CreateCostumerCase, type SaveCostumerInput } from "../business/useCases/CreateCostumerCase"
 import type CostumerGateway from "./CostumerGateway"
 import { UpdateCostumerCase, type UpdateCostumerInput } from "../business/useCases/UpdateCostumerCase"
 import { DeleteCostumerCase, type DeleteCostumerInput } from "../business/useCases/DeleteCostumerCase"
@@ -89,8 +89,8 @@ export default class CostumerOrchestrator {
         return costumers
     }
 
-    async createCostumer(companyId: string, costumer: Costumer): Promise<Result<null, SaveCostumerError>> {
-        const saveCostumer: Result<null, SaveCostumerError> = await this.createCostumerCase.execute({ companyId: companyId, costumer: costumer })
+    async createCostumer(input :SaveCostumerInput): Promise<Result<null, SaveCostumerError>> {
+        const saveCostumer: Result<null, SaveCostumerError> = await this.createCostumerCase.execute(input)
         return saveCostumer
     }
 

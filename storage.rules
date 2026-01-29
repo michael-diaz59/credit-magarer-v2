@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage
+	{ match /b/{bucket}/o
+		{ function isAuthenticated() 
+    	{ return request.auth != null; } 
+			function havePermits(companyId) 
+				{ return isAuthenticated() } 
+			match /companies/{companyId}/customers/{customerId}/{fileName} 
+      
+				{ allow read, write: if havePermits(companyId) }
+    }
+	}

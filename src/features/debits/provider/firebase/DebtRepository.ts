@@ -41,13 +41,15 @@ export class FirebaseDebtRepository implements DebtGateway {
 
             const snapshot = await getDocs(q);
 
-            const debts: Debt[] = snapshot.docs.map(this.mapFirestoreDebt);
 
+            const debts: Debt[] = snapshot.docs.map(this.mapFirestoreDebt);
+            console.log(debts)
             return {
                 state: ok(debts),
             };
 
         } catch (error) {
+            console.log(error)
             if (error instanceof FirebaseError) {
                 return {
                     state: fail({ code: "NETWORK_ERROR" }),
@@ -65,7 +67,7 @@ export class FirebaseDebtRepository implements DebtGateway {
     ): Debt {
         const data = doc.data();
         console.log(data)
-         console.log(data.debtTerms)
+        console.log(data.debtTerms)
 
         return {
             id: doc.id,
@@ -96,59 +98,59 @@ export class FirebaseDebtRepository implements DebtGateway {
     }
 
     async create(
-  input: CreateDebtUInput
-): Promise<CreateDebtUOutput> {
-  try {
-    const countersRef = doc(
-      firestore,
-      "companies",
-      input.companyId,
-      "metadata",
-      "counters"
-    );
+        input: CreateDebtUInput
+    ): Promise<CreateDebtUOutput> {
+        try {
+            const countersRef = doc(
+                firestore,
+                "companies",
+                input.companyId,
+                "metadata",
+                "counters"
+            );
 
-    const debtsRef = collection(
-      firestore,
-      "companies",
-      input.companyId,
-      "debts"
-    );
+            const debtsRef = collection(
+                firestore,
+                "companies",
+                input.companyId,
+                "debts"
+            );
 
-    await runTransaction(firestore, async (tx) => {
-      const countersSnap = await tx.get(countersRef);
+            await runTransaction(firestore, async (tx) => {
+                const countersSnap = await tx.get(countersRef);
 
-      let nextDebtNumber = 1;
+                let nextDebtNumber = 1;
 
-      if (countersSnap.exists()) {
-        const current = countersSnap.data().debtCount ?? 0;
-        nextDebtNumber = current + 1;
+                if (countersSnap.exists()) {
+                    const current = countersSnap.data().debtCount ?? 0;
+                    nextDebtNumber = current + 1;
 
-        tx.update(countersRef, {
-          debtCount: increment(1),
-        });
-      } else {
-        tx.set(countersRef, {
-          debtCount: 1,
-        });
-      }
+                    tx.update(countersRef, {
+                        debtCount: increment(1),
+                    });
+                } else {
+                    tx.set(countersRef, {
+                        debtCount: 1,
+                    });
+                }
 
-      const debtName = `DEBT-${nextDebtNumber}`;
+                const debtName = `DEBT-${nextDebtNumber}`;
 
-      tx.set(doc(debtsRef), {
-        ...input.debt,
-        name: debtName,
-        createdAt: serverTimestamp(),
-      });
-    });
+                tx.set(doc(debtsRef), {
+                    ...input.debt,
+                    name: debtName,
+                    createdAt: serverTimestamp(),
+                });
+            });
 
-    return { state: ok(null) };
-  } catch (error) {
-    if (error instanceof FirebaseError) {
-      return { state: fail({ code: "NETWORK_ERROR" }) };
+            return { state: ok(null) };
+        } catch (error) {
+            if (error instanceof FirebaseError) {
+                return { state: fail({ code: "NETWORK_ERROR" }) };
+            }
+            return { state: fail({ code: "UNKNOWN_ERROR" }) };
+        }
     }
-    return { state: fail({ code: "UNKNOWN_ERROR" }) };
-  }
-}
 
     async update(
         input: UpdateDebitInput
@@ -207,7 +209,9 @@ export class FirebaseDebtRepository implements DebtGateway {
             const snapshot = await getDoc(ref);
 
             if (!snapshot.exists()) {
+                console.log("deuda no encontrada")
                 return {
+                    
                     state: ok(null)
                 };
             }

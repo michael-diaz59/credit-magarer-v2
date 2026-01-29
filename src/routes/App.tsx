@@ -16,8 +16,9 @@ import BaseSalesLayout from "./seller/BaseSeller_layout.tsx";
 import { OfficeVisit } from "../atomic_design/templates/advisor/office/OfficeVisit.tsx";
 import { VisitListPage } from "../atomic_design/templates/advisor/field/VisitListPage.tsx";
 import { FieldVisit } from "../atomic_design/templates/advisor/field/DetailVisit.tsx";
-import { CreateDebtScreen } from "../atomic_design/templates/advisor/office/createDebt.tsx";
 import { DebtsListScreen } from "../atomic_design/templates/advisor/office/listDebts.tsx";
+import { CreateDebtScreen } from "../atomic_design/templates/debt/CreateDebtScreen.tsx";
+import { ViewDebtScreen } from "../atomic_design/templates/debt/ViewDebtScreen";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -92,7 +93,6 @@ export default function App() {
           element={<CostumerForm />}
         />
         {/* visit */}
-
         <Route
           path={ScreenPaths.advisor.office.visit.visits}
           element={<VisitListPage />}
@@ -110,7 +110,7 @@ export default function App() {
         />
         <Route
           path={ScreenPaths.advisor.office.visit.CreateVisit}
-          element={<OfficeVisit />}
+          element={<CreateDebtScreen />}
         />
 
         {/* debit */}
@@ -121,7 +121,7 @@ export default function App() {
         />
         <Route
           path={ScreenPaths.advisor.office.debit.debit(":debitId")}
-          element={<CreateDebtScreen />}
+          element={<ViewDebtScreen />}
         />
         <Route
           path={ScreenPaths.advisor.office.debit.CreateDebits}

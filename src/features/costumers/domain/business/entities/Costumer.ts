@@ -5,10 +5,13 @@ import type { Vehicle } from "./Vehicle";
 //CLASE COSTUNMER
 export interface Costumer {
   id:string
-  //numero de deudas del costumer
+  /**numero de deudas del costumer */
   debtCounter: number
 
-  //observaciones textuales que puede tener un cliente
+  /**el id de la lista de clientes usado para identificar rapidamente la lista y actualizar el nombre del clinte en al lista con facilidad */
+  listId:string
+
+  /**observaciones textuales que puede tener un cliente*/
   observations:string 
   applicant: PersonalInfo
   coSigner?: PersonalInfo[];

@@ -5,33 +5,33 @@ import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt } from "../../entities/Debt";
 
 export type CreateDebtError =
-    | { code: "NETWORK_ERROR" }
-    | { code: "UNKNOWN_ERROR" }
-    | { code: "STATE_INVALID" }
-    | { code: "CUSTOMER_NOT_FOUND" }
+  | { code: "NETWORK_ERROR" }
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "STATE_INVALID" }
+  | { code: "CUSTOMER_NOT_FOUND" }
 
 export interface CreateDebtUInput {
-    debt:  Omit<Debt, "id">;
-    companyId:string
+  debt: Omit<Debt, "id">;
+  companyId: string
 }
 
 
 export interface CreateDebtUOutput {
-    state: Result<null, CreateDebtError>
+  state: Result<null, CreateDebtError>
 }
 
 export class CreateDebtUseCase {
-    private debtGateway: DebtGateway
-      private costumerOrchestrator: CostumerOrchestrator;
-    constructor(
-        debtGateway: DebtGateway
-    ) {
-        this.debtGateway = debtGateway
-        this.costumerOrchestrator = new CostumerOrchestrator();
-    }
+  private debtGateway: DebtGateway
+  private costumerOrchestrator: CostumerOrchestrator;
+  constructor(
+    debtGateway: DebtGateway
+  ) {
+    this.debtGateway = debtGateway
+    this.costumerOrchestrator = new CostumerOrchestrator();
+  }
 
-    /**valida que se cree un debt con estado "tentativa" */
-    async execute(input: CreateDebtUInput): Promise<CreateDebtUOutput> {
+  /**valida que se cree un debt con estado "tentativa" */
+  async execute(input: CreateDebtUInput): Promise<CreateDebtUOutput> {
     /** 1️⃣ Validación de estado */
     if (input.debt.status !== "tentativa") {
       return {
@@ -46,7 +46,15 @@ export class CreateDebtUseCase {
         documentId: input.debt.costumerDocument,
       });
 
-    if (!costumerResult.state.ok || costumerResult.state.value===null) {
+    console.log(costumerResult.state)
+    if (!costumerResult.state.ok) {
+
+      return { state: fail({ code: "UNKNOWN_ERROR" }), }
+
+
+    }
+
+    if (costumerResult.state.value === null) {
       return {
         state: fail({ code: "CUSTOMER_NOT_FOUND" }),
       };
