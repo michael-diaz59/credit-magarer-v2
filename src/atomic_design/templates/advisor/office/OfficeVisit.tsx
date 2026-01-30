@@ -65,6 +65,7 @@ export const OfficeVisit = () => {
     createdAt: "",
     amountSolicited:0,
     debitId:"",
+    creatorsId:"",
     state: { code: "earring" },
   });
   console.log(visitForm);
@@ -238,15 +239,6 @@ const handleChange = (
             <Stack spacing={2}>
               <TextField
                 label="Observaciones"
-                multiline
-                rows={3}
-                value={visitForm.observations}
-                disabled={!isOfficeVisit}
-                onChange={(e) => handleVisitChange("observations", e.target.value)}
-              />
-
-               <TextField
-                label="monto"
                 multiline
                 rows={3}
                 value={visitForm.observations}

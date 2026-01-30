@@ -1,6 +1,6 @@
 
 import { fail, type Result } from "../../../../../../core/helpers/ResultC";
-import CostumerOrchestrator from "../../../../../costumers/domain/infraestructure/CostumerOrchestrator";
+import CustomerOrchestrator from "../../../../../costumers/domain/infraestructure/CustomerOrchestrator";
 import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt } from "../../entities/Debt";
 
@@ -22,12 +22,12 @@ export interface CreateDebtUOutput {
 
 export class CreateDebtUseCase {
   private debtGateway: DebtGateway
-  private costumerOrchestrator: CostumerOrchestrator;
+  private costumerOrchestrator: CustomerOrchestrator;
   constructor(
     debtGateway: DebtGateway
   ) {
     this.debtGateway = debtGateway
-    this.costumerOrchestrator = new CostumerOrchestrator();
+    this.costumerOrchestrator = new CustomerOrchestrator();
   }
 
   /**valida que se cree un debt con estado "tentativa" */

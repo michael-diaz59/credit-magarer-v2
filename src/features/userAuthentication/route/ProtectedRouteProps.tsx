@@ -20,6 +20,7 @@ export function ProtectedAuth({ children }: ProtectedRouteProps) {
 
  export function ProtectedOfficeAdvisor({ children }: ProtectedRouteProps) {
   const user = useAppSelector((state) => state.user.user);
+  
 
   if(!user){
       return <Navigate to="/" replace />;
@@ -31,6 +32,7 @@ export function ProtectedAuth({ children }: ProtectedRouteProps) {
     return children;
   }
 
+   window.alert("no tienes los permisos necesarios")
   return <Navigate to="/" replace />;
 }
 
@@ -39,6 +41,7 @@ export function ProtectedFieldAdvisor({ children }: ProtectedRouteProps) {
   const roles: Role[] | undefined = useAppSelector((state) => state.user.user?.roles);
 
     if (!roles) {
+      console.log("no tiene roles el usuario")
     return <Navigate to="/" replace />;
   }
 
@@ -46,6 +49,7 @@ export function ProtectedFieldAdvisor({ children }: ProtectedRouteProps) {
   if (roles.includes("FIELD_ADVISOR") || roles.includes("ADMIN")) {
       return children;
   }
+  console.log("no tiene el rol requerido")
   
     return <Navigate to="/" replace />;
 

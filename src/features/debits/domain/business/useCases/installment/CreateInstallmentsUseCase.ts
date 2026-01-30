@@ -1,5 +1,5 @@
 import type { Result } from "../../../../../../core/helpers/ResultC"
-import type { Costumer } from "../../../../../costumers/domain/business/entities/Costumer"
+import type { Customer } from "../../../../../costumers/domain/business/entities/Customer"
 import type { PersonalInfo } from "../../../../../costumers/domain/business/entities/PersonalInfo"
 import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay"
 import type { Debt, DebtTerms } from "../../entities/Debt"
@@ -14,7 +14,7 @@ export type CreateInstallmentsError =
 export interface CreateInstallmentsInput {
     debtId: string
     debt: Debt
-    costumer: Costumer
+    costumer: Customer
     companyId: string
 
 }

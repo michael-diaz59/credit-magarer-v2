@@ -1,12 +1,13 @@
 import type { PendingDocuments } from "../../../../../atomic_design/molecules/CustomerDocumentActions"
 import { fail, ok, type Result } from "../../../../../core/helpers/ResultC"
 import type CostumerGateway from "../../infraestructure/CostumerGateway"
-import type { Costumer } from "../entities/Costumer"
+import type { Customer } from "../entities/Customer"
 import type { SaveCostumerError } from "../entities/utilities"
 
 export interface UpdateCostumerInput {
     idUser:string
-    costumer: Costumer,
+    costumer: Customer,
+    isNameChange:boolean
     companyId:string,
      updateFiles?:boolean,
      pendingDocs?: PendingDocuments

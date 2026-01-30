@@ -8,6 +8,10 @@ export default interface Visit {
   /**id del usuario asignado a la visita (advisor of field)*/
   userAssigned:string
 
+     /**id del usuario que creo la visita (advisor of office)*/
+  creatorsId:string
+
+
   hasdebt:boolean
 
 

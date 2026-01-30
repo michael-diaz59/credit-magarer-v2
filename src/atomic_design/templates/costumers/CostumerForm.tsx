@@ -25,12 +25,12 @@ import { VehicleForm } from "./VehicleForm";
 import { FamilyReferenceForm } from "./FamilyReferenceForm";
 import { PersonalInfoForm } from "./PersonalInfoForm";
 import { CostumerFormMapper } from "../../../features/costumers/wrappers/CostumerFormMapper";
-import CostumerOrchestrator from "../../../features/costumers/domain/infraestructure/CostumerOrchestrator";
+import CustomerOrchestrator from "../../../features/costumers/domain/infraestructure/CustomerOrchestrator";
 import { useAppSelector } from "../../../store/redux/coreRedux";
 import React, { useEffect } from "react";
 import { costumerSchema } from "./SchemasCostumer";
 import type z from "zod";
-import type { Costumer } from "../../../features/costumers/domain/business/entities/Costumer";
+import type { Customer } from "../../../features/costumers/domain/business/entities/Customer";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "../../atoms/ConfirmDialog";
 import { BaseDialog } from "../../atoms/BaseDialog";
@@ -48,6 +48,9 @@ export const CostumerForm = () => {
   const { visitId } = useParams<{ visitId?: string }>();
   const [paramsReady, setParamsReady] = React.useState(false);
   const [updateFiles, setUpdateFiles] = React.useState(false);
+
+  /**nombre original usado para validar si se cambio el nombre */
+  const originalCustomerNameRef = React.useRef<string | null>(null);
 
   const location = useLocation();
   const isOfficeVisit = location.pathname.includes(
@@ -68,7 +71,7 @@ export const CostumerForm = () => {
     setParamsReady(true);
   }, []);
 
-  const [costumer, setCostumer] = React.useState<Costumer | null>(null);
+  const [costumer, setCostumer] = React.useState<Customer | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [stillInPage, setstillInPage] = React.useState(true);
@@ -80,7 +83,7 @@ export const CostumerForm = () => {
     (state) => state.user.user?.companyId,
   );
   const orchestratorRef = React.useMemo(() => {
-    return new CostumerOrchestrator();
+    return new CustomerOrchestrator();
   }, []);
 
   const isEditMode = paramsReady && !!costumerId;
@@ -114,6 +117,8 @@ export const CostumerForm = () => {
 
         if (result.ok) {
           setCostumer(result.value);
+
+           originalCustomerNameRef.current =result.value?.applicant.fullName??null;
         }
       } catch {
         setBaseDIlogText(
@@ -188,7 +193,7 @@ export const CostumerForm = () => {
   const onSubmit = async (data: CostumerFormValues) => {
     console.log("llamado a guardar usuario");
     try {
-      const costumer: Costumer = CostumerFormMapper.toDomain(data);
+      const costumer: Customer = CostumerFormMapper.toDomain(data);
 
       console.log("isEditMode" + isEditMode);
 
@@ -198,6 +203,7 @@ export const CostumerForm = () => {
           costumer: costumer,
           companyId: userCompanieId ?? "",
           idUser: "",
+          isNameChange:false,
           updateFiles: updateFiles,
           pendingDocs: pendingDocs,
         });

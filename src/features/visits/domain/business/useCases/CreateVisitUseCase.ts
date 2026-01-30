@@ -1,5 +1,5 @@
 import { fail, type Result } from "../../../../../core/helpers/ResultC"
-import CostumerOrchestrator from "../../../../costumers/domain/infraestructure/CostumerOrchestrator"
+import CustomerOrchestrator from "../../../../costumers/domain/infraestructure/CustomerOrchestrator"
 import type VisitGateway from "../../infraestructure/VisitGateway"
 import type { visitErros } from "../entities/types"
 import type Visit from "../entities/Visit"
@@ -17,13 +17,13 @@ export interface CreateVisitOutput {
 
 export class CreateVisitUseCase {
     private gateway: VisitGateway
-    private costumerOrchestrator: CostumerOrchestrator
+    private costumerOrchestrator: CustomerOrchestrator
 
     constructor(
         gateway: VisitGateway
     ) {
         this.gateway = gateway
-        this.costumerOrchestrator = new CostumerOrchestrator()
+        this.costumerOrchestrator = new CustomerOrchestrator()
     }
 
 

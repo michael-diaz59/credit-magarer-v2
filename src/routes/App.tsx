@@ -19,6 +19,7 @@ import { FieldVisit } from "../atomic_design/templates/advisor/field/DetailVisit
 import { DebtsListScreen } from "../atomic_design/templates/advisor/office/listDebts.tsx";
 import { CreateDebtScreen } from "../atomic_design/templates/debt/CreateDebtScreen.tsx";
 import { ViewDebtScreen } from "../atomic_design/templates/debt/ViewDebtScreen";
+import { CustomerVisitEntryPage } from "../atomic_design/templates/advisor/visit/CustomerVisitEntryPage.tsx";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -60,7 +61,7 @@ export default function App() {
         path={ScreenPaths.advisor.home}
         element={
           <ProtectedAuth>
-            <OfficeSalesLayout />
+            <BaseLayout />
           </ProtectedAuth>
         }
       >
@@ -95,8 +96,15 @@ export default function App() {
         {/* visit */}
         <Route
           path={ScreenPaths.advisor.office.visit.visits}
+          element={<CustomerVisitEntryPage />}
+        />
+         {/* visit */}
+        <Route
+          path={ScreenPaths.advisor.office.visit.visits2(":documentCostumer")}
           element={<VisitListPage />}
         />
+
+        
         <Route
           path={ScreenPaths.advisor.office.visit.visit(":visitId")}
           element={<OfficeVisit />}
@@ -143,6 +151,11 @@ export default function App() {
         <Route index element={<VisitListPage />} />
         <Route
           path={ScreenPaths.advisor.field.visit.visits}
+          element={<CustomerVisitEntryPage />}
+        />
+
+          <Route
+          path={ScreenPaths.advisor.field.visit.visits2(":documentCostumer")}
           element={<VisitListPage />}
         />
         <Route

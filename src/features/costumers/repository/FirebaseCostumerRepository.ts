@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, getDocs, increment, runTransaction, serverTimestamp, type DocumentData } from "firebase/firestore"
 import { fail, ok, type Result } from "../../../core/helpers/ResultC"
-import type { Costumer } from "../domain/business/entities/Costumer"
+import type { Customer } from "../domain/business/entities/Customer"
 import type { GetCostumersErrors, GetCostumerByIdErrors, SaveCostumerError } from "../domain/business/entities/utilities"
 import type CostumerGateway from "../domain/infraestructure/CostumerGateway"
 import { firestore, storage } from "../../../store/firebase/firebase"
@@ -14,6 +14,7 @@ import { getDownloadURL, getMetadata, ref, uploadBytes } from "firebase/storage"
 import type { SaveCostumerInput } from "../domain/business/useCases/CreateCostumerCase"
 import type { PendingDocuments } from "../../../atomic_design/molecules/CustomerDocumentActions"
 import type { UpdateCostumerInput } from "../domain/business/useCases/UpdateCostumerCase"
+import type { GetCustomersListInput, GetCustomersListOutput } from "../domain/business/useCases/GetCustomersListCase"
 
 
 export const custumerLists = "customersLists"
@@ -62,6 +63,52 @@ export async function customerDocumentExists(params: {
 export class FirebaseCostumerRepository implements CostumerGateway {
 
 
+    async getCustomersListCase(
+        input: GetCustomersListInput
+    ): Promise<Result<GetCustomersListOutput, GetCostumersErrors>> {
+        try {
+            /** 🔒 Validaciones tempranas */
+            if (!input.idCompany || !input.idUser) {
+                return fail({ code: "INVALID_INPUT" });
+            }
+
+            /** 📍 Ruta correcta */
+            const customersRef = collection(
+                firestore,
+                "companies",
+                input.idCompany,
+                "customers"
+            );
+
+            /** 🔥 Query */
+            const snapshot = await getDocs(customersRef);
+
+            /** 🧠 Parseo */
+            const customers: Customer[] = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...(doc.data() as Omit<Customer, "id">),
+            }));
+
+            return ok({
+                state: customers,
+            });
+        } catch (error) {
+            if (error instanceof FirebaseError) {
+                switch (error.code) {
+                    case "permission-denied":
+                        return fail({ code: "PERMISSION_DENIED" });
+
+                    case "unavailable":
+                        return fail({ code: "NETWORK_ERROR" });
+                }
+            }
+
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
+
+    //logica para cambiar nombre en la lista de nombres
     async uploadCustomerDocument(params: {
         companyId: string;
         costumerId: string;
@@ -128,7 +175,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
 
             const data = costumerSnap.data();
 
-            const costumer: Costumer = this.dataToCostumer(data, costumerSnap.id)
+            const costumer: Customer = this.dataToCostumer(data, costumerSnap.id)
 
             console.log(costumer)
 
@@ -180,13 +227,13 @@ export class FirebaseCostumerRepository implements CostumerGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
-    async getCostumers(companyId: string): Promise<Result<Costumer[], GetCostumersErrors>> {
+    async getCostumers(companyId: string): Promise<Result<Customer[], GetCostumersErrors>> {
         try {
             console.log("companies/" + companyId + "/customers")
             const ref = collection(firestore, "companies", companyId, "customers")
             const snapshot = await getDocs(ref)
 
-            const costumers: Costumer[] = snapshot.docs.map((doc) => {
+            const costumers: Customer[] = snapshot.docs.map((doc) => {
                 const data = doc.data()
                 return this.dataToCostumer(data, doc.id)
 
@@ -215,8 +262,8 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         }
     }
 
-   
-    async getCostumerById(companyId: string, costumerId: string): Promise<Result<Costumer | null, GetCostumerByIdErrors>> {
+
+    async getCostumerById(companyId: string, costumerId: string): Promise<Result<Customer | null, GetCostumerByIdErrors>> {
         try {
             const ref = doc(firestore, "companies", companyId, "customers", costumerId)
             console.log("companies/" + companyId + "/customers/" + costumerId)
@@ -225,13 +272,13 @@ export class FirebaseCostumerRepository implements CostumerGateway {
             if (!snapshot.exists()) {
                 console.log("getCostumerById: costumer no encontrado")
                 //costumer no encontrado
-                return ok<Costumer | null>(null)
+                return ok<Customer | null>(null)
 
             }
 
             const data = snapshot.data()
 
-            const costumer: Costumer = this.dataToCostumer(data, snapshot.id)
+            const costumer: Customer = this.dataToCostumer(data, snapshot.id)
 
             console.log("costumer obtenido")
 
@@ -249,7 +296,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         }
     }
 
-    dataToCostumer(data: DocumentData, id: string): Costumer {
+    dataToCostumer(data: DocumentData, id: string): Customer {
         return {
             id: id,
             observations: data.observations ?? "",
@@ -286,108 +333,135 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         await Promise.all(uploads);
     }
     async UpdateCostumer(
-    input: UpdateCostumerInput
-  ): Promise<Result<void, SaveCostumerError>> {
-    const { costumer, companyId, updateFiles, pendingDocs } = input;
-
-    try {
-      /* ======================
-         FIRESTORE TRANSACTION
-      ====================== */
-
-      await runTransaction(firestore, async (tx) => {
-        const costumerRef = doc(
-          firestore,
-          "companies",
-          companyId,
-          "customers",
-          costumer.id
-        );
-
-        const snapshot = await tx.get(costumerRef);
-
-        if (!snapshot.exists()) {
-          throw new Error("NOT_FOUND");
-        }
-
-        const oldData = snapshot.data();
-        const oldIdNumber = oldData.applicant.idNumber;
-        const newIdNumber = costumer.applicant.idNumber;
-
-        // 🔁 Si cambió la cédula
-        if (oldIdNumber !== newIdNumber) {
-          const oldIndexRef = doc(
-            firestore,
-            "companies",
+        input: UpdateCostumerInput
+    ): Promise<Result<void, SaveCostumerError>> {
+        const {
+            costumer,
             companyId,
-            "costumer_id_numbers",
-            oldIdNumber
-          );
+            updateFiles,
+            pendingDocs,
+            isNameChange, // 🆕
+        } = input;
 
-          const newIndexRef = doc(
-            firestore,
-            "companies",
-            companyId,
-            "costumer_id_numbers",
-            newIdNumber
-          );
+        try {
+            await runTransaction(firestore, async (tx) => {
+                const costumerRef = doc(
+                    firestore,
+                    "companies",
+                    companyId,
+                    "customers",
+                    costumer.id
+                );
 
-          const newIndexSnap = await tx.get(newIndexRef);
+                const snapshot = await tx.get(costumerRef);
 
-          if (newIndexSnap.exists()) {
-            throw new Error("DOCUMENT_EXISTING");
-          }
+                if (!snapshot.exists()) {
+                    throw new Error("NOT_FOUND");
+                }
 
-          tx.delete(oldIndexRef);
-          tx.set(newIndexRef, {
-            costumerId: costumer.id,
-            createdAt: new Date().toISOString(),
-          });
-        }
+                const oldData = snapshot.data();
+                const oldIdNumber = oldData.applicant.idNumber;
+                const newIdNumber = costumer.applicant.idNumber;
 
-        // ✏️ Actualizar cliente
-        tx.set(costumerRef, costumer, { merge: true });
-      });
+                /* =========================
+                   🔁 CAMBIO DE CÉDULA
+                ========================= */
+                if (oldIdNumber !== newIdNumber) {
+                    const oldIndexRef = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "costumer_id_numbers",
+                        oldIdNumber
+                    );
 
-      /* ======================
-         STORAGE (POST TX)
-      ====================== */
+                    const newIndexRef = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "costumer_id_numbers",
+                        newIdNumber
+                    );
 
-      const shouldUploadFiles =
-        updateFiles &&
-        pendingDocs &&
-        Object.keys(pendingDocs).length > 0;
+                    const newIndexSnap = await tx.get(newIndexRef);
 
-      if (shouldUploadFiles) {
-        await this.uploadPendingDocuments({
-          companyId,
-          costumerId: costumer.id,
-          pendingDocuments: pendingDocs,
-        });
-      }
+                    if (newIndexSnap.exists()) {
+                        throw new Error("DOCUMENT_EXISTING");
+                    }
 
-      return ok(undefined);
-    } catch (error) {
-      /* ======================
-         ERROR HANDLING
-      ====================== */
+                    tx.delete(oldIndexRef);
+                    tx.set(newIndexRef, {
+                        costumerId: costumer.id,
+                        createdAt: new Date().toISOString(),
+                    });
+                }
 
-      if (error instanceof FirebaseError) {
-        switch (error.code) {
-          case "unavailable":
-            return fail({ code: "NETWORK_ERROR" });
-          case "permission-denied":
+                /* =========================
+                   🆕 CAMBIO DE NOMBRE
+                ========================= */
+                if (isNameChange) {
+                    const listId = oldData.listId;
+
+                    if (!listId) {
+                        throw new Error("LIST_ID_NOT_FOUND");
+                    }
+
+                    const listRef = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "customersLists",
+                        listId
+                    );
+
+                    // reemplaza SOLO el nombre
+                    tx.update(listRef, {
+                        [`items.${costumer.id}`]: costumer.applicant.fullName,
+                    });
+                }
+
+                /* =========================
+                   ✏️ UPDATE CUSTOMER
+                ========================= */
+                tx.set(costumerRef, costumer, { merge: true });
+            });
+
+            /* =========================
+               ☁️ STORAGE (POST TX)
+            ========================= */
+            const shouldUploadFiles =
+                updateFiles &&
+                pendingDocs &&
+                Object.keys(pendingDocs).length > 0;
+
+            if (shouldUploadFiles) {
+                await this.uploadPendingDocuments({
+                    companyId,
+                    costumerId: costumer.id,
+                    pendingDocuments: pendingDocs,
+                });
+            }
+
+            return ok(undefined);
+        } catch (error) {
+            if (error instanceof FirebaseError) {
+                switch (error.code) {
+                    case "unavailable":
+                        return fail({ code: "NETWORK_ERROR" });
+                    case "permission-denied":
+                        return fail({ code: "UNKNOWN_ERROR" });
+                }
+            }
+
+            if (error instanceof Error) {
+                if (error.message === "DOCUMENT_EXISTING") {
+                    return fail({ code: "DOCUMENT_EXISTING" });
+                }
+            }
+
             return fail({ code: "UNKNOWN_ERROR" });
         }
-      }
-
-      if (error instanceof Error && error.message === "DOCUMENT_EXISTING") {
-        return fail({ code: "DOCUMENT_EXISTING" });
-      }
-
-      return fail({ code: "UNKNOWN_ERROR" });
     }
-  }
 
     async createCostumer(
         input: SaveCostumerInput

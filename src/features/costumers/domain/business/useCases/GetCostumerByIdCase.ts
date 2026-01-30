@@ -1,6 +1,6 @@
 import { fail, ok, type Result } from "../../../../../core/helpers/ResultC"
 import type CostumerGateway from "../../infraestructure/CostumerGateway"
-import type { Costumer } from "../entities/Costumer"
+import type { Customer } from "../entities/Customer"
 import type { GetCostumersErrors } from "../entities/utilities"
 
 
@@ -17,7 +17,7 @@ export class GetCostumerByIdCase {
         this.costumerGateway = costumerGateway
     }
 
-    async execute(getCostumerByIdInpit: GetCostumerByIdInput): Promise<Result<Costumer | null, GetCostumersErrors>> {
+    async execute(getCostumerByIdInpit: GetCostumerByIdInput): Promise<Result<Customer | null, GetCostumersErrors>> {
         const getResult = await this.costumerGateway.getCostumerById(getCostumerByIdInpit.companyId,getCostumerByIdInpit.costumerId)
 
         if (!getResult.ok) {

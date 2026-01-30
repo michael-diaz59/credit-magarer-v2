@@ -1,10 +1,13 @@
+import type { Result } from "../../../../core/helpers/ResultC"
 import FirebaseVisitRepository from "../../repository/firebase/FirebaseVisitRepository"
+import type { visitErros } from "../business/entities/types"
 import { CreateVisitUseCase, type CreateVisitInput, type CreateVisitOutput } from "../business/useCases/CreateVisitUseCase"
 import DeleteVisitCase, { type DeleteVisitInput, type DeleteVisitOutput } from "../business/useCases/deleteVisitCase"
 import EditVisitCase, { type EditVisitInput, type EditVisitOutput } from "../business/useCases/EditVisitCase"
 import GetVisitByCedulaCase, { type GetVisitByCedulaInput, type GetVisitByCedulaOutput } from "../business/useCases/getVisitByCedulaCase"
 import { GetVisitByIdCase, type GetVisitByIdInput, type GetVisitByIdOutput } from "../business/useCases/GetVisitByIdCase"
 import { GetVisitByStateCase, type GetVisitByStateInput, type GetVisitByStateOutput } from "../business/useCases/GetVisitByStateCase"
+import { GetVisitsByCustomerDocumentCase, type GetVisitsByCustomerDocumentInput, type GetVisitsByCustomerDocumentOutput } from "../business/useCases/getVisitsByCustomerDocumentCase"
 import GetVisitsCase, { type GetVisitsInput, type GetVisitsOutput } from "../business/useCases/getVisitsCase"
 import type VisitGateway from "./VisitGateway"
 
@@ -18,6 +21,7 @@ export default class VisitOrchestrator {
     private editVisitCase: EditVisitCase
     private getVisitsCase: GetVisitsCase
     private getVisitByStateCase: GetVisitByStateCase
+    private getVisitsByCustomerDocumentCase: GetVisitsByCustomerDocumentCase
 
     constructor(
     ) {
@@ -26,6 +30,7 @@ export default class VisitOrchestrator {
         this.getVisitByStateCase = new GetVisitByStateCase(repository)
         this.getVisitsCase = new GetVisitsCase(repository)
         this.getVisitByIdCase = new GetVisitByIdCase(repository)
+        this.getVisitsByCustomerDocumentCase= new GetVisitsByCustomerDocumentCase(repository)
         this.getVisitByCedulaCase = new GetVisitByCedulaCase(repository)
         this.deleteVisitCase = new DeleteVisitCase(repository)
         this.editVisitCase = new EditVisitCase(repository)
@@ -50,6 +55,10 @@ export default class VisitOrchestrator {
     async getVisitByState(input: GetVisitByStateInput): Promise<GetVisitByStateOutput> {
         const result = await this.getVisitByStateCase.execute(input)
         return result
+    }
+
+    async getVisitsByCustomerDocument(input: GetVisitsByCustomerDocumentInput): Promise<Result<GetVisitsByCustomerDocumentOutput,visitErros>> {
+        return await this.getVisitsByCustomerDocumentCase.execute(input)
     }
 
     async getVisits(input: GetVisitsInput): Promise<GetVisitsOutput> {

@@ -3,7 +3,7 @@ import type { FamilyReference } from "./FamilyReference";
 import type { Vehicle } from "./Vehicle";
 
 //CLASE COSTUNMER
-export interface Costumer {
+export interface Customer {
   id:string
   /**numero de deudas del costumer */
   debtCounter: number

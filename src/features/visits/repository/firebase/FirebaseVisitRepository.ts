@@ -24,6 +24,7 @@ import type { EditVisitInput, EditVisitOutput } from "../../domain/business/useC
 import type { DeleteVisitInput, DeleteVisitOutput } from "../../domain/business/useCases/deleteVisitCase";
 import type { GetVisitsInput, GetVisitsOutput } from "../../domain/business/useCases/getVisitsCase";
 import type { GetVisitByStateInput, GetVisitByStateOutput } from "../../domain/business/useCases/GetVisitByStateCase";
+import type { GetVisitsByCustomerDocumentInput, GetVisitsByCustomerDocumentOutput } from "../../domain/business/useCases/getVisitsByCustomerDocumentCase";
 
 export default class FirebaseVisitRepository implements VisitGateway {
 
@@ -38,7 +39,7 @@ export default class FirebaseVisitRepository implements VisitGateway {
 
             const q = query(
                 ref,
-                where("state","==" ,input.state), // más recientes primero
+                where("state", "==", input.state), // más recientes primero
                 limit(7)                       // solo 7
             );
 
@@ -53,6 +54,8 @@ export default class FirebaseVisitRepository implements VisitGateway {
                     customerDocument: data.customerDocument,
                     userAssigned: data.userAssigned,
                     customerId: data.customerId,
+                    creatorsId: data.creatorsId,
+                    hasdebt: data.hasdebt,
                     observations: data.observations,
                     createdAt: data.createdAt,
                     custumerAddres: data.copstumerAddres,
@@ -84,6 +87,64 @@ export default class FirebaseVisitRepository implements VisitGateway {
             };
         }
     }
+    async getVisitsByCustomerDocument(
+        input: GetVisitsByCustomerDocumentInput
+    ): Promise<Result<GetVisitsByCustomerDocumentOutput,visitErros>> {
+        try {
+            const ref = collection(
+                firestore,
+                "companies",
+                input.idCompany,
+                "visits"
+            );
+
+            const q = query(
+                ref,
+                where("customerDocument", "==", input.customerDocument),
+                orderBy("createdAt", "desc")
+            );
+
+            const snapshot = await getDocs(q);
+
+            const visits:Visit[] = snapshot.docs.map((doc) => {
+                const data = doc.data();
+
+                const visit: Visit = {
+                    id: doc.id,
+                    customerName: data.customerName,
+                    customerDocument: data.customerDocument,
+                    userAssigned: data.userAssigned,
+                    customerId: data.customerId,
+                    observations: data.observations,
+                    creatorsId: data.creatorsId,
+                    hasdebt: data.hasdebt,
+                    amountSolicited: data.amountSolicited,
+                    createdAt: data.createdAt,
+                    custumerAddres: data.copstumerAddres,
+                    state: {
+                        code: data.state,
+                    },
+                    debitId: data.debitId ?? "",
+                };
+
+                return visit;
+            });
+
+            return ok({state:visits})
+    
+        } catch (error) {
+            console.log(error)
+            if (error instanceof FirebaseError) {
+                switch (error.code) {
+                    case "permission-denied":
+                    case "unavailable":
+                        return fail({ code: "NETWORK_ERROR" })
+                }
+            }
+
+            return fail({ code: "NETWORK_ERROR" })
+        }
+    }
 
     async getVisits(input: GetVisitsInput): Promise<GetVisitsOutput> {
         try {
@@ -112,6 +173,8 @@ export default class FirebaseVisitRepository implements VisitGateway {
                     userAssigned: data.userAssigned,
                     customerId: data.customerId,
                     observations: data.observations,
+                    creatorsId: data.creatorsId,
+                    hasdebt: data.hasdebt,
                     amountSolicited: data.amountSolicited,
                     createdAt: data.createdAt,
                     custumerAddres: data.copstumerAddres,
@@ -212,7 +275,7 @@ export default class FirebaseVisitRepository implements VisitGateway {
         input: CreateVisitInput
     ): Promise<CreateVisitOutput> {
         try {
-            console.log("createVisit/idCompany"+input.idCompany)
+            console.log("createVisit/idCompany" + input.idCompany)
 
             const ref = collection(firestore, "companies", input.idCompany, "visits")
 
@@ -224,7 +287,7 @@ export default class FirebaseVisitRepository implements VisitGateway {
 
             return { state: ok(null) };
         } catch (error) {
-              console.log("visita creada sin exito")
+            console.log("visita creada sin exito")
             return { state: this.mapError(error) };
         }
     }
@@ -236,8 +299,8 @@ export default class FirebaseVisitRepository implements VisitGateway {
         input: EditVisitInput
     ): Promise<EditVisitOutput> {
         try {
-             console.log("editVisit")
-              console.log("companies/"+input.idCompany+"/visits/"+input.visit.id)
+            console.log("editVisit")
+            console.log("companies/" + input.idCompany + "/visits/" + input.visit.id)
             const ref = doc(
                 firestore,
                 "companies",
@@ -252,8 +315,8 @@ export default class FirebaseVisitRepository implements VisitGateway {
 
             return { state: ok(null) };
         } catch (error) {
-                console.log("error al actualizar visita")
-                console.log(error)
+            console.log("error al actualizar visita")
+            console.log(error)
             return { state: this.mapError(error) };
         }
     }

@@ -1,6 +1,6 @@
 import type { Result } from "../../../../core/helpers/ResultC"
 import { FirebaseCostumerRepository } from "../../repository/FirebaseCostumerRepository"
-import type { Costumer } from "../business/entities/Costumer"
+import type { Customer } from "../business/entities/Customer"
 import type { GetCostumersErrors, SaveCostumerError } from "../business/entities/utilities"
 import { GetCostumerByIdCase } from "../business/useCases/GetCostumerByIdCase"
 import { GetCostumersCase } from "../business/useCases/GetCostumersCase"
@@ -9,6 +9,7 @@ import type CostumerGateway from "./CostumerGateway"
 import { UpdateCostumerCase, type UpdateCostumerInput } from "../business/useCases/UpdateCostumerCase"
 import { DeleteCostumerCase, type DeleteCostumerInput } from "../business/useCases/DeleteCostumerCase"
 import { GetCostumerByIdNumberCase, type GetCostumerByIdNumberInput, type GetCostumerByIdNumberOutput } from "../business/useCases/GetCostumerByIdNumber"
+import { GetCustomersListCase, type GetCustomersListInput, type GetCustomersListOutput } from "../business/useCases/GetCustomersListCase"
 //import type VisitGateway from "../../../visits/domain/infraestructure/VisitGateway"
 //import FirebaseVisitRepository from "../../../visits/repository/firebase/FirebaseVisitRepository"
 //import GetVisitByCedulaCase from "../../../visits/domain/business/useCases/getVisitByCedulaCase"
@@ -16,12 +17,13 @@ import { GetCostumerByIdNumberCase, type GetCostumerByIdNumberInput, type GetCos
 //import type { DebtGateway } from "../../../debits/domain/infraestructure/DebtGatweay"
 //import { FirebaseDebtRepository } from "../../../debits/provider/firebase/DebtRepository"
 
-export default class CostumerOrchestrator {
+export default class CustomerOrchestrator {
     private createCostumerCase: CreateCostumerCase
     private getCostumersCase: GetCostumersCase
     private getCostumerByIdCase: GetCostumerByIdCase
     private updateCosatumerCase:UpdateCostumerCase
     private delateCostumercase:DeleteCostumerCase
+    private getCustomersListCase: GetCustomersListCase
 
     //private getVisitByCedulaCase:GetVisitByCedulaCase
     //private debtGateway: DebtGateway
@@ -40,6 +42,7 @@ export default class CostumerOrchestrator {
         this.getCostumerByIdNumberCase= new GetCostumerByIdNumberCase(this.costumerGateway)
         //this.getVisitByCedulaCase= new GetVisitByCedulaCase(this.visitGateway)
         this.createCostumerCase = new CreateCostumerCase(this.costumerGateway)
+        this.getCustomersListCase= new GetCustomersListCase(this.costumerGateway)
         this.updateCosatumerCase= new UpdateCostumerCase(this.costumerGateway)
         this.delateCostumercase= new DeleteCostumerCase(this.costumerGateway)
         this.getCostumerByIdCase = new GetCostumerByIdCase(this.costumerGateway)
@@ -49,6 +52,11 @@ export default class CostumerOrchestrator {
         const result= this.getCostumerByIdNumberCase.execute(input)
 
         return result
+    }
+
+    async getCustomersList( input: GetCustomersListInput): Promise<Result<GetCustomersListOutput,GetCostumersErrors>>{
+        const customers= await this.getCustomersListCase.execute(input)
+        return customers
     }
 
 
@@ -69,10 +77,10 @@ export default class CostumerOrchestrator {
         return deleteResult
     }
 
-    async getCostumers(companyId: string): Promise<Result<Costumer[], GetCostumersErrors>> {
+    async getCostumers(companyId: string): Promise<Result<Customer[], GetCostumersErrors>> {
         console.group("[CostumerOrchestrator] getCostumers")
         console.log("companyId:", companyId)
-        const costumers: Result<Costumer[], GetCostumersErrors> = await this.getCostumersCase.execute({ companyId: companyId })
+        const costumers: Result<Customer[], GetCostumersErrors> = await this.getCostumersCase.execute({ companyId: companyId })
         console.log("result.ok:", costumers.ok)
         if (costumers.ok) {
             console.log("costumers count:", costumers.value.length)
@@ -94,8 +102,8 @@ export default class CostumerOrchestrator {
         return saveCostumer
     }
 
-    async getCostumerById(companyId: string, costumerId: string): Promise<Result<Costumer | null, GetCostumersErrors>> {
-        const costumers: Result<Costumer | null, GetCostumersErrors> = await this.getCostumerByIdCase.execute({ companyId: companyId, costumerId: costumerId })
+    async getCostumerById(companyId: string, costumerId: string): Promise<Result<Customer | null, GetCostumersErrors>> {
+        const costumers: Result<Customer | null, GetCostumersErrors> = await this.getCostumerByIdCase.execute({ companyId: companyId, costumerId: costumerId })
         return costumers
     }
 

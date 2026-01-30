@@ -1,9 +1,9 @@
 import type { CostumerFormValues } from "../../../atomic_design/templates/costumers/SchemasCostumer";
-import type { Costumer } from "../domain/business/entities/Costumer";
+import type { Customer } from "../domain/business/entities/Customer";
 
 
 export class CostumerFormMapper {
-  static toDomain(form: CostumerFormValues): Costumer {
+  static toDomain(form: CostumerFormValues): Customer {
     return {
       id: crypto.randomUUID(),
       applicant: form.applicant,
@@ -14,7 +14,7 @@ export class CostumerFormMapper {
       familyReference: form.familyReference,
     };
   }
-  static toForm(costumer: Costumer): CostumerFormValues {
+  static toForm(costumer: Customer): CostumerFormValues {
     return {
       debtCounter:costumer.debtCounter,
       observations:costumer.observations,

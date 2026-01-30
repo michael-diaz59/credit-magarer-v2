@@ -4,10 +4,10 @@ import {
   Typography,
   Box,
 } from '@mui/material';
-import type { Costumer } from '../../../features/costumers/domain/business/entities/Costumer';
+import type { Customer } from '../../../features/costumers/domain/business/entities/Customer';
 
 interface Props {
-  client: Costumer
+  client: Customer
   onClick: () => void;
 }
 

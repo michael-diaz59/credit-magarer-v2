@@ -9,7 +9,7 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 
 import { VisitCard } from "./VisitCard";
@@ -24,8 +24,9 @@ type SortOrder = "DESC" | "ASC";
 export const VisitListPage = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const { documentCostumer } = useParams<{ documentCostumer: string }>();
 
-  const [searchDocument, setSearchDocument] = useState("");
+  const [searchDocument] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOrder>("DESC");
 
   const [baseDialogOpen, setBaseDialogOpen] = useState(false);
@@ -35,33 +36,37 @@ export const VisitListPage = () => {
   const navigate = useNavigate();
 
   const userCompanyId = useAppSelector(
-    (state) => state.user.user?.companyId || ""
+    (state) => state.user.user?.companyId || "",
   );
   const userId = useAppSelector((state) => state.user.user?.id || "");
 
   const visitOrchestrator = useMemo(() => new VisitOrchestrator(), []);
 
-  // 🚀 Fetch no bloqueante del layout
+  // 🚀 Fetch no bloqueante del layout para carga de visitas
   useEffect(() => {
     let mounted = true;
 
     const fetchVisits = async () => {
       try {
-        const result = await visitOrchestrator.getVisits({
+        if (!documentCostumer) {
+          return;
+        }
+        const result = await visitOrchestrator.getVisitsByCustomerDocument({
           idCompany: userCompanyId,
           idUser: userId,
+          customerDocument: documentCostumer,
         });
 
         if (!mounted) return;
 
-        if (result.state.ok) {
-          setVisits(result.state.value);
+        if (result.ok) {
+          setVisits(result.value.state);
         } else {
           setVisits([]);
           setBaseDialogText(
-            result.state.error.code === "NETWORK_ERROR"
+            result.error.code === "NETWORK_ERROR"
               ? "Error de conexión. Verifica tu internet."
-              : "No se pudieron obtener las visitas."
+              : "No se pudieron obtener las visitas.",
           );
           setBaseDialogOpen(true);
         }
@@ -88,7 +93,7 @@ export const VisitListPage = () => {
 
     return [...visits]
       .filter((v) =>
-        v.customerDocument.toLowerCase().includes(normalizedSearch)
+        v.customerDocument.toLowerCase().includes(normalizedSearch),
       )
       .sort((a, b) => {
         const dateA = Date.parse(a.createdAt);
@@ -99,14 +104,18 @@ export const VisitListPage = () => {
 
   // 🎯 Handlers memoizados
   const handleVisitClick = useCallback(
-    (visitId: string) => {
-      if (location.pathname === ScreenPaths.advisor.office.visit.visits) {
-        navigate(ScreenPaths.advisor.office.visit.visit(visitId));
+    (visit: Visit) => {
+      if (
+        location.pathname ===
+        ScreenPaths.advisor.office.visit.visits2(visit.customerDocument)
+      ) {
+        navigate(ScreenPaths.advisor.office.visit.visit(visit.id));
         return;
       }
-      navigate(ScreenPaths.advisor.field.visit.visit(visitId));
+      console.log("no se detecto asesor de oficina");
+      navigate(ScreenPaths.advisor.field.visit.visit(visit.id));
     },
-    [location.pathname, navigate]
+    [location.pathname, navigate],
   );
 
   return (
@@ -130,13 +139,6 @@ export const VisitListPage = () => {
       {/* 🔍 Filtros */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
         <TextField
-          label="Buscar por cédula"
-          value={searchDocument}
-          onChange={(e) => setSearchDocument(e.target.value)}
-          fullWidth
-        />
-
-        <TextField
           select
           label="Ordenar por fecha"
           value={sortOrder}
@@ -155,13 +157,15 @@ export const VisitListPage = () => {
       <Grid container spacing={2}>
         {filteredVisits.map((visit) => (
           <Grid key={visit.id}>
-            <VisitCard
-              visit={visit}
-              onClick={() => handleVisitClick(visit.id)}
-            />
+            <VisitCard visit={visit} onClick={() => handleVisitClick(visit)} />
           </Grid>
         ))}
       </Grid>
+      {!visits?.length && (
+        <Typography color="text.secondary">
+          este cliente no tiene visitas
+        </Typography>
+      )}
 
       {/* ➕ FAB */}
       {location.pathname === ScreenPaths.advisor.office.visit.visits && (
@@ -174,9 +178,7 @@ export const VisitListPage = () => {
             right: 24,
             zIndex: 1000,
           }}
-          onClick={() =>
-            navigate(ScreenPaths.advisor.office.visit.CreateVisit)
-          }
+          onClick={() => navigate(ScreenPaths.advisor.office.visit.CreateVisit)}
         >
           <AddIcon />
         </Fab>

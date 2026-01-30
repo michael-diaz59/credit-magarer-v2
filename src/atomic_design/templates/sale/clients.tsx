@@ -2,9 +2,9 @@ import { Box, Grid, Typography, CircularProgress, Fab } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientCard } from "./ClienteCard";
-import CostumerOrchestrator from "../../../features/costumers/domain/infraestructure/CostumerOrchestrator";
+import CustomerOrchestrator from "../../../features/costumers/domain/infraestructure/CustomerOrchestrator";
 import { useAppSelector } from "../../../store/redux/coreRedux";
-import type { Costumer } from "../../../features/costumers/domain/business/entities/Costumer";
+import type { Customer } from "../../../features/costumers/domain/business/entities/Customer";
 import type { Result } from "../../../core/helpers/ResultC";
 import type { GetCostumersErrors } from "../../../features/costumers/domain/business/entities/utilities";
 import AddIcon from "@mui/icons-material/Add";
@@ -13,14 +13,14 @@ import { BaseDialog } from "../../atoms/BaseDialog";
 import {ScreenPaths } from "../../../core/helpers/name_routes";
 
 export const ClientListPage = () => {
-  const [costumers, setCostumers] = useState<Costumer[]>([]);
+  const [costumers, setCostumers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [baseDIlogOpen, setBaseDIlogOpen] = React.useState(false);
   const [baseDIlogText, setBaseDIlogText] = React.useState("");
   const userCompanyId: string = useAppSelector(
     (state) => state.user.user?.companyId || "indefinida"
   );
-  const costumerOrchestrator = useMemo(() => new CostumerOrchestrator(), []);
+  const costumerOrchestrator = useMemo(() => new CustomerOrchestrator(), []);
 
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ export const ClientListPage = () => {
 
   useEffect(() => {
     const fetchClients = async () => {
-      const data: Result<Costumer[], GetCostumersErrors> =
+      const data: Result<Customer[], GetCostumersErrors> =
         await costumerOrchestrator.getCostumers(userCompanyId);
 
       if (data.ok) {
