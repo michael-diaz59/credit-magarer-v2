@@ -101,7 +101,7 @@ export class FirebaseUserRepository implements UserGateway {
         roles:dataGlobalUser.roles,
       }
         console.log("usuario encontrado")
-      console.log("companyId:" + UserCompany.companyId)
+      console.log(UserCompany)
       return ok(UserCompany)
     } catch (error) {
       if (error instanceof FirebaseError) {

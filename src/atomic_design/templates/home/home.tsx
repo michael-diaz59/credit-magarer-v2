@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
           sx={{ color: theme.palette.primary.contrastText }}
         />
       ),
-      path: "/audit",
+      path: ScreenPaths.auditor.home,
     },
     {
       label: "Cobradores",
@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
           sx={{ color: theme.palette.primary.contrastText }}
         />
       ),
-      path: "/Debt_collectors",
+      path: ScreenPaths.collector.home,
     },
   ];
 

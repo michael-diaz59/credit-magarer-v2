@@ -8,9 +8,10 @@ import { FirebaseUserRepository } from "../../../users/provider/firebase/Firebas
 import { ReduxUser } from "../../../users/state/ReduxUser"
 import { FirebaseAuthRepository } from "../../repository/firebase/FirebaseAuthRepository"
 import { ReduxAuthSlice } from "../../slices/authSliceFirebase"
-import type { LoginError } from "../business/entities/AuthErrors"
+import type { LoginError, LogoutError } from "../business/entities/AuthErrors"
 import type { UserAuthentication } from "../business/entities/UserAuthentication"
 import { LoginUseCase, type LoginInput, type LoginOutput } from "../business/useCases/LoginUseCase"
+import { LogOutUseCase } from "../business/useCases/LogOutUseCase"
 import type { AuthGateway } from "./AuthenticationGateway"
 import type { AuthState } from "./AuthState"
 
@@ -18,6 +19,7 @@ export default class AuthOrchestrator {
 
   private loginUseCase:LoginUseCase
   private getUserUseCase:GetUserUseCase
+  private logOutUseCase :LogOutUseCase
   private authState:AuthState
   private userState:UserState
 
@@ -27,8 +29,21 @@ export default class AuthOrchestrator {
     const firebaseAuthRepository:AuthGateway= new FirebaseAuthRepository()
     this.loginUseCase=new LoginUseCase(firebaseAuthRepository)
     this.getUserUseCase=new GetUserUseCase(new FirebaseUserRepository())
+    this.logOutUseCase= new LogOutUseCase(firebaseAuthRepository)
     this.authState= new ReduxAuthSlice(dispatch)
     this.userState= new  ReduxUser(dispatch)
+  }
+
+  async logOut(): Promise<Result<void, LogoutError>>{
+
+
+    const result= await this.logOutUseCase.execute()
+
+    if(result.ok){
+      this.authState.clearAuthenticatedUser()
+      this.userState.clearUser()
+    }
+    return result
   }
 
   async login(

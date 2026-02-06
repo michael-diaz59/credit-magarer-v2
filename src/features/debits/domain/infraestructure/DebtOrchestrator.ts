@@ -1,6 +1,8 @@
+import type { Result } from "../../../../core/helpers/ResultC";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
-import { CreateDebtUseCase, type CreateDebtUInput, type CreateDebtUOutput } from "../business/useCases/debt/CreateDebtUseCase";
+import { CreateDebtUseCase, type CreateDebtError, type CreateDebtUInput, type CreateDebtUOutput } from "../business/useCases/debt/CreateDebtUseCase";
+import { GetByFiltersCase, type GetByFiltersError, type GetByFiltersInput, type GetByFiltersOutput } from "../business/useCases/debt/GetByFiltersCase";
 import { GetDebitByIdCase, type GetDebitByIdInput, type GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
 import { GetDebstByCostumerDocumentCase, type GetDebstByCostumerDocumentInput, type GetDebstByCostumerDocumentOutput } from "../business/useCases/debt/GetDebstByCostumerDocumentCase";
 import { GetDebtsCase, type GetDebtsInput, type GetDebtsOutput } from "../business/useCases/debt/GetDebtsCase";
@@ -13,6 +15,7 @@ export default class DebtOrchestrator {
 
     private createDebtCase:CreateDebtUseCase
     private getDebtsCase:GetDebtsCase
+    private getByFiltersCase: GetByFiltersCase
     private getDebitByIdCase:GetDebitByIdCase
     private getDebstByCostumerDocumentCase: GetDebstByCostumerDocumentCase
     private updateDebtUseCase:UpdateDebtUseCase
@@ -25,9 +28,11 @@ export default class DebtOrchestrator {
 
     constructor() {
             this.debtGateway = new FirebaseDebtRepository()
+        
             this.installmentGateway = new FirebaseInstallmentRepository()
             this.createDebtCase = new CreateDebtUseCase(this.debtGateway)
             this.getDebitByIdCase= new GetDebitByIdCase(this.debtGateway)
+            this.getByFiltersCase=new GetByFiltersCase(this.debtGateway)
             this.getDebtsCase= new GetDebtsCase(this.debtGateway)
             this.getDebstByCostumerDocumentCase = new GetDebstByCostumerDocumentCase(this.debtGateway)
             this.updateDebtUseCase= new UpdateDebtUseCase(this.debtGateway,this.installmentGateway)
@@ -39,7 +44,17 @@ export default class DebtOrchestrator {
               return this.getDebtsCase.execute(input)
         }
 
-        async createDebt(input: CreateDebtUInput): Promise<CreateDebtUOutput>{
+        async getByFilters(input:GetByFiltersInput):Promise<Result<GetByFiltersOutput,GetByFiltersError>>  {
+            return this.getByFiltersCase.execute(input)
+        }
+
+         async  getDebtsForCustomer(input:GetDebtsInput ):Promise<GetDebtsOutput> {
+              return this.getDebtsCase.execute(input)
+        }
+
+
+
+        async createDebt(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput,CreateDebtError>>{
             return this.createDebtCase.execute(input)
         }
 

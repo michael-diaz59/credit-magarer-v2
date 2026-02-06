@@ -24,7 +24,7 @@ import type { EditVisitInput, EditVisitOutput } from "../../domain/business/useC
 import type { DeleteVisitInput, DeleteVisitOutput } from "../../domain/business/useCases/deleteVisitCase";
 import type { GetVisitsInput, GetVisitsOutput } from "../../domain/business/useCases/getVisitsCase";
 import type { GetVisitByStateInput, GetVisitByStateOutput } from "../../domain/business/useCases/GetVisitByStateCase";
-import type { GetVisitsByCustomerDocumentInput, GetVisitsByCustomerDocumentOutput } from "../../domain/business/useCases/getVisitsByCustomerDocumentCase";
+import type { GetVisitsByCustomerDocumentInput, GetVisitsByCustomerDocumentOutput } from "../../domain/business/useCases/GetVisitsByCustomerDocumentCase";
 
 export default class FirebaseVisitRepository implements VisitGateway {
 

@@ -68,6 +68,7 @@ export const costumerSchema = z.object({
     coSigner: z.array(personalInfoSchema).min(1).max(5),
     vehicle: z.array(vehicleSchema).min(1).max(5),
     familyReference: z.array(familyReferenceSchema).min(1).max(5),
+    listId: z.string(),
 });
 
 export type CostumerFormValues = z.infer<typeof costumerSchema>;

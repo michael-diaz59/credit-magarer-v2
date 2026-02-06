@@ -11,7 +11,7 @@ import {SetUserUseCase, type SetUserInput } from "../business/useCases/SetUserUs
 import type { UserGateway } from "./UserGateway"
 import type { UserState } from "./userState"
 
-export default class AuthOrchestrator {
+export default class UserOrchestrator {
 
   private getUserUseCase: GetUserUseCase
   private setUserUsecase: SetUserUseCase
@@ -29,6 +29,7 @@ export default class AuthOrchestrator {
     this.userState = new ReduxUser(dispatch)
   }
 
+  /**devuelve usuarios con un rol en especifico, si no se indica u rol devuelve todos los usuarios*/
   async getUsersByCompany(input: GetUserByCompanyInput):Promise<GetUserByCompanyOutput>{
     const result = this.getUserByCompanyCase.execute(input)
     return result

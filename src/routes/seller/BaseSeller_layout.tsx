@@ -4,7 +4,7 @@ import { useTheme } from "@mui/material/styles";
 import { useEffect, useRef } from "react";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../../atomic_design/sub_atomic_particles/Custom_sx";
-import AppBarBase from "../../atomic_design/organisms/appbarBase";
+import AppBarBase from "../../atomic_design/organisms/AppbarBase2";
 
 export default function BaseSalesLayout() {
   const theme = useTheme();

@@ -11,6 +11,8 @@ export interface GetUserByCompanyInput {
 export interface GetUserByCompanyOutput {
     state: Result<User[], getUserError>
 }
+
+/**devuelve usuarios con un rol en especifico, si no se indica u rol devuelve todos los usuarios*/
 export class GetUserByCompanyCase {
      private userRepository: UserGateway
 
@@ -20,6 +22,7 @@ export class GetUserByCompanyCase {
              this.userRepository = userRepository
          }
 
+         /**devuelve usuarios con un rol en especifico, si no se indica u rol devuelve todos los usuarios*/
     async execute( input: GetUserByCompanyInput): Promise<GetUserByCompanyOutput>{
         // Implementation to get user details
            return this.userRepository.getUsersByCompany(

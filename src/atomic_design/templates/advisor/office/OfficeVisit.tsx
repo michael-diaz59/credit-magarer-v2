@@ -24,8 +24,6 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
 import type { User } from "../../../../features/users/domain/business/entities/User";
-import { DebtForm } from "../../debt/DebtFormM";
-import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 
 export const OfficeVisit = () => {
 
@@ -36,23 +34,7 @@ export const OfficeVisit = () => {
   const isOfficeVisit = location.pathname.includes(pathOfficeVisits);
 
   const [loading, setLoading] = useState(false);
-    const [debtForm, setDebtForm] = useState<Omit<Debt, "id">>({
-      name: "",
-      collectorId: "",
-      clientId: "",
-      costumerDocument: "",
-      costumerName: "",
-      type: "credito",
-      idVisit:"",
-      debtTerms: "diario",
-      status: "tentativa",
-      interestRate: 0,
-      totalAmount: 0,
-      installmentCount: 1,
-      startDate: "",
-      firstDueDate: "",
-      createdAt: new Date().toISOString().split("T")[0],
-    });
+
   const [visitForm, setVisitForm] = useState<Visit>({
     id: "",
     customerName: "",
@@ -71,7 +53,6 @@ export const OfficeVisit = () => {
   console.log(visitForm);
   const [fieldAdvisors, setFieldAdvisors] = useState<User[]>([]);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-  const [expandDebt, setExpandDebt] = useState(false);
   const [bodyDialogOpen, setBodyDialogOpen] = useState("");
 
   const companyId = useAppSelector((state) => state.user.user?.companyId || "");
@@ -139,21 +120,6 @@ useEffect(() => {
     loadUsers();
   }, [isOfficeVisit, companyId, userOrchestrator]);
 
-const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-
-    setDebtForm((prev) => ({
-      ...prev,
-      [name]:
-        name === "totalAmount" ||
-        name === "installmentCount" ||
-        name === "interestRate"
-          ? Number(value)
-          : value,
-    }));
-  };
 
   //crear visita
   const handleAction = async () => {
@@ -222,6 +188,7 @@ const handleChange = (
       [field]: value,
     });
   };
+  
 
   if (loading) {
     return (
@@ -310,19 +277,11 @@ const handleChange = (
                   </Button>
                 )}
 
-                <Button variant="contained" onClick={() =>setExpandDebt(true)}>
-                 agregar deuda
-                </Button>
                
               </Stack>
             </Stack>
             <Grid sx={{mt:3}}>
-              <Grid>
-                 {expandDebt && (
-                 
-                  DebtForm( { mode:"create",form:debtForm,onChange:(debt)=>{handleChange(debt)}})           
-                )}
-              </Grid>
+           
             </Grid>
           </CardContent>
         </Card>

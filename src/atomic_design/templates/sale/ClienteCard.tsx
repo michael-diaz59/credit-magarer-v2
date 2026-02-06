@@ -34,7 +34,7 @@ export const ClientCard = ({ client, onClick }: Props) => {
             variant="body2"
             color="text.secondary"
           >
-            ID: {client.applicant?.idNumber || '-'}
+            cedula: {client.applicant?.idNumber || '-'}
           </Typography>
         </Box>
       </CardContent>

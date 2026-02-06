@@ -12,6 +12,10 @@ export const SelectAdvisorRolePage = () => {
   const roles: Role[] | undefined = useAppSelector(
     (state) => state.user.user?.roles
   );
+   const aut= useAppSelector(
+    (state) => state.auth.user
+  );
+  console.log(aut)
 
   const [dialogOpen, setDialogOpen] = useState(false);
 

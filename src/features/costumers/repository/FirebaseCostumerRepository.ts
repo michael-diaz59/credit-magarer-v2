@@ -16,7 +16,6 @@ import type { PendingDocuments } from "../../../atomic_design/molecules/Customer
 import type { UpdateCostumerInput } from "../domain/business/useCases/UpdateCostumerCase"
 import type { GetCustomersListInput, GetCustomersListOutput } from "../domain/business/useCases/GetCustomersListCase"
 
-
 export const custumerLists = "customersLists"
 
 export type DocumentTypeG = "cedula" | "carta_laboral" | "documento_x";
@@ -134,6 +133,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
 
     async getCostumerByIdNumber(input: GetCostumerByIdNumberInput): Promise<GetCostumerByIdNumberOutput> {
         try {
+            console.log(input)
             /* -------- 1. Buscar en índice -------- */
             const indexRef = doc(
                 firestore,
@@ -181,6 +181,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
 
             return { state: ok(costumer) };
         } catch (error) {
+            
             if (error instanceof FirebaseError) {
                 console.log(error)
                 switch (error.code) {

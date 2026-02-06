@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 
 type CustomerListProps = {
-  navigateTo: (customerId: string) => string;
+  navigateTo: (customerDocument: string,customerId?:string) => string;
 };
 
 export const CustomerList = ({ navigateTo }: CustomerListProps) => {
@@ -56,6 +56,7 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
         if (!mounted) return;
 
         if (result.ok) {
+          console.log(result.value.state)
           setCustomers(result.value.state);
         } else {
           setDialogText("No se pudieron obtener los clientes.");
@@ -100,7 +101,10 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
           <Grid key={customer.id}>
             <CustomerCard
               customer={customer}
-              onClick={() => navigate(navigateTo(customer.applicant.idNumber))}
+              onClick={() => {
+                console.log("idNumber:"+customer.applicant.idNumber)
+                console.log("id:"+customer.id)
+                navigate(navigateTo(customer.applicant.idNumber,customer.id))}}
             />
           </Grid>
         ))}

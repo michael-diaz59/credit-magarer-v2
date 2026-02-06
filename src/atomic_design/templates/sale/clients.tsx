@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, CircularProgress, Fab } from "@mui/material";
+import { Box, Grid, Typography, CircularProgress, Fab, TextField, Stack } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientCard } from "./ClienteCard";
@@ -13,19 +13,29 @@ import { BaseDialog } from "../../atoms/BaseDialog";
 import {ScreenPaths } from "../../../core/helpers/name_routes";
 
 export const ClientListPage = () => {
-  const [costumers, setCostumers] = useState<Customer[]>([]);
+  const [customers, setCostumers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [baseDIlogOpen, setBaseDIlogOpen] = React.useState(false);
+  const [searchCustomer, setSearchCustomer] = useState("");
   const [baseDIlogText, setBaseDIlogText] = React.useState("");
   const userCompanyId: string = useAppSelector(
     (state) => state.user.user?.companyId || "indefinida"
   );
   const costumerOrchestrator = useMemo(() => new CustomerOrchestrator(), []);
+    const filteredCustomer = useMemo(() => {
+      if (!customers.length) return [];
+  
+      const normalizedSearch = searchCustomer.toLowerCase();
+  
+      return [...customers].filter((v) =>
+        v.applicant.fullName.toLowerCase().includes(normalizedSearch),
+      );
+    }, [customers, searchCustomer]);
 
   const navigate = useNavigate();
 
   console.table(
-    costumers.map((c) => ({
+    customers.map((c) => ({
       id: c.id,
       applicant: c.applicant?.fullName,
     }))
@@ -84,9 +94,17 @@ export const ClientListPage = () => {
       <Typography variant="h4" fontWeight={600} mb={3}>
         clientes
       </Typography>
+         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
+        <TextField
+          label="Buscar por nombre"
+          value={searchCustomer}
+          onChange={(e) => setSearchCustomer(e.target.value)}
+          fullWidth
+        />
+      </Stack>
 
       <Grid container spacing={2}>
-        {costumers.map((costumer) => (
+        {filteredCustomer.map((costumer) => (
           <Grid key={costumer.id}>
             <ClientCard
               client={costumer}

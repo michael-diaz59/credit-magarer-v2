@@ -22,6 +22,7 @@ export class GetCustomersListCase {
     }
     async execute(input: GetCustomersListInput): Promise<Result<GetCustomersListOutput,GetCostumersErrors>> {
         const deleteResult = await this.costumerGateway.getCustomersListCase(input)
+        
         return deleteResult
     }
 

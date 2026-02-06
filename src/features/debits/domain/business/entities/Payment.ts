@@ -1,29 +1,54 @@
+/**los estados de un pago realizado:
+ * registrado: el cobrador registro un pago |
+ * conflicto: el contador indica que hay un problema con el pago |
+ * confirmado: el contador confirmo el pago |
+ * cancelada: el pago se cancelo
+ */
+  export type PaymentStatus =
+  | 'registrado'
+  | 'conflicto'
+  | 'confirmado'
+  | 'cancelada';
+  ;
+
 
 
 export type PaymentMethod =
   | 'efectivo'
-  | 'transferencia'
-  | 'tarjeta'
-  | 'otro';
+  | 'consignacion'
 
+  
+/**representa los pagos que hacen los clientes a los cobradores*/
 export interface Payment {
+    //el comprobante se guarda en storage
+  /**es el id al documento de comprobante de pago */
+  idProofOfPayment: string
   id: string;
-  //validacion de contador, solo el contador puede validar los pagos
-  validatAaccountant: boolean
 
-  //id cuota
+    /**observaciones del cobrador */
+  collectorObservation: string
+
+  /**observaciones del contador */
+  accountantObservation: string
+
+  /**id de la cuota */
   installmentId: string;
+  /**nombre del cliente */
+  costumerName: string;
+  /**nombre del cliente */
+  collectorName: string;
 
-  //id cobrador
   collectorId: string;
-
-  //id del cliente
-  costumerId: string;
-
   amount: number;
-  paymentDate: string;
-
   method: PaymentMethod;
+  status: PaymentStatus;
+  paidAt: string;
+  location?: GeoLocation;
+}
 
-  appliedToInstallments: number[]; // ej: [1,2]
+export interface GeoLocation {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;   // metros
+  provider?: "gps" | "network";
 }

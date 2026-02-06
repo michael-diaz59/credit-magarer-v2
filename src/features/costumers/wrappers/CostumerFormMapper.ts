@@ -7,6 +7,7 @@ export class CostumerFormMapper {
     return {
       id: crypto.randomUUID(),
       applicant: form.applicant,
+      listId:form.listId,
       coSigner: form.coSigner,
          observations: form.observations ?? "",
                     debtCounter:form.debtCounter ?? 0,
@@ -19,6 +20,7 @@ export class CostumerFormMapper {
       debtCounter:costumer.debtCounter,
       observations:costumer.observations,
       id: costumer.id,
+      listId:costumer.listId,
       applicant: costumer.applicant,
       coSigner: costumer.coSigner ?? [],
       vehicle: costumer.vehicle ?? [],

@@ -13,7 +13,8 @@ import type { Debt } from "../../../features/debits/domain/business/entities/Deb
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { BaseDialog } from "../../atoms/BaseDialog";
-import { DebtForm } from "./DebtFormM";
+import { DebtForm } from "./DebtForm";
+import type { DebtFormMode } from "./DebtFormMode";
 
 
 type DialogState = {
@@ -25,15 +26,18 @@ type DialogState = {
 
 export const CreateDebtScreen = () => {
   const navigate = useNavigate();
+    const [mode] = useState<DebtFormMode>("create");
   const companyId = useAppSelector(
     (state) => state.user.user?.companyId || ""
   );
 
-  const [form, setForm] = useState<Omit<Debt, "id">>({
+  const [form] = useState<Omit<Debt, "id">>({
     name: "",
     collectorId: "",
     clientId: "",
     costumerDocument: "",
+    nextPaymentDue:"",
+    overdueInstallmentsCount:0,
     costumerName: "",
     type: "credito",
     idVisit:"",
@@ -53,37 +57,31 @@ export const CreateDebtScreen = () => {
     message: "",
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]:
-        name === "totalAmount" ||
-        name === "installmentCount" ||
-        name === "interestRate"
-          ? Number(value)
-          : value,
-    }));
-  };
-
-  const handleCreateDebt = async () => {
+  const handleCreateDebt = async (data: Omit<Debt, "id">) => {
     const orchestrator = new DebtOrchestrator();
+       console.log(data)
 
     const result = await orchestrator.createDebt({
       companyId,
-      debt: form,
+      debt: data,
     });
 
-    if (result.state.ok) {
+    if (result.ok) {
       setDialog({
         open: true,
         success: true,
         message: "La deuda fue creada correctamente.",
       });
     } else {
+      console.log(result.error)
+      if(result.error.code=="CUSTOMER_NOT_FOUND"){
+         setDialog({
+        open: true,
+        success: false,
+        message: "no existe el cliente con la cedula dada",
+      });
+      return
+      }
       setDialog({
         open: true,
         success: false,
@@ -111,15 +109,17 @@ export const CreateDebtScreen = () => {
 
       <Card>
         <CardContent>
-          <Typography variant="h6" mb={2}>
-            Crear deuda
-          </Typography>
-
-          <DebtForm
-            form={form}
-            mode="create"
-            onChange={handleChange}
-          />
+          <Typography>crear deuda</Typography>
+           <DebtForm
+              mode={mode}
+              defaultValues={form}
+              allowedActions={["create"]}
+              onSubmit={(action, data) => {
+                if (action === "create") handleCreateDebt(data);
+                if(action!=="create"){console.log("llego algo inesperado")}
+                
+              }}
+            />
 
           <Stack
             direction="row"
@@ -131,13 +131,6 @@ export const CreateDebtScreen = () => {
               Cancelar
             </Button>
 
-            <Button
-              variant="contained"
-              onClick={handleCreateDebt}
-              disabled={!form.startDate || !form.firstDueDate}
-            >
-              Crear deuda
-            </Button>
           </Stack>
         </CardContent>
       </Card>

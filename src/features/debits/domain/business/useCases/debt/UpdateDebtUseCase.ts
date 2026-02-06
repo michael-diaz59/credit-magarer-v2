@@ -7,7 +7,7 @@ import { UpdateInstallmentByDebtCase } from "../installment/UpdateInstallmentsBy
 
 
 export type UpdateDebtError =
-    | { code: "WITHOUT_COLLECTOR" }
+    | { code: "no hay un cobrador" }
     | { code: "UNKNOWN_ERROR" }
     | { code: "WITHOUT_ACTIVE_STATE" }
     | { code: "ERROR_INSTALLMENTS" }
@@ -43,23 +43,29 @@ export class UpdateDebtUseCase {
 
         if (input.debt.status === "activa") {
             if (!input.debt.collectorId) {
-                return { state: fail({ code: "WITHOUT_COLLECTOR" }) }
+                return { state: fail({ code: "no hay un cobrador" }) }
             }
         }
+        console.log(input.debt.id)
         //solo si se cambia al collector se deben actualizar los debits
         if(input.isNewCollector){
             //deuda tecnica: crear mecanismo de reversion de cuotas si falla la actualizacion de la deuda
             //actualiza todo los installments de un debt que no esten pagos
             const installments=await this.getInstallmentsByDebtCase.execute({companyId:input.companyId, debtId:input.debt.id,status:'pagada'})
+            
 
             if(installments.state.ok){
                 //actualiza el 
-                    const updateIOnstallment= await this.updateInstallments(input,installments.state.value)
+                console.log("cuotas obtenidas"+installments.state.value)
+                const updateIOnstallment= await this.updateInstallments(input,installments.state.value)
             if(!updateIOnstallment.ok){
                 return {state:fail(updateIOnstallment.error)}
             }
             }
         }
+        console.log(input.debt.id)
+
+        console.log("va a actualizar el debt ")
 
         //deberia haber mecanismo para actualizar todos los installments al cambiar cosas como tasa de interes
         return this.debtGateway.update(input)

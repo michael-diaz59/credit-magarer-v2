@@ -6,5 +6,4 @@ import type { GetUserByCompanyInput, GetUserByCompanyOutput } from "../business/
 export interface UserGateway {
   getById(userId: string):Promise<Result<User | null, getUserError>>;
   setUser(user:User):Promise<Result<void,setUserError>>;
-  getUsersByCompany(input: GetUserByCompanyInput): Promise<GetUserByCompanyOutput>
-}
+  getUsersByCompany(input: GetUserByCompanyInput): Promise<GetUserByCompanyOutput>}

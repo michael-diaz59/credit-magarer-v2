@@ -8,6 +8,6 @@ export const useDebtPermissions = () => {
 
   return {
     canEditDebt:
-      role && (role.includes("OFFICE_ADVISOR") || role.includes("ADMIN")),
+      role && (role.includes("OFFICE_ADVISOR")),
   };
 };

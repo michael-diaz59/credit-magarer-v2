@@ -3,9 +3,11 @@ export type DebtType =
   | 'prenda'
 
 export type DebtStatus =
+ | 'preAprobada'
   | 'tentativa'
   | 'preparacion'
   | 'activa'
+  | 'corregir'
   | 'pagada'
   | 'en_mora'
   | 'cancelada';
@@ -26,8 +28,6 @@ export interface Debt {
   /**indica que la deuda esta relacionada con una visita, util para crear una deuda a la vez que una visita, una visita puede tener varias deudas */
   idVisit:string
 
-
-
   //para calcular cuanto paga el installment en base al interestRate y la frecuencia seleccionada para los pagos de las cuotas
   debtTerms:DebtTerms
 
@@ -45,7 +45,7 @@ export interface Debt {
   //total del prestamo pedido
   totalAmount: number;
 
-  //numero de cuotas
+  /**numero de cuotas de una deuda*/
   installmentCount: number;
 
   //tasa de interes
@@ -61,4 +61,11 @@ export interface Debt {
 
   //fecha de vencimiento
   firstDueDate: string
+
+  //fecha del proximo pago que debe ser cancelado, si esta fecha es menor o igual a la fecha actual indica que la deuda esta en mora, si es valor esta vacio indica que la deuda fue pagada
+  nextPaymentDue: string; 
+
+  // NUEVO (Opcional): Cantidad de cuotas vencidas actualmente
+  overdueInstallmentsCount: number;
+
 }

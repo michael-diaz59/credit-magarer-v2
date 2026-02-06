@@ -147,6 +147,12 @@ export class CreateInstallmentsUseCase {
 
         for (let i = 1; i <= debt.installmentCount; i++) {
             installments.push({
+                installmentTotalNumber: debt.installmentCount,
+                originalInterestRate: debt.interestRate,
+                paidAmount: 0,
+                paidAt: "",
+
+
                 debtId: debt.id,
                 interestRate: debt.interestRate,
                 collectorId: debt.collectorId,

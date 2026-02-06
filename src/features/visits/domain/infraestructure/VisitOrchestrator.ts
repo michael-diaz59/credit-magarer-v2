@@ -7,7 +7,7 @@ import EditVisitCase, { type EditVisitInput, type EditVisitOutput } from "../bus
 import GetVisitByCedulaCase, { type GetVisitByCedulaInput, type GetVisitByCedulaOutput } from "../business/useCases/getVisitByCedulaCase"
 import { GetVisitByIdCase, type GetVisitByIdInput, type GetVisitByIdOutput } from "../business/useCases/GetVisitByIdCase"
 import { GetVisitByStateCase, type GetVisitByStateInput, type GetVisitByStateOutput } from "../business/useCases/GetVisitByStateCase"
-import { GetVisitsByCustomerDocumentCase, type GetVisitsByCustomerDocumentInput, type GetVisitsByCustomerDocumentOutput } from "../business/useCases/getVisitsByCustomerDocumentCase"
+import { GetVisitsByCustomerDocumentCase, type GetVisitsByCustomerDocumentInput, type GetVisitsByCustomerDocumentOutput } from "../business/useCases/GetVisitsByCustomerDocumentCase"
 import GetVisitsCase, { type GetVisitsInput, type GetVisitsOutput } from "../business/useCases/getVisitsCase"
 import type VisitGateway from "./VisitGateway"
 

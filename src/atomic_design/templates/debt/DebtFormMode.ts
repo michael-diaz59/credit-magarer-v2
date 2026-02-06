@@ -1,1 +1,1 @@
-export type DebtFormMode = "create" | "view" | "edit";
+export type DebtFormMode = "create" | "view" | "edit" | "audit" | "auditable";

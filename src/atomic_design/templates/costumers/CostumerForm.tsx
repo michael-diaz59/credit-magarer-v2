@@ -118,7 +118,8 @@ export const CostumerForm = () => {
         if (result.ok) {
           setCostumer(result.value);
 
-           originalCustomerNameRef.current =result.value?.applicant.fullName??null;
+          originalCustomerNameRef.current =
+            result.value?.applicant.fullName ?? null;
         }
       } catch {
         setBaseDIlogText(
@@ -199,16 +200,22 @@ export const CostumerForm = () => {
 
       if (isEditMode) {
         costumer.id = costumerId || "";
+        const currentName = costumer.applicant.fullName;
+        const originalName = originalCustomerNameRef.current;
+
+        const isNameChange =
+          !!originalName && originalName.trim() !== currentName.trim();
+
         const result = await orchestratorRef.updateCostumer({
           costumer: costumer,
           companyId: userCompanieId ?? "",
           idUser: "",
-          isNameChange:false,
+          isNameChange: isNameChange,
           updateFiles: updateFiles,
           pendingDocs: pendingDocs,
         });
         if (result.ok) {
-          setUpdateFiles(false)
+          setUpdateFiles(false);
           setBaseDIlogText("el cliente se actualizo con exito");
           setBaseDIlogOpen(true);
           setstillInPage(false);
@@ -238,7 +245,7 @@ export const CostumerForm = () => {
         if (result.ok) {
           setBaseDIlogText("el cliente se creo con exito");
           setBaseDIlogOpen(true);
-          setUpdateFiles(false)
+          setUpdateFiles(false);
           setstillInPage(false);
         } else {
           if (result.error.code == "DOCUMENT_EXISTING") {
