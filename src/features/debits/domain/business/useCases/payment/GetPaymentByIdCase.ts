@@ -17,7 +17,7 @@ export interface GetPaymentOutput {
 }
 
 /** su función es obtener un payment por id */
-export class GetPaymentCase {
+export class GetPaymentByIdCase {
   private paymentGateway: PaymentGateway
 
   constructor(paymentGateway: PaymentGateway) {

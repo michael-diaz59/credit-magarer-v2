@@ -64,6 +64,9 @@ export interface Installment {
   /**nombre del cliente */
   costumerName: string;
 
+   /**celular del cliente */
+  costumerNumber: string;
+
   /**direccion del cliente */
   costumerAddres: InstallmentAddress;
 

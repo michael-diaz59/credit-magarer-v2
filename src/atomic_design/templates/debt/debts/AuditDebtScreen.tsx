@@ -135,6 +135,7 @@ export const AuditDebtScreen = () => {
 
             <DebtForm
               defaultValues={form}
+              debtId={debitId}
               mode={"audit"}
               allowedActions={["update"]}
               onSubmit={handleUpdateDebt }

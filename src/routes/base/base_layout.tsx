@@ -4,7 +4,8 @@ import { useTheme } from "@mui/material/styles";
 import { useEffect, useRef } from "react";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../../atomic_design/sub_atomic_particles/Custom_sx";
-import AppbarBase2 from "../../atomic_design/organisms/AppbarBase2";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import FloatAppBar from "../../atomic_design/organisms/float_app_bar";
 
 export default function Layout() {
   const theme = useTheme();
@@ -38,7 +39,7 @@ export default function Layout() {
             flexShrink: 0, // evita que se colapse con otros elementos
           }}
         ></Box>
-        <AppbarBase2/>
+        <FloatAppBar/>
 
         <Box flex={1}>
           <Outlet /> {/* Aquí se renderiza tu página */}

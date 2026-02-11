@@ -2,10 +2,22 @@ export type DebtType =
   | 'credito'
   | 'prenda'
 
+
+
+  //cancelada: da por perdido un credito 
+  //en_mora => credito vencido: una deuda que a paso de la fecha de vencimiento, esta deuda debe estar en un segmento de alerta
+/** tentativa: cuando el asesor crea una deuda
+ * preparacion: cuando el asesor envia una deuda al auditor
+ * preAprobada: cuando el auditor envia una deuda al contador
+ * activa: el contador da por desembolsada la deuda y el deudor pasa a deber a la empresa
+ * pagada: el deudor pago al totalidad de la deuda
+ * en_mora: la deuda tiene cuotas incompletas o en mora
+ * cancelada: se perdio contacto y metodos de cobro al cliente(al dar por cancelada una deuda se da por cancelado todas las cuotas que esten en mora, las cuotas incompletas y pagadas sigen teniendo su estado)
+*/
 export type DebtStatus =
- | 'preAprobada'
   | 'tentativa'
-  | 'preparacion'
+    | 'preparacion'
+ | 'preAprobada'
   | 'activa'
   | 'corregir'
   | 'pagada'

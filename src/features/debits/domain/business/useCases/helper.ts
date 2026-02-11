@@ -56,6 +56,8 @@ export function generateInstallments(
       paidAt: "",
 
 
+      costumerNumber:"",
+      payments:[],
 
       id: crypto.randomUUID(),
       debtId: debt.id,

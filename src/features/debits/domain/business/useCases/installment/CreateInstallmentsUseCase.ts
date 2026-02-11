@@ -55,7 +55,8 @@ export class CreateInstallmentsUseCase {
             // 2️⃣ Generar installments desde la deuda
             const installments: Omit<Installment, "id">[] = this.generateInstallmentsFromDebt(
                 debt,
-                costumerInstallmentData.costumerAddres
+                costumerInstallmentData.costumerAddres,
+                costumer
             ).map(installment => ({
                 ...installment,
                 costumerId: costumerInstallmentData.costumerId,
@@ -132,7 +133,8 @@ export class CreateInstallmentsUseCase {
 
     generateInstallmentsFromDebt(
         debt: Debt,
-        costumerAddress: InstallmentAddress
+        costumerAddress: InstallmentAddress,
+        customer:Customer
     ): Omit<Installment, "id">[] {
 
         const totalWithInterest =
@@ -151,8 +153,6 @@ export class CreateInstallmentsUseCase {
                 originalInterestRate: debt.interestRate,
                 paidAmount: 0,
                 paidAt: "",
-
-
                 debtId: debt.id,
                 interestRate: debt.interestRate,
                 collectorId: debt.collectorId,
@@ -160,7 +160,9 @@ export class CreateInstallmentsUseCase {
                 costumerDocument: debt.costumerDocument,
                 costumerName: debt.costumerName,
                 costumerAddres: costumerAddress,
-                installmentNumber: i,
+                payments:[],
+                costumerNumber: customer.applicant.phone,
+                installmentNumber: i+1,
                 amount: installmentAmount,
                 dueDate: this.formatDate(dueDate),
                 status: "pendiente",

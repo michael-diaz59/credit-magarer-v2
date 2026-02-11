@@ -10,10 +10,13 @@ import { useEffect, useState } from "react";
 import UserOrchestrator from "../../../features/users/domain/infraestructure/UserOrchestrator";
 import { useAppDispatch, useAppSelector } from "../../../store/redux/coreRedux";
 import type { User } from "../../../features/users/domain/business/entities/User";
+import { useNavigate } from "react-router-dom";
+import { ScreenPaths } from "../../../core/helpers/name_routes";
 
 export type DebtFormAction = "create" | "update" | "preApprove";
 
 export type DebtFormProps = {
+  debtId?: string; // 👈 nuevo
   defaultValues: Omit<Debt, "id">;
   mode: DebtFormMode;
   allowedActions: DebtFormAction[];
@@ -32,21 +35,20 @@ const debtStatusList: DebtStatus[] = [
 
 const debtTypes: DebtType[] = ["credito", "prenda"];
 
-
-
 export const DebtForm = ({
+  debtId,
   defaultValues,
   mode,
   allowedActions,
   onSubmit,
 }: DebtFormProps) => {
+  const navigate = useNavigate();
   const readOnly = mode === "view";
-  const canEditStatus = mode === "audit" || "admin";
+  const canEditStatus = mode === "audit" || mode === "admin";
+  console.log("formulario de deuda");
 
   const dispatch = useAppDispatch();
-  const companyId = useAppSelector(
-    (state) => state.user.user?.companyId ?? "",
-  );
+  const companyId = useAppSelector((state) => state.user.user?.companyId ?? "");
 
   const [action, setAction] = useState<DebtFormAction | null>(null);
   const [collectors, setCollectors] = useState<User[]>([]);
@@ -127,7 +129,7 @@ export const DebtForm = ({
         )}
 
         {/* COBRADOR */}
-        {(canEditStatus || mode==="create") && (
+        {(canEditStatus || mode === "create") && (
           <Controller
             name="collectorId"
             control={control}
@@ -202,6 +204,36 @@ export const DebtForm = ({
           })}
         />
 
+        {/* Tasa de inters */}
+        <TextField
+          label="Tasa de interes %"
+          type="number"
+          fullWidth
+          disabled={mode === "view"}
+          error={!!errors.totalAmount}
+          helperText={errors.totalAmount?.message}
+          {...register("interestRate", {
+            valueAsNumber: true,
+            required: "Monto obligatorio",
+            min: { value: 1, message: "Debe ser mayor a 1%" },
+          })}
+        />
+
+         {/* Tasa de inters */}
+        <TextField
+          label="numero de cuotas"
+          type="number"
+          fullWidth
+          disabled={mode === "view"}
+          error={!!errors.totalAmount}
+          helperText={errors.totalAmount?.message}
+          {...register("installmentCount", {
+            valueAsNumber: true,
+            required: "Monto obligatorio",
+            min: { value: 1, message: "Debe ser mayor a 1%" },
+          })}
+        />
+
         {/* FECHA */}
         <TextField
           label="Fecha de inicio"
@@ -238,6 +270,16 @@ export const DebtForm = ({
             onClick={() => setAction("preApprove")}
           >
             Pre-aprobar deuda
+          </Button>
+        )}
+        {/* 🔍 BOTÓN SOLO PARA AUDITOR */}
+        {mode === "audit" && debtId && (
+          <Button
+            variant="outlined"
+            color="info"
+            onClick={() => navigate(ScreenPaths.auditor.installments(debtId))}
+          >
+            Ver todas las cuotas
           </Button>
         )}
       </Stack>

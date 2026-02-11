@@ -35,6 +35,9 @@ import Collector_layout from "./collector/Collector_layout.tsx";
 import { RecolectorHome } from "../atomic_design/templates/recollector/RecolectorHome.tsx";
 import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetailScreen.tsx";
 import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileScreen.tsx";
+import { PaymentsListScreen } from "../atomic_design/templates/audit/AuditPaymentsListScreen.tsx";
+import { PaymentDetailScreen } from "../atomic_design/templates/audit/PaymentDetailScreen.tsx";
+import { AuditorInstallmentsScreen } from "../atomic_design/templates/audit/AuditorInstallmentsScreen.tsx";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -166,6 +169,24 @@ export default function App() {
         <Route
           path={ScreenPaths.auditor.customer(":idCustomer")}
           element={<CostumerForm />}
+        />
+
+        {/* rutas de auditor, ver cuotas*/}
+        <Route
+          path={ScreenPaths.auditor.installments(":idDebt")}
+          element={<AuditorInstallmentsScreen />}
+        />
+
+         {/* rutas de auditor, ver pagos*/}
+        <Route
+          path={ScreenPaths.auditor.payments(":idInstallment")}
+          element={<PaymentsListScreen />}
+        />
+
+           {/* rutas de auditor, ver la informacion de un pago*/}
+        <Route
+          path={ScreenPaths.auditor.payment(":paymentId")}
+          element={<PaymentDetailScreen />}
         />
       </Route>
 

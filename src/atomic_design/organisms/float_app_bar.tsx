@@ -117,7 +117,7 @@ export default function FloatAppBar() {
               flexShrink: 0,
             }}
           >
-        <Typography>blade manager</Typography>
+        <Typography>credit manager</Typography>
           </Box>
 
           {/* Menú desktop */}

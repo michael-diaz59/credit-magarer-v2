@@ -11,7 +11,7 @@ export const pathHome = "/"
 export const pathLog = "/log"
 
 //log in
-export const pathLogIn = pathLog+"/login"
+export const pathLogIn = pathLog + "/login"
 
 //configuracion
 export const pathConfiguration = "/configuration"
@@ -62,7 +62,7 @@ export const pathVisitField = pathVisitsField
 
 
 const pathColllector = "/collector"
-const pathColllectorInstallment = pathColllector+"/installment"
+const pathColllectorInstallment = pathColllector + "/installment"
 
 const pathColllectorRoutes = pathColllector + "/routes"
 
@@ -71,6 +71,10 @@ const pathColllectorRoute = pathColllectorRoutes
 const pathCollectorCostumer = pathColllector + "/costumer"
 
 const pathAuditor = "/auditor"
+
+const pathAuditorinstallments = pathAuditor + "/installments"
+const pathAuditorpayments = pathAuditor + "/payments"
+const pathAuditorpayment = pathAuditor + "/payment"
 
 const pathAuditorDebits = pathAuditor + "/debits"
 const pathAuditorDebit = pathAuditorDebits
@@ -85,26 +89,20 @@ const pathAccountCreateDebits = pathAccountDebits
 
 
 export const baseAppBar: RoutNav[] = [
-  { label: "ligas", path: "/league" },
-  { label: "torneos", path: "/tournament" },
-  { label: "participantes", path: "/participants" },
   { label: "configuracion", path: pathConfiguration },
 ];
 
 export const nameRoutesMap = new Map([
-  ["/league", "ligas"],
-  ["/tournament", "torneos"],
-  ["/participants", "participantes"],
   ["/configuration", "configuracion"],
 ]);
 
 export const ScreenPaths = {
   home: pathHome,
-  log:{
-    logIn:pathLogIn
+  log: {
+    logIn: pathLogIn
   },
   Configuration: {
-    home:pathConfiguration
+    home: pathConfiguration
   },
   advisor: {
     home: pathAdvisor,
@@ -140,18 +138,21 @@ export const ScreenPaths = {
   },
   collector: {
     home: pathColllector,
-    installment:(id: string) => `${pathColllectorInstallment}/${id}`,
+    installment: (id: string) => `${pathColllectorInstallment}/${id}`,
     route: (id: string) => `${pathColllectorRoute}/${id}`,
     costumer: (id: string) => `${pathCollectorCostumer}/${id}`,
   },
   auditor: {
-    home: pathAuditor ,
+    home: pathAuditor,
     debitsCustomer: (docCostumer: string) => `${pathAuditorDebit}/forCustomers/${docCostumer}`,
-    debitsC:pathAuditorDebit+"/forCustomers",
-    debitsS:pathAuditorDebit+"/forStates",
+    debitsC: pathAuditorDebit + "/forCustomers",
+    debitsS: pathAuditorDebit + "/forStates",
     debit: (debitId: string) => `${pathAuditorDebit}/${debitId}`,
     costumers: pathAuditorCostumers,
     customer: (idCustomer: string) => `${pathAuditorCostumer}/${idCustomer}`,
+    installments: (idDebt: string) => `${pathAuditorinstallments}/${idDebt}`,
+    payments: (idInstallment: string) => `${pathAuditorpayments}/${idInstallment}`,
+    payment: (idInstallment: string) => `${pathAuditorpayment}/${idInstallment}`,
 
   },
   accountant: {
@@ -170,7 +171,7 @@ export const officeAdvisorAppBar: RoutNav[] = [
 
 export const basphatsAppBar: RoutNav[] = [
   { label: "configuracion", path: ScreenPaths.Configuration.home },
-   { label: "inicio", path: ScreenPaths.home },
+  { label: "inicio", path: ScreenPaths.home },
 ];
 
 export const auditorAppBar: RoutNav[] = [
