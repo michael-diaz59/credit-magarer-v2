@@ -1,4 +1,9 @@
-import { Button, MenuItem, Stack, TextField } from "@mui/material";
+import {
+  Button,
+  MenuItem,
+  Stack,
+  TextField
+} from "@mui/material";
 import type {
   Debt,
   DebtStatus,
@@ -12,8 +17,11 @@ import { useAppDispatch, useAppSelector } from "../../../store/redux/coreRedux";
 import type { User } from "../../../features/users/domain/business/entities/User";
 import { useNavigate } from "react-router-dom";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 export type DebtFormAction = "create" | "update" | "preApprove";
+
+
 
 export type DebtFormProps = {
   debtId?: string; // 👈 nuevo
@@ -112,6 +120,7 @@ export const DebtForm = ({
             render={({ field }) => (
               <TextField
                 {...field}
+                sx={textFieldSX}
                 select
                 label="Estado"
                 fullWidth
@@ -138,6 +147,7 @@ export const DebtForm = ({
               <TextField
                 {...field}
                 select
+                sx={textFieldSX}
                 label="Cobrador asignado"
                 fullWidth
                 error={!!errors.collectorId}
@@ -157,6 +167,7 @@ export const DebtForm = ({
         <TextField
           label="Cédula del cliente"
           fullWidth
+          sx={textFieldSX}
           disabled={mode === "view" || mode === "audit"}
           error={!!errors.costumerDocument}
           helperText={errors.costumerDocument?.message}
@@ -176,6 +187,7 @@ export const DebtForm = ({
               select
               label="Tipo"
               fullWidth
+              sx={textFieldSX}
               disabled={mode === "view"}
               error={!!errors.type}
               helperText={errors.type?.message}
@@ -194,7 +206,8 @@ export const DebtForm = ({
           label="Monto total"
           type="number"
           fullWidth
-          disabled={mode === "view" || mode === "audit"}
+          disabled={mode === "view"}
+          sx={textFieldSX}
           error={!!errors.totalAmount}
           helperText={errors.totalAmount?.message}
           {...register("totalAmount", {
@@ -209,9 +222,10 @@ export const DebtForm = ({
           label="Tasa de interes %"
           type="number"
           fullWidth
+          sx={textFieldSX}
           disabled={mode === "view"}
-          error={!!errors.totalAmount}
-          helperText={errors.totalAmount?.message}
+          error={!!errors.interestRate}
+          helperText={errors.interestRate?.message}
           {...register("interestRate", {
             valueAsNumber: true,
             required: "Monto obligatorio",
@@ -219,14 +233,15 @@ export const DebtForm = ({
           })}
         />
 
-         {/* Tasa de inters */}
+        {/* Tasa de inters */}
         <TextField
           label="numero de cuotas"
           type="number"
+          sx={textFieldSX}
           fullWidth
           disabled={mode === "view"}
-          error={!!errors.totalAmount}
-          helperText={errors.totalAmount?.message}
+          error={!!errors.installmentCount}
+          helperText={errors.installmentCount?.message}
           {...register("installmentCount", {
             valueAsNumber: true,
             required: "Monto obligatorio",
@@ -238,6 +253,7 @@ export const DebtForm = ({
         <TextField
           label="Fecha de inicio"
           type="date"
+          sx={textFieldSX}
           fullWidth
           disabled={mode === "view" || mode === "audit"}
           InputLabelProps={{ shrink: true }}

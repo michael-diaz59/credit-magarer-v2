@@ -15,6 +15,7 @@ import {
 } from "react-hook-form";
 import type { CostumerFormValues } from "./SchemasCostumer";
 import { get } from "react-hook-form";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -59,6 +60,7 @@ export const VehicleForm = ({ control, index }: Props) => {
                 {...field}
                 label="Clase"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -74,6 +76,7 @@ export const VehicleForm = ({ control, index }: Props) => {
               <TextField
                 {...field}
                 label="Marca"
+                    sx={textFieldSX}
                 fullWidth
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
@@ -88,6 +91,7 @@ export const VehicleForm = ({ control, index }: Props) => {
             control={control}
             render={({ field, fieldState }) => (
               <TextField
+                  sx={textFieldSX}
                 {...field}
                 label="Modelo"
                 fullWidth
@@ -107,6 +111,7 @@ export const VehicleForm = ({ control, index }: Props) => {
                 {...field}
                 type="number"
                 label="Valor comercial"
+                    sx={textFieldSX}
                 fullWidth
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
@@ -128,6 +133,7 @@ export const VehicleForm = ({ control, index }: Props) => {
                 {...field}
                 label="Tipo de servicio"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               >

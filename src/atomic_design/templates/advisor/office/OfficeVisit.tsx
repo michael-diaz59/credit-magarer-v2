@@ -24,6 +24,7 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
 import type { User } from "../../../../features/users/domain/business/entities/User";
+import { textFieldSX } from "../../../atoms/textFieldSX";
 
 export const OfficeVisit = () => {
 
@@ -208,6 +209,7 @@ useEffect(() => {
                 label="Observaciones"
                 multiline
                 rows={3}
+                   sx={textFieldSX}
                 value={visitForm.observations}
                 disabled={!isOfficeVisit}
                 onChange={(e) => handleVisitChange("observations", e.target.value)}
@@ -218,6 +220,7 @@ useEffect(() => {
               <TextField
                 select
                 label="Asesor de campo"
+                   sx={textFieldSX}
                 value={
                   fieldAdvisors.some((u) => u.id === visitForm.userAssigned)
                     ? visitForm.userAssigned
@@ -239,6 +242,7 @@ useEffect(() => {
 
               <TextField
                 label="cliente(Cedula)"
+                   sx={textFieldSX}
                 value={visitForm.customerDocument}
                 onChange={(e) => {
                   if (!visitForm) return;

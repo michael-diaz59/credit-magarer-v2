@@ -445,6 +445,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
 
             return ok(undefined);
         } catch (error) {
+            console.log(error)
             if (error instanceof FirebaseError) {
                 switch (error.code) {
                     case "unavailable":
@@ -583,7 +584,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
             });
 
             /* ==========================
-               ☁️ 2️⃣ Subida de archivos
+                Subida de archivos
             ========================== */
             if (updateFiles && pendingDocs && createdCustomerId) {
                 await this.uploadPendingDocuments({

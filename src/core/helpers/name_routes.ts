@@ -117,6 +117,7 @@ export const ScreenPaths = {
         visits: pathOfficeVisits,
         visits2: (documentCostumer: string) => pathOfficeVisits + `2/${documentCostumer}`,
         CreateVisit: pathCreateVisit,
+        CreateVisit2: (documentCostumer: string) => pathCreateVisit + `2/${documentCostumer}`,
         visit: (id: string) => `${pathOfficeVisit}/${id}`,
         Costumer: (idCostumer: string, idVisit: string) => `${pathCostumer}/visits/${idVisit}/costumer/${idCostumer}`,
       },

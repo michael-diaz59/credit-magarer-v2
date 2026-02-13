@@ -168,7 +168,7 @@ export const VisitListPage = () => {
       )}
 
       {/* ➕ FAB */}
-      {location.pathname === ScreenPaths.advisor.office.visit.visits && (
+      {location.pathname === ScreenPaths.advisor.office.visit.visits2(documentCostumer??"") && (
         <Fab
           color="primary"
           aria-label="add"
@@ -178,7 +178,7 @@ export const VisitListPage = () => {
             right: 24,
             zIndex: 1000,
           }}
-          onClick={() => navigate(ScreenPaths.advisor.office.visit.CreateVisit)}
+          onClick={() => navigate(ScreenPaths.advisor.office.visit.CreateVisit2(documentCostumer??""))}
         >
           <AddIcon />
         </Fab>

@@ -27,6 +27,7 @@ import { AuditEntryPoint } from "../atomic_design/templates/audit/AuditEntryPoin
 import { DebtsForCustomer } from "../atomic_design/templates/debt/audit/DebtsForCustomer.tsx";
 import Auditor_layout from "./auditor/Auditor_layout.tsx";
 import { CustomersAudit } from "../atomic_design/templates/audit/CustomersAudit.tsx";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { CustomerEntryPage } from "../atomic_design/templates/costumers/CustomerEntryPage.tsx";
 import { SelectListDebts } from "../atomic_design/templates/audit/SelectListDebts.tsx";
 import { AuditorDebtsFiltersScreen } from "../atomic_design/templates/audit/AuditorDebtsFiltersScreen.tsx";
@@ -38,6 +39,7 @@ import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileS
 import { PaymentsListScreen } from "../atomic_design/templates/audit/AuditPaymentsListScreen.tsx";
 import { PaymentDetailScreen } from "../atomic_design/templates/audit/PaymentDetailScreen.tsx";
 import { AuditorInstallmentsScreen } from "../atomic_design/templates/audit/AuditorInstallmentsScreen.tsx";
+import { CreateVisit } from "../atomic_design/templates/advisor/office/CreateVisit.tsx";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -207,7 +209,7 @@ export default function App() {
 
         <Route
           path={ScreenPaths.advisor.office.costumer.costumers}
-          element={<CustomerEntryPage />}
+          element={<ClientListPage />}
         />
 
         <Route
@@ -243,7 +245,12 @@ export default function App() {
         />
         <Route
           path={ScreenPaths.advisor.office.visit.CreateVisit}
-          element={<OfficeVisit />}
+          element={<CreateVisit />}
+        />
+
+        <Route
+          path={ScreenPaths.advisor.office.visit.CreateVisit2(":documentCostumer")}
+          element={<CreateVisit />}
         />
 
         {/* debit */}

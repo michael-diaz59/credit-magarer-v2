@@ -9,6 +9,7 @@ import type { CostumerFormValues } from "./SchemasCostumer";
 import { get } from "react-hook-form";
 import { AddressForm } from "./AddressForm";
 import { WorkForm } from "./WorkForm";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -55,6 +56,7 @@ export const FamilyReferenceForm = ({ control, index }: Props) => {
                 {...field}
                 label="Nombre completo"
                 fullWidth
+                sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -71,6 +73,7 @@ export const FamilyReferenceForm = ({ control, index }: Props) => {
                 {...field}
                 label="Teléfono"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -87,6 +90,7 @@ export const FamilyReferenceForm = ({ control, index }: Props) => {
                 {...field}
                 label="Parentesco"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />

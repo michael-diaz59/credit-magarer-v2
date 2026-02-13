@@ -23,6 +23,7 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
 import type { User } from "../../../../features/users/domain/business/entities/User";
+import { textFieldSX } from "../../../atoms/textFieldSX";
 
 export const FieldVisit = () => {
   const { visitId } = useParams<{ visitId?: string }>();
@@ -142,17 +143,20 @@ export const FieldVisit = () => {
                 label="Nombre del cliente"
                 value={visitForm.customerName}
                 disabled={!isOfficeVisit}
+                sx={textFieldSX}
                 onChange={(e) => handleChange("customerName", e.target.value)}
               />
 
               <TextField
                 label="Cédula"
                 value={visitForm.customerDocument}
+                   sx={textFieldSX}
                 disabled={!isOfficeVisit}
               />
 
               <TextField
                 label="Dirección"
+                   sx={textFieldSX}
                 value={visitForm.custumerAddres}
                 disabled={!isOfficeVisit}
                 onChange={(e) => handleChange("custumerAddres", e.target.value)}
@@ -160,6 +164,7 @@ export const FieldVisit = () => {
 
               <TextField
                 label="Observaciones"
+                   sx={textFieldSX}
                 multiline
                 rows={3}
                 value={visitForm.observations}
@@ -171,6 +176,7 @@ export const FieldVisit = () => {
               {isOfficeVisit && (
                 <TextField
                   select
+                     sx={textFieldSX}
                   label="Asesor de campo"
                   value={visitForm.userAssigned}
                   onChange={(e) => handleChange("userAssigned", e.target.value)}

@@ -16,6 +16,7 @@ import type { CostumerFormValues } from "./SchemasCostumer";
 import { AddressForm } from "./AddressForm";
 import { WorkForm } from "./WorkForm";
 import { HousingForm } from "./HousingForm";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -58,6 +59,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 label="Nombre completo"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -74,6 +76,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 label="cedula"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -90,6 +93,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 label="Ciudad de nacimiento"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -108,6 +112,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 label="Fecha nacimiento"
                 InputLabelProps={{ shrink: true }}
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -124,6 +129,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 label="Ciudad expedición"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -140,6 +146,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 type="date"
                 label="Fecha de expedicion"
+                    sx={textFieldSX}
                 InputLabelProps={{ shrink: true }}
                 fullWidth
                 error={!!fieldState.error}
@@ -159,6 +166,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 label="Estado civil"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               >
@@ -180,6 +188,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
                 {...field}
                 type="number"
                 label="Número de hijos"
+                    sx={textFieldSX}
                 fullWidth
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
@@ -194,7 +203,7 @@ export const PersonalInfoForm = ({ control, prefix, index }: Props) => {
             name={name("phone")}
             control={control}
             render={({ field }) => (
-              <TextField {...field} label="telefono" fullWidth required />
+              <TextField {...field} label="telefono" fullWidth required     sx={textFieldSX}/>
             )}
           />
         </Grid>

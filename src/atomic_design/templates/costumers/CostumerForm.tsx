@@ -41,6 +41,7 @@ import {
   type PendingDocuments,
 } from "../../molecules/CustomerDocumentActions";
 import type { DocumentTypeG } from "../../../features/costumers/repository/FirebaseCostumerRepository";
+import { textFieldmt3SX } from "../../atoms/textFieldSX";
 export type CostumerFormValues = z.infer<typeof costumerSchema>;
 
 export const CostumerForm = () => {
@@ -160,6 +161,8 @@ export const CostumerForm = () => {
   useEffect(() => {
     if (!costumer) return;
 
+    console.log("id list ",costumer.listId)
+
     form.reset(CostumerFormMapper.toForm(costumer));
   }, [costumer, form]);
 
@@ -220,9 +223,10 @@ export const CostumerForm = () => {
           setBaseDIlogOpen(true);
           setstillInPage(false);
         } else {
+          console.log(result.error.code)
           if (result.error.code === "DOCUMENT_EXISTING") {
             setBaseDIlogText(
-              "ya existe un clinete registrado con el numero de documento dado",
+              "ya existe un cliente registrado con el numero de documento dado",
             );
             setBaseDIlogOpen(true);
             setstillInPage(true);
@@ -342,10 +346,10 @@ export const CostumerForm = () => {
               {...field}
               label="Observaciones"
               multiline
+                 sx={textFieldmt3SX}
               rows={3}
               fullWidth
               disabled={!isOfficeVisit}
-              sx={{ mt: 3 }}
             />
           )}
         />

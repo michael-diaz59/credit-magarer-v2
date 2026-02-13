@@ -61,14 +61,14 @@ export const familyReferenceSchema = z.object({
 });
 
 export const costumerSchema = z.object({
-    id: z.string(),
-    observations: z.string(),
+    id: z.string().nullable().optional(),
+    observations: z.string().nullable().optional(),
     debtCounter: z.number(),
     applicant: personalInfoSchema,
     coSigner: z.array(personalInfoSchema).min(1).max(5),
     vehicle: z.array(vehicleSchema).min(1).max(5),
     familyReference: z.array(familyReferenceSchema).min(1).max(5),
-    listId: z.string(),
+    listId: z.string().nullable().optional()
 });
 
 export type CostumerFormValues = z.infer<typeof costumerSchema>;

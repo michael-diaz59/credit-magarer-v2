@@ -7,6 +7,7 @@ import {
 } from "react-hook-form";
 import type { CostumerFormValues } from "./SchemasCostumer";
 import { get } from "react-hook-form";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -49,6 +50,7 @@ export const AddressForm = ({ control, prefix }: Props) => {
                 {...field}
                 label="Dirección"
                 fullWidth
+                   sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -65,6 +67,7 @@ export const AddressForm = ({ control, prefix }: Props) => {
                 {...field}
                 label="Barrio"
                 fullWidth
+                   sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -83,6 +86,7 @@ export const AddressForm = ({ control, prefix }: Props) => {
                 label="Estrato"
                 fullWidth
                 error={!!fieldState.error}
+                   sx={textFieldSX}
                 helperText={fieldState.error?.message}
                 onChange={(e) =>
                   field.onChange(Number(e.target.value))
@@ -102,6 +106,7 @@ export const AddressForm = ({ control, prefix }: Props) => {
                 label="Ciudad"
                 fullWidth
                 error={!!fieldState.error}
+                   sx={textFieldSX}
                 helperText={fieldState.error?.message}
               />
             )}

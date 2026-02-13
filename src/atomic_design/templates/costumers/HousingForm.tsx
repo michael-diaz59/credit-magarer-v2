@@ -13,6 +13,7 @@ import {
 } from "react-hook-form";
 import type { CostumerFormValues } from "./SchemasCostumer";
 import { get } from "react-hook-form";
+import { textFieldSX } from "../../atoms/textFieldSX";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -55,6 +56,7 @@ export const HousingForm = ({ control, prefix }: Props) => {
                 {...field}
                 label="Nombre del arrendador"
                 fullWidth
+                    sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
@@ -69,6 +71,7 @@ export const HousingForm = ({ control, prefix }: Props) => {
             render={({ field, fieldState }) => (
               <TextField
                 {...field}
+                    sx={textFieldSX}
                 label="Teléfono del arrendador"
                 fullWidth
                 error={!!fieldState.error}
@@ -85,6 +88,7 @@ export const HousingForm = ({ control, prefix }: Props) => {
             render={({ field, fieldState }) => (
               <TextField
                 {...field}
+                    sx={textFieldSX}
                 type="number"
                 label="Valor de arrendamiento"
                 fullWidth
@@ -107,6 +111,7 @@ export const HousingForm = ({ control, prefix }: Props) => {
                 select
                 {...field}
                 label="Tipo de vivienda"
+                    sx={textFieldSX}
                 fullWidth
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
