@@ -10,11 +10,15 @@ import { GetVisitByStateCase, type GetVisitByStateInput, type GetVisitByStateOut
 import { GetVisitsByCustomerDocumentCase, type GetVisitsByCustomerDocumentInput, type GetVisitsByCustomerDocumentOutput } from "../business/useCases/GetVisitsByCustomerDocumentCase"
 import GetVisitsCase, { type GetVisitsInput, type GetVisitsOutput } from "../business/useCases/getVisitsCase"
 import type VisitGateway from "./VisitGateway"
+import { CreateVisitWithDebtUseCase, type CreateVisitWithDebtInput } from "../business/useCases/CreateVisitWithDebtUseCase"
+import { FirebaseDebtRepository } from "../../../debits/provider/firebase/DebtRepository"
+import type { DebtGateway } from "../../../debits/domain/infraestructure/DebtGatweay"
 
 
 export default class VisitOrchestrator {
 
     private createVisitCase: CreateVisitUseCase
+    private createVisitWithDebtCase: CreateVisitWithDebtUseCase
     private getVisitByIdCase: GetVisitByIdCase
     private getVisitByCedulaCase: GetVisitByCedulaCase
     private deleteVisitCase: DeleteVisitCase
@@ -26,11 +30,14 @@ export default class VisitOrchestrator {
     constructor(
     ) {
         const repository: VisitGateway = new FirebaseVisitRepository()
+        const debtRepository: DebtGateway = new FirebaseDebtRepository()
+
         this.createVisitCase = new CreateVisitUseCase(repository)
+        this.createVisitWithDebtCase = new CreateVisitWithDebtUseCase(repository, debtRepository)
         this.getVisitByStateCase = new GetVisitByStateCase(repository)
         this.getVisitsCase = new GetVisitsCase(repository)
         this.getVisitByIdCase = new GetVisitByIdCase(repository)
-        this.getVisitsByCustomerDocumentCase= new GetVisitsByCustomerDocumentCase(repository)
+        this.getVisitsByCustomerDocumentCase = new GetVisitsByCustomerDocumentCase(repository)
         this.getVisitByCedulaCase = new GetVisitByCedulaCase(repository)
         this.deleteVisitCase = new DeleteVisitCase(repository)
         this.editVisitCase = new EditVisitCase(repository)
@@ -40,6 +47,10 @@ export default class VisitOrchestrator {
         const result = await this.createVisitCase.execute(input)
         return result
 
+    }
+
+    async createVisitWithDebt(input: CreateVisitWithDebtInput): Promise<CreateVisitOutput> {
+        return await this.createVisitWithDebtCase.execute(input)
     }
     async getVisitById(input: GetVisitByIdInput): Promise<GetVisitByIdOutput> {
         const result = await this.getVisitByIdCase.execute(input)
@@ -57,7 +68,7 @@ export default class VisitOrchestrator {
         return result
     }
 
-    async getVisitsByCustomerDocument(input: GetVisitsByCustomerDocumentInput): Promise<Result<GetVisitsByCustomerDocumentOutput,visitErros>> {
+    async getVisitsByCustomerDocument(input: GetVisitsByCustomerDocumentInput): Promise<Result<GetVisitsByCustomerDocumentOutput, visitErros>> {
         return await this.getVisitsByCustomerDocumentCase.execute(input)
     }
 

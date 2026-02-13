@@ -3,17 +3,11 @@ import {
   Box,
   Card,
   CardContent,
-  Stack,
-  TextField,
-  Button,
   CircularProgress,
-  MenuItem,
-  Grid,
 } from "@mui/material";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import type Visit from "../../../../features/visits/domain/business/entities/Visit";
 import {
-  useAppDispatch,
   useAppSelector,
 } from "../../../../store/redux/coreRedux";
 import {
@@ -22,12 +16,9 @@ import {
 } from "../../../../core/helpers/name_routes";
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
-import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
-import type { User } from "../../../../features/users/domain/business/entities/User";
-import { textFieldSX } from "../../../atoms/textFieldSX";
+import { VisitForm } from "../../visit/VisitForm";
 
 export const OfficeVisit = () => {
-
   const { visitId } = useParams<{ visitId?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,163 +26,68 @@ export const OfficeVisit = () => {
   const isOfficeVisit = location.pathname.includes(pathOfficeVisits);
 
   const [loading, setLoading] = useState(false);
+  const [visit, setVisit] = useState<Visit | null>(null);
 
-  const [visitForm, setVisitForm] = useState<Visit>({
-    id: "",
-    customerName: "",
-    customerDocument: "",
-    custumerAddres: "",
-    customerId: "",
-    hasdebt:false,
-    observations: "",
-    userAssigned: "",
-    createdAt: "",
-    amountSolicited:0,
-    debitId:"",
-    creatorsId:"",
-    state: { code: "earring" },
-  });
-  console.log(visitForm);
-  const [fieldAdvisors, setFieldAdvisors] = useState<User[]>([]);
-  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-  const [bodyDialogOpen, setBodyDialogOpen] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogBody, setDialogBody] = useState("");
 
   const companyId = useAppSelector((state) => state.user.user?.companyId || "");
   const userId = useAppSelector((state) => state.user.user?.id || "undefined");
-  const [actionButon, setActionButon] = useState("crear visita");
 
   const visitOrchestrator = useMemo(() => new VisitOrchestrator(), []);
-  const dispatch = useAppDispatch();
 
-  const userOrchestrator = useMemo(
-    () => new UserOrchestrator(dispatch),
-    [dispatch]
-  );
+  /* ------------------- Cargar visita ------------------- */
+  useEffect(() => {
+    if (!visitId) return;
 
-  /* ------------------- Cargar visita por link ------------------- */
-useEffect(() => {
-  if (!visitId) return;
+    const loadVisit = async () => {
+      setLoading(true);
 
-  const loadVisit = async () => {
+      const result = await visitOrchestrator.getVisitById({
+        idCompany: companyId,
+        idUser: userId,
+        idVisit: visitId,
+      });
+
+      if (result.state.ok && result.state.value) {
+        setVisit(result.state.value);
+      } else {
+        setDialogBody("Error al cargar la visita");
+        setDialogOpen(true);
+      }
+
+      setLoading(false);
+    };
+
+    loadVisit();
+  }, [visitId, companyId, userId, visitOrchestrator]);
+
+  /* ------------------- Actualizar visita ------------------- */
+  const handleUpdate = async (updatedVisit: Visit) => {
+    if (!companyId || !visitId) return;
+
     setLoading(true);
 
-    const result = await visitOrchestrator.getVisitById({
+    const result = await visitOrchestrator.editVisit({
       idCompany: companyId,
       idUser: userId,
-      idVisit: visitId,
+      visit: updatedVisit,
     });
-
-    if (result.state.ok && result.state.value) {
-      setVisitForm(result.state.value);
-      setActionButon("actualizar visita");
-    } else {
-      setBodyDialogOpen("error al cargar visita");
-      setErrorDialogOpen(true);
-    }
-
-    setLoading(false);
-
-  };
-
-  loadVisit();
-}, [visitId, companyId, userId, visitOrchestrator]);
-
-  /* ----------- Cargar FIELD_ADVISORS (solo office) ----------- */
-  useEffect(() => {
-    if (!isOfficeVisit) return;
-
-    console.log("carga de advisors");
-    const loadUsers = async () => {
-      const result = await userOrchestrator.getUsersByCompany({
-        id: companyId ?? "",
-        rol: "FIELD_ADVISOR",
-      });
-
-      console.log(result);
-
-      if (result.state.ok) {
-        setFieldAdvisors(
-          result.state.value.filter((user) =>
-            user.roles.includes("FIELD_ADVISOR")
-          )
-        );
-      }
-    };
-
-    loadUsers();
-  }, [isOfficeVisit, companyId, userOrchestrator]);
-
-
-  //crear visita
-  const handleAction = async () => {
-    if (!companyId) return;
-
-    if (!visitForm.userAssigned) {
-      setBodyDialogOpen("debes seleccionar un asesor para crear una visita");
-      setErrorDialogOpen(true);
-      return;
-    }
-
-    setLoading(true);
-
- 
-
-
-    /** 🔥 OBJETO FINAL (FUENTE DE LA VERDAD) */
-    const visitToSave: Visit = {
-      ...visitForm,
-      id: visitId ?? visitForm.id,
-      state:visitForm.state,
-      createdAt: visitForm.createdAt || new Date().toISOString().slice(0, 10),
-    };
-
-    let result;
-
-    if (visitId) {
-      result = await visitOrchestrator.editVisit({
-        idCompany: companyId,
-        idUser: userId,
-        visit: visitToSave,
-      });
-    } else {
-      result = await visitOrchestrator.createVisit({
-        idCompany: companyId,
-        idUser: userId,
-        visit: visitToSave,
-      });
-    }
 
     setLoading(false);
 
     if (result.state.ok) {
-      setVisitForm(visitToSave); // solo para UI
-      setBodyDialogOpen(
-        visitId ? "visita editada correctamente" : "visita creada correctamente"
-      );
+      setDialogBody("Visita actualizada correctamente");
+    } else if (result.state.error.code === "USER_NOT_FOUND") {
+      setDialogBody("No se encontró un cliente con el documento indicado");
     } else {
-      if(result.state.error.code==="USER_NOT_FOUND"){
-             setBodyDialogOpen("no se encontro un cliente con el documento indicado");
-      setErrorDialogOpen(true);
-      setLoading(false);
-      return
-      }
-      setBodyDialogOpen("no se pudo guardar la visita");
+      setDialogBody("No se pudo actualizar la visita");
     }
 
-    setErrorDialogOpen(true);
+    setDialogOpen(true);
   };
 
-  const handleVisitChange = <K extends keyof Visit>(field: K, value: Visit[K]) => {
-    if (!visitForm) return;
-
-    setVisitForm({
-      ...visitForm,
-      [field]: value,
-    });
-  };
-  
-
-  if (loading) {
+  if (loading || !visit) {
     return (
       <Box display="flex" justifyContent="center" mt={6}>
         <CircularProgress />
@@ -204,112 +100,30 @@ useEffect(() => {
       <Box maxWidth={700} mx="auto" mt={4}>
         <Card>
           <CardContent>
-            <Stack spacing={2}>
-              <TextField
-                label="Observaciones"
-                multiline
-                rows={3}
-                   sx={textFieldSX}
-                value={visitForm.observations}
-                disabled={!isOfficeVisit}
-                onChange={(e) => handleVisitChange("observations", e.target.value)}
-              />
 
-              {/* ----------- Selector FIELD_ADVISOR ----------- */}
+            <VisitForm
+              disabled={!isOfficeVisit}
+              defaultVisitValues={visit}
+              actionLabel="Actualizar visita"
+              documentCostumer={visit.customerDocument}
+              onSubmit={(visitData) => handleUpdate(visitData)}
+            />
 
-              <TextField
-                select
-                label="Asesor de campo"
-                   sx={textFieldSX}
-                value={
-                  fieldAdvisors.some((u) => u.id === visitForm.userAssigned)
-                    ? visitForm.userAssigned
-                    : ""
-                }
-                disabled={!isOfficeVisit}
-                onChange={(e) => handleVisitChange("userAssigned", e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>Seleccione un asesor</em>
-                </MenuItem>
-
-                {fieldAdvisors.map((u) => (
-                  <MenuItem key={u.id} value={u.id}>
-                    {u.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                label="cliente(Cedula)"
-                   sx={textFieldSX}
-                value={visitForm.customerDocument}
-                onChange={(e) => {
-                  if (!visitForm) return;
-                  setVisitForm({
-                    ...visitForm,
-                    customerDocument: e.target.value,
-                  });
-                }}
-              ></TextField>
-
-              <Stack direction="row" spacing={2} mt={2}>
-                {visitForm.state.code==="completed" && (
-                  <Button
-                    variant="outlined"
-                    onClick={() =>
-                      navigate(
-                        ScreenPaths.advisor.field.visit.Costumer(
-                          visitForm.customerId,visitForm.id
-                        )
-                      )
-                    }
-                  >
-                    Detalles del cliente
-                  </Button>
-                )}
-
-                {isOfficeVisit && (
-                  /**crea o actualiza una visita en base a la existencia de un idVisit */
-                  <Button
-                    variant="contained"
-                    onClick={() => {
-                      handleAction();
-                    }}
-                  >
-                    {actionButon}
-                  </Button>
-                )}
-
-               
-              </Stack>
-            </Stack>
-            <Grid sx={{mt:3}}>
-           
-            </Grid>
           </CardContent>
         </Card>
       </Box>
 
       <BaseDialog
-        open={errorDialogOpen}
-        body={bodyDialogOpen}
+        open={dialogOpen}
+        body={dialogBody}
         butonText="Aceptar"
         onClick={() => {
-          if (
-            bodyDialogOpen ===
-              "no se encontro un cliente con el documento indicado" ||
-            bodyDialogOpen ===
-              "debes seleccionar un asesor para crear una visita"
-          ) {
-            setErrorDialogOpen(false);
+          setDialogOpen(false);
+
+          if (isOfficeVisit) {
+            navigate(ScreenPaths.advisor.office.visit.visits);
           } else {
-            setErrorDialogOpen(false);
-            if (isOfficeVisit) {
-              navigate(ScreenPaths.advisor.office.visit.visits);
-            } else {
-              navigate(ScreenPaths.advisor.field.visit.visits);
-            }
+            navigate(ScreenPaths.advisor.field.visit.visits);
           }
         }}
       />
