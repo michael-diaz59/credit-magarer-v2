@@ -12,6 +12,7 @@ import { AddRouteCase, type AddRouteInput } from "../business/useCases/AddRouteC
 import { DeleteRouteCase, type DeleteRouteInput } from "../business/useCases/DeleteRouteCase"
 import { AssignCustomerToRouteCase, type AssignCustomerToRouteInput } from "../business/useCases/AssignCustomerToRouteCase"
 import { UnassignCustomerFromRouteCase, type UnassignCustomerFromRouteInput } from "../business/useCases/UnassignCustomerFromRouteCase"
+import { UpdateUserTotalAmountCase, type UpdateUserTotalAmountInput } from "../business/useCases/UpdateUserTotalAmountCase"
 
 import type { UserGateway } from "./UserGateway"
 import type { UserState } from "./userState"
@@ -26,6 +27,7 @@ export default class UserOrchestrator {
   private deleteRouteCase: DeleteRouteCase
   private assignCustomerToRouteCase: AssignCustomerToRouteCase
   private unassignCustomerFromRouteCase: UnassignCustomerFromRouteCase
+  private updateUserTotalAmountCase: UpdateUserTotalAmountCase
 
   private userState: UserState
 
@@ -41,8 +43,17 @@ export default class UserOrchestrator {
     this.deleteRouteCase = new DeleteRouteCase(repository)
     this.assignCustomerToRouteCase = new AssignCustomerToRouteCase(repository)
     this.unassignCustomerFromRouteCase = new UnassignCustomerFromRouteCase(repository)
+    this.updateUserTotalAmountCase = new UpdateUserTotalAmountCase(repository)
 
     this.userState = new ReduxUser(dispatch)
+  }
+
+  async updateTotalAmount(input: UpdateUserTotalAmountInput): Promise<Result<void, setUserError>> {
+    const result = await this.updateUserTotalAmountCase.execute(input)
+    if (result.ok) {
+      await this.refreshUser(input.userId)
+    }
+    return result
   }
 
   /**devuelve usuarios con un rol en especifico, si no se indica u rol devuelve todos los usuarios*/

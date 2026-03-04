@@ -6,6 +6,7 @@ import { GetByFiltersCase, type GetByFiltersError, type GetByFiltersInput, type 
 import { GetDebitByIdCase, type GetDebitByIdInput, type GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
 import { GetDebstByCostumerDocumentCase, type GetDebstByCostumerDocumentInput, type GetDebstByCostumerDocumentOutput } from "../business/useCases/debt/GetDebstByCostumerDocumentCase";
 import { GetDebtsCase, type GetDebtsInput, type GetDebtsOutput } from "../business/useCases/debt/GetDebtsCase";
+import { SimulateDebtCase, type SimulateDebtError, type SimulateDebtInput, type SimulateDebtOutput } from "../business/useCases/debt/SimulateDebtCase";
 import { UpdateDebtUseCase, type UpdateDebitInput, type UpdateDebitOutput } from "../business/useCases/debt/UpdateDebtUseCase";
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
 import { UpdateInstallmentByDebtCase, type UpdateInstallmentByDebtInput, type UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
@@ -20,6 +21,7 @@ export default class DebtOrchestrator {
     private getDebstByCostumerDocumentCase: GetDebstByCostumerDocumentCase
     private updateDebtUseCase:UpdateDebtUseCase
     private debtGateway:DebtGateway
+    private simulateDebtCase:SimulateDebtCase
 
     private getInstallmentsByDebtCase:GetInstallmentsByDebtCase
     private updateInstallmentByDebtCase: UpdateInstallmentByDebtCase
@@ -29,6 +31,7 @@ export default class DebtOrchestrator {
     constructor() {
             this.debtGateway = new FirebaseDebtRepository()
         
+            this.simulateDebtCase=new SimulateDebtCase()
             this.installmentGateway = new FirebaseInstallmentRepository()
             this.createDebtCase = new CreateDebtUseCase(this.debtGateway)
             this.getDebitByIdCase= new GetDebitByIdCase(this.debtGateway)
@@ -50,6 +53,10 @@ export default class DebtOrchestrator {
 
          async  getDebtsForCustomer(input:GetDebtsInput ):Promise<GetDebtsOutput> {
               return this.getDebtsCase.execute(input)
+        }
+
+        async simulateDebt(input: SimulateDebtInput): Promise<Result<SimulateDebtOutput, SimulateDebtError>>{
+              return this.simulateDebtCase.execute(input)
         }
 
 

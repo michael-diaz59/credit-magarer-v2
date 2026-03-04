@@ -20,21 +20,31 @@ import {
   FormControlLabel,
   FormControl,
   FormLabel,
+  MenuItem,
+  Select,
+  InputLabel,
 } from "@mui/material";
 import {
   cloneInstallment,
   type Installment,
 } from "../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
-import { useAppSelector } from "../../../store/redux/coreRedux";
+import { useAppDispatch, useAppSelector } from "../../../store/redux/coreRedux";
 import { BaseDialog } from "../../atoms/BaseDialog";
 import PhoneIcon from "@mui/icons-material/Phone";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import PaymentOrchestrator from "../../../features/debits/domain/infraestructure/PaymentOrchestrator";
-import { type Payment, type GeoLocation, type PaymentMethod } from "../../../features/debits/domain/business/entities/Payment";
+import {
+  type Payment,
+  type GeoLocation,
+  type PaymentMethod,
+} from "../../../features/debits/domain/business/entities/Payment";
 import { useForm, Controller } from "react-hook-form";
 import { getCurrentLocation } from "../../../features/shared/helpers/geoLocation";
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import BankAccountOrchestrator from "../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
+import type { BankAccount } from "../../../features/bankAccounts/domain/business/entities/BankAccount";
+import UserOrchestrator from "../../../features/users/domain/infraestructure/UserOrchestrator";
 
 interface PartialPaymentForm {
   amount: number;
@@ -44,6 +54,7 @@ export const InstallmentDetailScreen = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogBody, setDialogBody] = useState("");
   const [dialogTitle, setDialogTitle] = useState<string | undefined>(undefined);
+  const dispatch = useAppDispatch();
   const { id: installmentId } = useParams<{ id: string }>();
 
   const user = useAppSelector((state) => state.user.user);
@@ -52,19 +63,33 @@ export const InstallmentDetailScreen = () => {
 
   const [loading, setLoading] = useState(false);
 
-  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] = useState(false);
+  const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] =
+    useState(false);
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
-  const [pendingPayment, setPendingPayment] = useState<{ type: 'full' | 'partial', amount?: number, method?: PaymentMethod, file?: File | null } | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{
+    type: "full" | "partial";
+    amount?: number;
+    method?: PaymentMethod;
+    file?: File | null;
+  } | null>(null);
+
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+
+  const bankAccountOrchestrator = useMemo(() => new BankAccountOrchestrator(), []);
 
   const emptyInstallment: Installment = {
     id: "",
     debtId: "",
-
+    companyId: "",
     installmentTotalNumber: 0,
-    originalInterestRate: 0,
+    lateDueDate: "",
+    lateInterestRate: 0,
+    aplazado: false,
+    latepayment: 0,
+    payments: [],
     paidAmount: 0,
     paidAt: "",
-
     interestRate: 0,
     collectorId: "",
     costumerId: "",
@@ -86,13 +111,33 @@ export const InstallmentDetailScreen = () => {
   const [installment, setInstallment] = useState<Installment>(emptyInstallment);
 
   const paymentOrchestrator = useMemo(() => new PaymentOrchestrator(), []);
-  const installmentsOrchestrator = useMemo(() => new InstallmentsOrchestrator(), []);
+  const installmentsOrchestrator = useMemo(
+    () => new InstallmentsOrchestrator(),
+    [],
+  );
 
-  const { control, handleSubmit, formState: { errors }, reset } = useForm<PartialPaymentForm>({
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<PartialPaymentForm>({
     defaultValues: {
-      amount: 0
-    }
+      amount: 0,
+    },
   });
+
+  useEffect(() => {
+    const loadBankAccounts = async () => {
+      if (companyId) {
+        const result = await bankAccountOrchestrator.getAll({ companyId });
+        if (result.ok) {
+          setBankAccounts(result.value.bankAccounts);
+        }
+      }
+    };
+    loadBankAccounts();
+  }, [companyId, bankAccountOrchestrator]);
 
   useEffect(() => {
     if (!installmentId) {
@@ -112,7 +157,6 @@ export const InstallmentDetailScreen = () => {
 
         if (result.ok) {
           console.log(result.value.state);
-          result.value.state.costumerNumber = "3046214183"
           setInstallment(result.value.state);
           setLoading(false);
         }
@@ -125,7 +169,8 @@ export const InstallmentDetailScreen = () => {
   }, [installmentId, companyId, collectorId, installmentsOrchestrator]);
 
   const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("efectivo");
+  const [selectedMethod, setSelectedMethod] =
+    useState<PaymentMethod>("efectivo");
   const [proofFile, setProofFile] = useState<File | null>(null);
 
   // Helper to create basic payment object
@@ -134,7 +179,8 @@ export const InstallmentDetailScreen = () => {
     location?: GeoLocation,
     paymentId?: string,
     proofUrl?: string,
-    method: PaymentMethod = 'efectivo'
+    method: PaymentMethod = "efectivo",
+    bankAccountId?: string,
   ): Payment => {
     return {
       id: paymentId || "",
@@ -149,7 +195,8 @@ export const InstallmentDetailScreen = () => {
       method: method,
       status: "registrado",
       paidAt: new Date().toISOString(),
-      location: location
+      location: location,
+      bankAccountId: bankAccountId,
     };
   };
 
@@ -158,18 +205,70 @@ export const InstallmentDetailScreen = () => {
     location?: GeoLocation,
     paymentId?: string,
     proofUrl?: string,
-    method: PaymentMethod = 'efectivo'
+    method: PaymentMethod = "efectivo",
   ) => {
     if (!installmentId) return;
 
     try {
       setLoading(true);
 
-      // 1. Create Payment
-      const payment = createPaymentObject(amount, location, paymentId, proofUrl, method);
+      // 1. Validate Bank Account Limit if Consignment
+      if (method === "consignacion") {
+        const selectedAccount = bankAccounts.find(a => a.id === selectedBankAccountId);
+        if (!selectedAccount) {
+          throw new Error("No se seleccionó una cuenta bancaria.");
+        }
+
+        const newMonto = selectedAccount.monto + amount;
+        if (newMonto > selectedAccount.tope) {
+          setDialogTitle("Tope Excedido");
+          setDialogBody(
+            `El registro no se puede hacer en la cuenta "${selectedAccount.name}" ya que viola el tope asignado de $ ${selectedAccount.tope.toLocaleString()}.`
+          );
+          setDialogOpen(true);
+          setLoading(false);
+          return;
+        }
+
+        // Update Bank Account amount
+        const updateResult = await bankAccountOrchestrator.update({
+          companyId,
+          bankAccount: { ...selectedAccount, monto: newMonto }
+        });
+
+        if (!updateResult.ok) {
+          throw new Error("Error al actualizar el saldo de la cuenta bancaria.");
+        }
+      }
+
+      // 2. Update Collector Balance if Cash
+      if (method === "efectivo" && user) {
+        const userOrchestrator = new UserOrchestrator(dispatch);
+        const newTotalAmount = (user.totalAmount || 0) + amount;
+        const userUpdateResult = await userOrchestrator.updateTotalAmount({
+          userId: user.id,
+          companyId: user.companyId,
+          newAmount: newTotalAmount
+        });
+
+        if (!userUpdateResult.ok) {
+          console.error("Error updating user total amount", userUpdateResult.error);
+          // Non-blocking but worthy of a log
+        }
+      }
+
+      // 3. Create Payment
+      const payment = createPaymentObject(
+        amount,
+        location,
+        paymentId,
+        proofUrl,
+        method,
+        method === "consignacion" ? selectedBankAccountId : undefined,
+      );
       const paymentResult = await paymentOrchestrator.createPayment({
         payment,
-        companyId
+        companyId,
       });
 
       if (!paymentResult.ok) {
@@ -198,7 +297,7 @@ export const InstallmentDetailScreen = () => {
 
       if (result.ok) {
         setInstallment(cache);
-        if (cache.status === 'pagada') {
+        if (cache.status === "pagada") {
           setDialogTitle("Pago Registrado");
           setDialogBody("El pago completo fue registrado correctamente.");
         } else {
@@ -207,14 +306,19 @@ export const InstallmentDetailScreen = () => {
         }
       } else {
         // ROLLBACK
-        console.error("Error updating installment, rolling back payment:", createdPaymentId);
+        console.error(
+          "Error updating installment, rolling back payment:",
+          createdPaymentId,
+        );
         await paymentOrchestrator.deletePayment({
           companyId,
-          paymentId: createdPaymentId
+          paymentId: createdPaymentId,
         });
 
         setDialogTitle("Error");
-        setDialogBody("No se pudo actualizar la cuota. La transacción ha sido cancelada.");
+        setDialogBody(
+          "No se pudo actualizar la cuota. La transacción ha sido cancelada.",
+        );
       }
     } catch (error) {
       console.error(error);
@@ -228,14 +332,19 @@ export const InstallmentDetailScreen = () => {
     }
   };
 
-  const executePaymentFlow = async (amount: number, method: PaymentMethod, file?: File | null, forceLocationData?: GeoLocation | null) => {
+  const executePaymentFlow = async (
+    amount: number,
+    method: PaymentMethod,
+    file?: File | null,
+    forceLocationData?: GeoLocation | null,
+  ) => {
     setLoading(true);
 
     let location = forceLocationData;
 
-    // Only attempt to get location if not provided (e.g. from confirmation dialog) 
+    // Only attempt to get location if not provided (e.g. from confirmation dialog)
     // AND strictly if we haven't already failed getting it.
-    // Simplify: Always try get location if not checking existing failure. 
+    // Simplify: Always try get location if not checking existing failure.
     // Actually, if we are here from "Registrar sin ubicación", forceLocationData is null/undefined intentionally.
 
     if (location === undefined) {
@@ -244,7 +353,7 @@ export const InstallmentDetailScreen = () => {
       } catch (error) {
         console.warn("Could not get location:", error);
         // Save state and show dialog
-        setPendingPayment({ type: 'partial', amount, method, file }); // 'type' is redundant strictly but needed for compatibility if I kept it
+        setPendingPayment({ type: "partial", amount, method, file }); // 'type' is redundant strictly but needed for compatibility if I kept it
         setLocationDialogOpen(true);
         setLoading(false);
         return;
@@ -255,11 +364,13 @@ export const InstallmentDetailScreen = () => {
     let generatedId: string | undefined;
     let proofUrl: string | undefined;
 
-    if (method === 'consignacion') {
+    if (method === "consignacion") {
       if (!file) {
         setLoading(false);
         setDialogTitle("Error");
-        setDialogBody("Debe adjuntar un comprobante para pagos por consignación.");
+        setDialogBody(
+          "Debe adjuntar un comprobante para pagos por consignación.",
+        );
         setDialogOpen(true);
         return;
       }
@@ -269,29 +380,36 @@ export const InstallmentDetailScreen = () => {
         const uploadResult = await paymentOrchestrator.uploadProof({
           file,
           companyId,
-          paymentId: generatedId
+          paymentId: generatedId,
         });
 
         if (!uploadResult.ok) {
           throw new Error("Upload Failed");
         }
         proofUrl = uploadResult.value;
-
       } catch (error) {
         console.error("Upload error", error);
         setLoading(false);
         setDialogTitle("Error");
-        setDialogBody("No se puede registrar el pago como consignación por el momento. Inténtelo más tarde o comuníquese con un asesor.");
+        setDialogBody(
+          "No se puede registrar el pago como consignación por el momento. Inténtelo más tarde o comuníquese con un asesor.",
+        );
         setDialogOpen(true);
         setProofFile(null);
         return;
       }
     }
 
-    await processPayment(amount, location || undefined, generatedId, proofUrl, method);
+    await processPayment(
+      amount,
+      location || undefined,
+      generatedId,
+      proofUrl,
+      method,
+    );
   };
 
-  const initiatePayment = (type: 'full' | 'partial', amount: number) => {
+  const initiatePayment = (type: "full" | "partial", amount: number) => {
     // Open Method Dialog
     setPendingPayment({ type, amount });
     setPaymentMethodDialogOpen(true);
@@ -311,7 +429,7 @@ export const InstallmentDetailScreen = () => {
       // pendingPayment now has extra fields from our hack
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { amount, method, file } = pendingPayment as any;
-      executePaymentFlow(amount, method || 'efectivo', file, null); // Pass null as location to skip retry
+      executePaymentFlow(amount, method || "efectivo", file, null); // Pass null as location to skip retry
     } else {
       setPendingPayment(null);
       setProofFile(null);
@@ -321,13 +439,13 @@ export const InstallmentDetailScreen = () => {
   const handleFullPayment = () => {
     if (!installmentId) return;
     const amountToPay = installment.amount - (installment.paidAmount || 0);
-    initiatePayment('full', amountToPay);
+    initiatePayment("full", amountToPay);
   };
 
   const onPartialPaymentSubmit = (data: PartialPaymentForm) => {
     setPartialPaymentDialogOpen(false);
     reset();
-    initiatePayment('partial', Number(data.amount));
+    initiatePayment("partial", Number(data.amount));
   };
 
   if (!installment) {
@@ -336,7 +454,8 @@ export const InstallmentDetailScreen = () => {
   const canBePaid =
     installment.status === "pendiente" || installment.status === "incompleto";
 
-  if (loading && !installment.id && !loading) { // Corrected logic: loading is state, but we also check if installment is loaded
+  if (loading && !installment.id && !loading) {
+    // Corrected logic: loading is state, but we also check if installment is loaded
     return (
       <Box
         height="70vh"
@@ -375,43 +494,85 @@ export const InstallmentDetailScreen = () => {
       />
 
       {/* LOCATION DIALOG */}
-      <Dialog open={locationDialogOpen} onClose={() => handleLocationDialogResponse(false)}>
+      <Dialog
+        open={locationDialogOpen}
+        onClose={() => handleLocationDialogResponse(false)}
+      >
         <DialogTitle>Ubicación no disponible</DialogTitle>
         <DialogContent>
           <Typography>
-            No se pudo obtener su ubicación actual. ¿Desea registrar el pago de todas formas?
+            No se pudo obtener su ubicación actual. ¿Desea registrar el pago de
+            todas formas?
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => handleLocationDialogResponse(false)}>Cancelar</Button>
-          <Button onClick={() => handleLocationDialogResponse(true)} variant="contained" autoFocus>
+          <Button onClick={() => handleLocationDialogResponse(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => handleLocationDialogResponse(true)}
+            variant="contained"
+            autoFocus
+          >
             Registrar sin ubicación
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* PAYMENT METHOD DIALOG */}
-      <Dialog open={paymentMethodDialogOpen} onClose={() => setPaymentMethodDialogOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={paymentMethodDialogOpen}
+        onClose={() => setPaymentMethodDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Método de Pago</DialogTitle>
         <DialogContent>
           <FormControl component="fieldset" margin="normal">
             <FormLabel component="legend">Seleccione el método</FormLabel>
             <RadioGroup
               value={selectedMethod}
-              onChange={(e) => setSelectedMethod(e.target.value as PaymentMethod)}
+              onChange={(e) =>
+                setSelectedMethod(e.target.value as PaymentMethod)
+              }
             >
-              <FormControlLabel value="efectivo" control={<Radio />} label="Efectivo" />
-              <FormControlLabel value="consignacion" control={<Radio />} label="Consignación" />
+              <FormControlLabel
+                value="efectivo"
+                control={<Radio />}
+                label="Efectivo"
+              />
+              <FormControlLabel
+                value="consignacion"
+                control={<Radio />}
+                label="Consignación"
+              />
             </RadioGroup>
           </FormControl>
 
-          {selectedMethod === 'consignacion' && (
+          {selectedMethod === "consignacion" && (
             <Box mt={2}>
+              <FormControl fullWidth margin="dense">
+                <InputLabel id="bank-account-label">Cuenta Bancaria</InputLabel>
+                <Select
+                  labelId="bank-account-label"
+                  value={selectedBankAccountId}
+                  label="Cuenta Bancaria"
+                  onChange={(e) => setSelectedBankAccountId(e.target.value)}
+                >
+                  {bankAccounts.map((account) => (
+                    <MenuItem key={account.id} value={account.id}>
+                      {account.bankName} - {account.name} (Tope: ${account.tope.toLocaleString()})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <Button
                 component="label"
                 variant="outlined"
                 startIcon={<CloudUploadIcon />}
                 fullWidth
+                sx={{ mt: 1 }}
               >
                 {proofFile ? proofFile.name : "Subir Comprobante"}
                 <input
@@ -422,20 +583,26 @@ export const InstallmentDetailScreen = () => {
                 />
               </Button>
               {!proofFile && (
-                <Typography variant="caption" color="error" display="block" mt={1}>
+                <Typography
+                  variant="caption"
+                  color="error"
+                  display="block"
+                  mt={1}
+                >
                   * Comprobante requerido
                 </Typography>
               )}
             </Box>
           )}
-
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPaymentMethodDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setPaymentMethodDialogOpen(false)}>
+            Cancelar
+          </Button>
           <Button
             onClick={handlePaymentMethodConfirm}
             variant="contained"
-            disabled={selectedMethod === 'consignacion' && !proofFile}
+            disabled={(selectedMethod === "consignacion" && (!proofFile || !selectedBankAccountId))}
           >
             Continuar
           </Button>
@@ -443,21 +610,32 @@ export const InstallmentDetailScreen = () => {
       </Dialog>
 
       {/* DIALOGO PAGO PARCIAL */}
-      <Dialog open={partialPaymentDialogOpen} onClose={() => setPartialPaymentDialogOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={partialPaymentDialogOpen}
+        onClose={() => setPartialPaymentDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Registrar Pago Parcial</DialogTitle>
         <DialogContent>
           <Box mt={1}>
             <Typography variant="body2" gutterBottom>
               Monto pendiente: ${maxPaymentAmount.toLocaleString()}
             </Typography>
-            <form id="partial-payment-form" onSubmit={handleSubmit(onPartialPaymentSubmit)}>
+            <form
+              id="partial-payment-form"
+              onSubmit={handleSubmit(onPartialPaymentSubmit)}
+            >
               <Controller
                 name="amount"
                 control={control}
                 rules={{
                   required: "El monto es obligatorio",
                   min: { value: 1, message: "El monto debe ser mayor a 0" },
-                  max: { value: maxPaymentAmount, message: `El monto no puede superar $${maxPaymentAmount.toLocaleString()}` }
+                  max: {
+                    value: maxPaymentAmount,
+                    message: `El monto no puede superar $${maxPaymentAmount.toLocaleString()}`,
+                  },
                 }}
                 render={({ field }) => (
                   <TextField
@@ -475,8 +653,12 @@ export const InstallmentDetailScreen = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPartialPaymentDialogOpen(false)}>Cancelar</Button>
-          <Button type="submit" form="partial-payment-form" variant="contained">Continuar</Button>
+          <Button onClick={() => setPartialPaymentDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="partial-payment-form" variant="contained">
+            Continuar
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -496,7 +678,8 @@ export const InstallmentDetailScreen = () => {
 
               {installment.paidAmount && installment.paidAmount > 0 ? (
                 <Typography variant="caption" color="text.secondary">
-                  Pagado: ${installment.paidAmount.toLocaleString()} / ${installment.amount.toLocaleString()}
+                  Pagado: ${installment.paidAmount.toLocaleString()} / $
+                  {installment.amount.toLocaleString()}
                 </Typography>
               ) : null}
             </Stack>
@@ -612,7 +795,7 @@ export const InstallmentDetailScreen = () => {
           </Stack>
         </CardContent>
       </Card>
-    </Box >
+    </Box>
   );
 };
 

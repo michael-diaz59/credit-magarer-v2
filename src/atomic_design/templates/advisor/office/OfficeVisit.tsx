@@ -17,6 +17,8 @@ import {
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 import { VisitForm } from "../../visit/VisitForm";
+import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
+import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 
 export const OfficeVisit = () => {
   const { visitId } = useParams<{ visitId?: string }>();
@@ -27,6 +29,7 @@ export const OfficeVisit = () => {
 
   const [loading, setLoading] = useState(false);
   const [visit, setVisit] = useState<Visit | null>(null);
+  const [associatedDebt, setAssociatedDebt] = useState<Debt | undefined>(undefined);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogBody, setDialogBody] = useState("");
@@ -35,6 +38,7 @@ export const OfficeVisit = () => {
   const userId = useAppSelector((state) => state.user.user?.id || "undefined");
 
   const visitOrchestrator = useMemo(() => new VisitOrchestrator(), []);
+  const debtOrchestrator = useMemo(() => new DebtOrchestrator(), []);
 
   /* ------------------- Cargar visita ------------------- */
   useEffect(() => {
@@ -49,8 +53,20 @@ export const OfficeVisit = () => {
         idVisit: visitId,
       });
 
+      console.log("visit state", result.state.ok);
       if (result.state.ok && result.state.value) {
+        console.log("visit", result.state.value);
         setVisit(result.state.value);
+
+        // Cargar deuda asociada
+        const debtResult = await debtOrchestrator.getByFilters({
+          companyId,
+          idVisit: visitId
+        });
+
+        if (debtResult.ok && debtResult.value.state.length > 0) {
+          setAssociatedDebt(debtResult.value.state[0]);
+        }
       } else {
         setDialogBody("Error al cargar la visita");
         setDialogOpen(true);
@@ -104,6 +120,7 @@ export const OfficeVisit = () => {
             <VisitForm
               disabled={!isOfficeVisit}
               defaultVisitValues={visit}
+              defaultDebtValues={associatedDebt}
               actionLabel="Actualizar visita"
               documentCostumer={visit.customerDocument}
               onSubmit={(visitData) => handleUpdate(visitData)}

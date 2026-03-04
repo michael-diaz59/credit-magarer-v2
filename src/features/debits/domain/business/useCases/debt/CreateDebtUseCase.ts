@@ -4,7 +4,7 @@ import CustomerOrchestrator from "../../../../../costumers/domain/infraestructur
 import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
-import { generateInstallments } from "../helper";
+import { generateInstallments2 } from "../helper";
 
 export type CreateDebtError =
   | { code: "NETWORK_ERROR" }
@@ -16,11 +16,13 @@ export type CreateDebtError =
 export interface CreateDebtUInput {
   debt: Omit<Debt, "id">;
   companyId: string
+  /**este parametro representa los meses que se quiere que dure la deuda */
+  months?: number
 }
 
 
 export interface CreateDebtUOutput {
-  state: null
+  debtName: string
 }
 
 export interface createWithInstallmentsInput {
@@ -74,12 +76,16 @@ export class CreateDebtUseCase {
       costumerName: costumer.applicant.fullName,
       createdAt: new Date().toISOString().slice(0, 10),
       firstDueDate: "", // se calcula abajo
+      capital: input.debt.totalAmount,
     };
 
     /** 4️⃣ Generar cuotas */
-    const { installments, firstDueDate, nextPaymentDue } = generateInstallments(
+    const { installments, firstDueDate, nextPaymentDue } = generateInstallments2(
       debt,
-      costumer.applicant.address
+      costumer.applicant.address,
+      input.companyId,
+      input.months,
+
     );
 
     debt.nextPaymentDue = nextPaymentDue;

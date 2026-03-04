@@ -1,4 +1,4 @@
-import { fail, type Result } from "../../../../../core/helpers/ResultC"
+import { fail, ok, type Result } from "../../../../../core/helpers/ResultC"
 import CustomerOrchestrator from "../../../../costumers/domain/infraestructure/CustomerOrchestrator"
 import type VisitGateway from "../../infraestructure/VisitGateway"
 import type { visitErros } from "../entities/types"
@@ -12,7 +12,7 @@ export interface CreateVisitInput {
 
 //envuele la respuesta, null indica que fue exitosa la consulta
 export interface CreateVisitOutput {
-    state: Result<null, visitErros>
+    id: string
 }
 
 export class CreateVisitUseCase {
@@ -27,7 +27,7 @@ export class CreateVisitUseCase {
     }
 
 
-    async execute(input: CreateVisitInput): Promise<CreateVisitOutput> {
+    async execute(input: CreateVisitInput): Promise<Result<CreateVisitOutput, visitErros>> {
         // Implementation to get user details
         const costumerResult = await this.costumerOrchestrator.getCostumerByIdNumber({
             companyId: input.idCompany,
@@ -52,16 +52,22 @@ export class CreateVisitUseCase {
                         input.visit.createdAt || new Date().toISOString().slice(0, 10),
                 };
 
-                return await this.gateway.createVisit(
+                const result = await this.gateway.createVisit(
                     {
                         ...input,
                         visit: visitToSave,
                     }
                 )
+
+                if (result.ok) {
+                    return ok({ id: result.value })
+                }
+
+                return fail(result.error)
             }
 
         }
-        return { state: fail<visitErros>({ code: "USER_NOT_FOUND" }) }
+        return fail<visitErros>({ code: "USER_NOT_FOUND" })
 
 
     }

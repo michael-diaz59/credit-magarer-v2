@@ -1,9 +1,4 @@
-import {
-  Box,
-  Typography,
-  Stack,
-  CircularProgress,
-} from "@mui/material";
+import { Box, Typography, CircularProgress, Grid } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
@@ -16,18 +11,16 @@ export const DebtsForCustomer = () => {
   const navigate = useNavigate();
   const { docCostumer } = useParams<{ docCostumer: string }>();
 
-  const companyId = useAppSelector(
-    (state) => state.user.user?.companyId
-  );
+  const companyId = useAppSelector((state) => state.user.user?.companyId);
 
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-     console.log("init")
-     console.log(companyId)
-     console.log(docCostumer)
+    console.log("init");
+    console.log(companyId);
+    console.log(docCostumer);
 
     if (!companyId || !docCostumer) return;
 
@@ -38,7 +31,7 @@ export const DebtsForCustomer = () => {
         setLoading(true);
         setError(null);
 
-        console.log("obteniendo debts de cliente"+docCostumer )
+        console.log("obteniendo debts de cliente" + docCostumer);
         const result = await orchestrator.getDebstByCostumerDocument({
           companyId,
           // 🔥 si el backend soporta el filtro, mejor aquí
@@ -46,8 +39,12 @@ export const DebtsForCustomer = () => {
         });
 
         if (result.state.ok) {
-          console.log(result.state.value)
-          setDebts(result.state.value);
+          const sortedDebts = [...result.state.value].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          );
+
+          setDebts(sortedDebts);
         } else {
           setError("No se pudieron cargar las deudas del cliente");
         }
@@ -86,19 +83,16 @@ export const DebtsForCustomer = () => {
           Este cliente no tiene deudas registradas
         </Typography>
       ) : (
-        <Stack spacing={2}>
+        <Grid container spacing={2}>
           {debts.map((debt: Debt) => (
-            <DebtCard
-              key={debt.id}
-              debt={debt}
-              onClick={(d) =>
-                navigate(
-                  ScreenPaths.auditor.debit(d.id)
-                )
-              }
-            />
+            <Grid key={debt.id}>
+              <DebtCard
+                debt={debt}
+                onClick={(d) => navigate(ScreenPaths.auditor.debit(d.id))}
+              />
+            </Grid>
           ))}
-        </Stack>
+        </Grid>
       )}
     </Box>
   );

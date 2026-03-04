@@ -8,4 +8,5 @@ export interface UserGateway {
   setUser(user: User): Promise<Result<void, setUserError>>;
   getUsersByCompany(input: GetUserByCompanyInput): Promise<GetUserByCompanyOutput>;
   updateCollectorRoutes(userId: string, companyId: string, routes: Record<string, string[]>): Promise<Result<void, setUserError>>
+  updateTotalAmount(userId: string, companyId: string, newAmount: number): Promise<Result<void, setUserError>>;
 }

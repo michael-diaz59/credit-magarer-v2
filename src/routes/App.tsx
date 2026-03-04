@@ -27,8 +27,6 @@ import { AuditEntryPoint } from "../atomic_design/templates/audit/AuditEntryPoin
 import { DebtsForCustomer } from "../atomic_design/templates/debt/audit/DebtsForCustomer.tsx";
 import Auditor_layout from "./auditor/Auditor_layout.tsx";
 import { CustomersAudit } from "../atomic_design/templates/audit/CustomersAudit.tsx";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { CustomerEntryPage } from "../atomic_design/templates/costumers/CustomerEntryPage.tsx";
 import { SelectListDebts } from "../atomic_design/templates/audit/SelectListDebts.tsx";
 import { AuditorDebtsFiltersScreen } from "../atomic_design/templates/audit/AuditorDebtsFiltersScreen.tsx";
 import { AuditDebtScreen } from "../atomic_design/templates/debt/debts/AuditDebtScreen.tsx";
@@ -287,6 +285,8 @@ export default function App() {
           element={<CustomerVisitEntryPage />}
         />
 
+
+  {/*sesor de campo:  lista de visitas de un cliente*/}
         <Route
           path={ScreenPaths.advisor.field.visit.visits2(":documentCostumer")}
           element={<VisitListPage />}
@@ -296,13 +296,17 @@ export default function App() {
           element={<FieldVisit />}
         />
         <Route
+          path={ScreenPaths.advisor.field.visit.customer2(":costumerId")}
+          element={<CostumerForm />}
+        />   
+      </Route>
+        <Route
           path={ScreenPaths.advisor.field.visit.Costumer(
             ":costumerId",
             ":visitId",
           )}
-          element={<CostumerForm />}
+          element={<FieldVisit />}
         />
-      </Route>
     </Routes>
   );
 }

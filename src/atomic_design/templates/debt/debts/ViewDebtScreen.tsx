@@ -129,7 +129,7 @@ export const ViewDebtScreen = () => {
   if (!form) return null;
 
   return (
-    <Box p={3} maxWidth={600} mx="auto">
+    <Box p={3} mx="auto">
       <>
         <LoadingOverlay open={loading} />
         <BaseDialog
@@ -141,7 +141,7 @@ export const ViewDebtScreen = () => {
         />
       </>
       <Box position="relative">
-        <Card>
+        <Card  sx={{ width: "100%" }}>
           <CardContent>
             <Typography variant="h6" mb={2}>
               Detalle de la deuda

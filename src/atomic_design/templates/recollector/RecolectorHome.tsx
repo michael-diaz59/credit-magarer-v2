@@ -27,7 +27,7 @@ import { RouteManagementDialog } from "../../organisms/RouteManagementDialog";
 
 /** indica si una fecha es menor a la actual */
 export function IsPastDate(dateStr: string): boolean {
-    const inputDate = new Date(`${dateStr}T00:00:00`);
+  const inputDate = new Date(`${dateStr}T00:00:00`);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return inputDate < today;
@@ -118,7 +118,6 @@ export const RecolectorHome = () => {
         });
 
         if (result.ok) {
-          console.log(items)
           setItems(result.value.state);
         }
       } catch (error) {
@@ -135,20 +134,12 @@ export const RecolectorHome = () => {
      DERIVADOS
      ======================= */
   const { pending, overdue, paid } = useMemo(() => {
-
-    for(const i of items){
-      if(i.status==="incompleto"){
-      console.log(i)
-      }
-
-    }
-
     return {
       pending: items.filter(
         (i) => (i.status === "pendiente" || i.status === "incompleto") && IsFutureOrToday(i.dueDate)
       ),
       overdue: items.filter(
-        (i) => (i.status === "pendiente" ||  i.status === "incompleto") && IsPastDate(i.dueDate)
+        (i) => (i.status === "pendiente" || i.status === "incompleto") && IsPastDate(i.dueDate)
       ),
       paid: items.filter((i) => i.status === "pagada"),
     };

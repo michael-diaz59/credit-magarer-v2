@@ -4,12 +4,12 @@
  * confirmado: el contador confirmo el pago |
  * cancelada: el pago se cancelo
  */
-  export type PaymentStatus =
+export type PaymentStatus =
   | 'registrado'
   | 'conflicto'
   | 'confirmado'
   | 'cancelada';
-  ;
+;
 
 
 
@@ -17,15 +17,15 @@ export type PaymentMethod =
   | 'efectivo'
   | 'consignacion'
 
-  
+
 /**representa los pagos que hacen los clientes a los cobradores*/
 export interface Payment {
-    //el comprobante se guarda en storage
+  //el comprobante se guarda en storage
   /**es el id al documento de comprobante de pago */
   idProofOfPayment: string
   id: string;
 
-    /**observaciones del cobrador */
+  /**observaciones del cobrador */
   collectorObservation: string
 
   /**observaciones del contador */
@@ -44,6 +44,7 @@ export interface Payment {
   status: PaymentStatus;
   paidAt: string;
   location?: GeoLocation;
+  bankAccountId?: string;
 }
 
 export interface GeoLocation {

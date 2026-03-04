@@ -1,9 +1,4 @@
-import {
-  Button,
-  MenuItem,
-  Stack,
-  TextField
-} from "@mui/material";
+import { Button, MenuItem, Stack, TextField, Grid } from "@mui/material";
 import type {
   Debt,
   DebtStatus,
@@ -20,8 +15,6 @@ import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { textFieldSX } from "../../atoms/textFieldSX";
 
 export type DebtFormAction = "create" | "update" | "preApprove";
-
-
 
 export type DebtFormProps = {
   debtId?: string; // 👈 nuevo
@@ -71,7 +64,7 @@ export const DebtForm = ({
   });
 
   useEffect(() => {
-    if (!companyId || (mode !== "create" && mode !== "audit")) return;
+    if (!companyId) return;
 
     const loadCollectors = async (): Promise<void> => {
       const orchestrator = new UserOrchestrator(dispatch);
@@ -89,7 +82,7 @@ export const DebtForm = ({
     loadCollectors().catch((error: unknown) => {
       console.error("Error cargando cobradores", error);
     });
-  }, [dispatch, mode, companyId]);
+  }, [dispatch, companyId]);
 
   return (
     <form
@@ -110,160 +103,202 @@ export const DebtForm = ({
         },
       )}
     >
-      <Stack spacing={2}>
-        {/* STATUS */}
-        {canEditStatus && (
-          <Controller
-            name="status"
-            control={control}
-            rules={{ required: "El estado es obligatorio" }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                sx={textFieldSX}
-                select
-                label="Estado"
-                fullWidth
-                error={!!errors.status}
-                helperText={errors.status?.message}
-              >
-                {debtStatusList.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status}
-                  </MenuItem>
-                ))}
-              </TextField>
+      <Grid container spacing={2}>
+        {/* SECCION 1 */}
+        <Grid>
+          <Stack spacing={2}>
+            {/* STATUS */}
+            {canEditStatus && (
+              <Controller
+                name="status"
+                control={control}
+                rules={{ required: "El estado es obligatorio" }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    sx={textFieldSX}
+                    select
+                    label="Estado"
+                    fullWidth
+                    error={!!errors.status}
+                    helperText={errors.status?.message}
+                  >
+                    {debtStatusList.map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {status}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              />
             )}
-          />
-        )}
 
-        {/* COBRADOR */}
-        {(canEditStatus || mode === "create") && (
-          <Controller
-            name="collectorId"
-            control={control}
-            rules={{ required: "Debe asignar un cobrador" }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                sx={textFieldSX}
-                label="Cobrador asignado"
-                fullWidth
-                error={!!errors.collectorId}
-                helperText={errors.collectorId?.message}
-              >
-                {collectors.map((collector) => (
-                  <MenuItem key={collector.id} value={collector.id}>
-                    {collector.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-        )}
+            {/* COBRADOR */}
 
-        {/* CÉDULA */}
-        <TextField
-          label="Cédula del cliente"
-          fullWidth
-          sx={textFieldSX}
-          disabled={mode === "view" || mode === "audit"}
-          error={!!errors.costumerDocument}
-          helperText={errors.costumerDocument?.message}
-          {...register("costumerDocument", {
-            required: "La cédula es obligatoria",
-          })}
-        />
+            <Controller
+              name="collectorId"
+              control={control}
+              rules={{ required: "Debe asignar un cobrador" }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  value={
+                    collectors.some((c) => c.id === field.value)
+                      ? field.value
+                      : ""
+                  }
+                  select
+                  sx={textFieldSX}
+                  label="Cobrador asignado"
+                  fullWidth
+                  error={!!errors.collectorId}
+                  helperText={errors.collectorId?.message}
+                >
+                  {collectors.map((collector) => (
+                    <MenuItem key={collector.id} value={collector.id}>
+                      {collector.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
 
-        {/* TIPO */}
-        <Controller
-          name="type"
-          control={control}
-          rules={{ required: "El tipo es obligatorio" }}
-          render={({ field }) => (
+            {/* CÉDULA */}
             <TextField
-              {...field}
-              select
-              label="Tipo"
+              label="Cédula del cliente"
+              fullWidth
+              sx={textFieldSX}
+              disabled={mode === "view" || mode === "audit"}
+              error={!!errors.costumerDocument}
+              helperText={errors.costumerDocument?.message}
+              {...register("costumerDocument", {
+                required: "La cédula es obligatoria",
+              })}
+            />
+          </Stack>
+        </Grid>
+
+        {/* SECCION 2 */}
+        <Grid>
+          <Stack spacing={2}>
+            {/* TIPO */}
+            <Controller
+              name="type"
+              control={control}
+              rules={{ required: "El tipo es obligatorio" }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Tipo"
+                  fullWidth
+                  sx={textFieldSX}
+                  disabled={mode === "view"}
+                  error={!!errors.type}
+                  helperText={errors.type?.message}
+                >
+                  {debtTypes.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              )}
+            />
+
+            {/* MONTO */}
+            <TextField
+              label="Monto total"
+              type="number"
+              fullWidth
+              disabled={mode === "view"}
+              sx={textFieldSX}
+              error={!!errors.totalAmount}
+              helperText={errors.totalAmount?.message}
+              {...register("totalAmount", {
+                valueAsNumber: true,
+                required: "Monto obligatorio",
+                min: { value: 10001, message: "Debe ser mayor a 10000" },
+              })}
+            />
+
+            <Controller
+              name="debtTerms"
+              control={control}
+              rules={{ required: "Periodicidad obligatoria" }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Periodicidad"
+                  fullWidth
+                  sx={textFieldSX}
+                  disabled={mode === "view"}
+                  error={!!errors.debtTerms}
+                  helperText={errors.debtTerms?.message}
+                >
+                  <MenuItem value="diario">Diario</MenuItem>
+                  <MenuItem value="semanal">Semanal</MenuItem>
+                  <MenuItem value="quincenal">Quincenal</MenuItem>
+                  <MenuItem value="mensual">Mensual</MenuItem>
+                </TextField>
+              )}
+            />
+          </Stack>
+        </Grid>
+
+        {/* SECCION 3 */}
+        <Grid>
+          <Stack spacing={2}>
+            {/* Tasa de inters */}
+            <TextField
+              label="Tasa de interes %"
+              type="number"
               fullWidth
               sx={textFieldSX}
               disabled={mode === "view"}
-              error={!!errors.type}
-              helperText={errors.type?.message}
-            >
-              {debtTypes.map((type) => (
-                <MenuItem key={type} value={type}>
-                  {type}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-        />
+              error={!!errors.interestRate}
+              helperText={errors.interestRate?.message}
+              {...register("interestRate", {
+                valueAsNumber: true,
+                required: "Monto obligatorio",
+                min: { value: 1, message: "Debe ser mayor a 1%" },
+              })}
+            />
 
-        {/* MONTO */}
-        <TextField
-          label="Monto total"
-          type="number"
-          fullWidth
-          disabled={mode === "view"}
-          sx={textFieldSX}
-          error={!!errors.totalAmount}
-          helperText={errors.totalAmount?.message}
-          {...register("totalAmount", {
-            valueAsNumber: true,
-            required: "Monto obligatorio",
-            min: { value: 10001, message: "Debe ser mayor a 10000" },
-          })}
-        />
+            {/*numero de cuotas*/}
+            <TextField
+              label="numero de cuotas"
+              type="number"
+              sx={textFieldSX}
+              fullWidth
+              disabled={mode === "view"}
+              error={!!errors.installmentCount}
+              helperText={errors.installmentCount?.message}
+              {...register("installmentCount", {
+                valueAsNumber: true,
+                required: "Monto obligatorio",
+                min: { value: 1, message: "Debe ser mayor a 1%" },
+              })}
+            />
 
-        {/* Tasa de inters */}
-        <TextField
-          label="Tasa de interes %"
-          type="number"
-          fullWidth
-          sx={textFieldSX}
-          disabled={mode === "view"}
-          error={!!errors.interestRate}
-          helperText={errors.interestRate?.message}
-          {...register("interestRate", {
-            valueAsNumber: true,
-            required: "Monto obligatorio",
-            min: { value: 1, message: "Debe ser mayor a 1%" },
-          })}
-        />
-
-        {/* Tasa de inters */}
-        <TextField
-          label="numero de cuotas"
-          type="number"
-          sx={textFieldSX}
-          fullWidth
-          disabled={mode === "view"}
-          error={!!errors.installmentCount}
-          helperText={errors.installmentCount?.message}
-          {...register("installmentCount", {
-            valueAsNumber: true,
-            required: "Monto obligatorio",
-            min: { value: 1, message: "Debe ser mayor a 1%" },
-          })}
-        />
-
-        {/* FECHA */}
-        <TextField
-          label="Fecha de inicio"
-          type="date"
-          sx={textFieldSX}
-          fullWidth
-          disabled={mode === "view" || mode === "audit"}
-          InputLabelProps={{ shrink: true }}
-          error={!!errors.startDate}
-          helperText={errors.startDate?.message}
-          {...register("startDate", {
-            required: "Fecha obligatoria",
-          })}
-        />
-      </Stack>
+            {/* FECHA */}
+            <TextField
+              label="Fecha de inicio"
+              type="date"
+              sx={textFieldSX}
+              fullWidth
+              disabled={mode === "view" || mode === "audit"}
+              InputLabelProps={{ shrink: true }}
+              error={!!errors.startDate}
+              helperText={errors.startDate?.message}
+              {...register("startDate", {
+                required: "Fecha obligatoria",
+              })}
+            />
+          </Stack>
+        </Grid>
+      </Grid>
 
       {/* ACTION BUTTONS */}
       <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>

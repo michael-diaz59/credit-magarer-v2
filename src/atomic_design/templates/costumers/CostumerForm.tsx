@@ -20,6 +20,7 @@ import {
   emptyVehicle,
   emptyFamilyReference,
 } from "./formFactories";
+import { Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 
 import { VehicleForm } from "./VehicleForm";
 import { FamilyReferenceForm } from "./FamilyReferenceForm";
@@ -29,7 +30,7 @@ import CustomerOrchestrator from "../../../features/costumers/domain/infraestruc
 import { useAppSelector } from "../../../store/redux/coreRedux";
 import React, { useEffect } from "react";
 import { costumerSchema } from "./SchemasCostumer";
-import type z from "zod";
+import { z } from "zod";
 import type { Customer } from "../../../features/costumers/domain/business/entities/Customer";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "../../atoms/ConfirmDialog";
@@ -42,6 +43,7 @@ import {
 } from "../../molecules/CustomerDocumentActions";
 import type { DocumentTypeG } from "../../../features/costumers/repository/FirebaseCostumerRepository";
 import { textFieldmt3SX } from "../../atoms/textFieldSX";
+
 export type CostumerFormValues = z.infer<typeof costumerSchema>;
 
 export const CostumerForm = () => {
@@ -88,16 +90,19 @@ export const CostumerForm = () => {
   }, []);
 
   const isEditMode = paramsReady && !!costumerId;
+
   const form = useForm<CostumerFormValues>({
     resolver: zodResolver(costumerSchema),
     defaultValues: {
+      calification: "3",
+      listId: "",
       id: "",
+      applicant: emptyPersonalInfo(),
       debtCounter: 0,
       observations: "",
-      applicant: emptyPersonalInfo(),
-      coSigner: [emptyPersonalInfo()],
-      vehicle: [emptyVehicle()],
-      familyReference: [emptyFamilyReference()],
+      coSigner: [],
+      vehicle: [],
+      familyReference: [],
     },
   });
 
@@ -120,7 +125,7 @@ export const CostumerForm = () => {
           setCostumer(result.value);
 
           originalCustomerNameRef.current =
-            result.value?.applicant.fullName ?? null;
+            result.value?.applicant?.fullName ?? null;
         }
       } catch {
         setBaseDIlogText(
@@ -161,7 +166,7 @@ export const CostumerForm = () => {
   useEffect(() => {
     if (!costumer) return;
 
-    console.log("id list ",costumer.listId)
+    console.log("id list ", costumer.listId);
 
     form.reset(CostumerFormMapper.toForm(costumer));
   }, [costumer, form]);
@@ -176,7 +181,7 @@ export const CostumerForm = () => {
       await orchestratorRef.deleteCostumer({
         companyId: userCompanieId ?? "",
         costumerId: costumerId,
-        documentId: costumer?.applicant.idNumber || "",
+        documentId: costumer?.applicant?.idNumber || "",
       });
       setBaseDIlogText("el cliente se elimino con exito");
       setBaseDIlogOpen(true);
@@ -203,7 +208,7 @@ export const CostumerForm = () => {
 
       if (isEditMode) {
         costumer.id = costumerId || "";
-        const currentName = costumer.applicant.fullName;
+        const currentName = costumer.applicant?.fullName ?? "";
         const originalName = originalCustomerNameRef.current;
 
         const isNameChange =
@@ -223,7 +228,7 @@ export const CostumerForm = () => {
           setBaseDIlogOpen(true);
           setstillInPage(false);
         } else {
-          console.log(result.error.code)
+          console.log(result.error.code);
           if (result.error.code === "DOCUMENT_EXISTING") {
             setBaseDIlogText(
               "ya existe un cliente registrado con el numero de documento dado",
@@ -313,11 +318,8 @@ export const CostumerForm = () => {
               navigate(ScreenPaths.advisor.office.costumer.costumers);
               return;
             }
-            if (visitId) {
-              navigate(ScreenPaths.advisor.field.visit.visit(visitId));
-              return;
-            }
-            navigate(ScreenPaths.advisor.field.home);
+            navigate(-1);
+
             return;
           }
         }}
@@ -346,11 +348,29 @@ export const CostumerForm = () => {
               {...field}
               label="Observaciones"
               multiline
-                 sx={textFieldmt3SX}
+              sx={textFieldmt3SX}
               rows={3}
               fullWidth
               disabled={!isOfficeVisit}
             />
+          )}
+        />
+
+        <Controller
+          name="calification"
+          control={control}
+          render={({ field, fieldState }) => (
+            <FormControl fullWidth sx={{ mt: 3 }} error={!!fieldState.error}>
+              <InputLabel>Calificación del cliente</InputLabel>
+
+              <Select {...field} label="Calificación del cliente">
+                <MenuItem value="1">⭐ Muy riesgoso</MenuItem>
+                <MenuItem value="2">⭐⭐ Riesgo alto</MenuItem>
+                <MenuItem value="3">⭐⭐⭐ Normal</MenuItem>
+                <MenuItem value="4">⭐⭐⭐⭐ Buen cliente</MenuItem>
+                <MenuItem value="5">⭐⭐⭐⭐⭐ Excelente</MenuItem>
+              </Select>
+            </FormControl>
           )}
         />
 
@@ -411,6 +431,23 @@ export const CostumerForm = () => {
               pendingFile={pendingDocs["documento_x"]}
             />
           </Grid>
+
+          <Grid>
+            <UploadDocumentButton
+              label="Subir foto de la casa"
+              type="foto_casa"
+              onSelect={handleSelectDocument}
+            />
+          </Grid>
+          <Grid>
+            <CustomerDocumentActions
+              label="Foto de la casa"
+              type="foto_casa"
+              companyId={userCompanieId ?? ""}
+              costumerId={costumerId ?? ""}
+              pendingFile={pendingDocs["foto_casa"]}
+            />
+          </Grid>
         </Grid>
 
         <PersonalInfoForm control={control} prefix="applicant" />
@@ -419,7 +456,7 @@ export const CostumerForm = () => {
           <Box key={field.id}>
             <VehicleForm control={control} index={index} />
 
-            {vehicleArray.fields.length > 1 && (
+            {vehicleArray.fields.length > 0 && (
               <Button
                 color="error"
                 size="small"
@@ -446,7 +483,7 @@ export const CostumerForm = () => {
               index={index}
             />
 
-            {coSignerArray.fields.length > 1 && (
+            {coSignerArray.fields.length > 0 && (
               <Button
                 color="error"
                 size="small"
@@ -470,7 +507,7 @@ export const CostumerForm = () => {
           <Box key={field.id} sx={{ mb: 3 }}>
             <FamilyReferenceForm control={control} index={index} />
 
-            {familyArray.fields.length > 1 && (
+            {familyArray.fields.length > 0 && (
               <Button
                 color="error"
                 size="small"

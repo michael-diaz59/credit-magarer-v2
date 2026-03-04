@@ -12,18 +12,40 @@ import { FirebaseError } from "firebase/app";
 import type { InstallmentGateway } from "../../domain/infraestructure/DebtGatweay";
 import { firestore } from "../../../../store/firebase/firebase";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
-import type { UpdateInstallmentByDebtInput, UpdateInstallmentByDebtOutput } from "../../domain/business/useCases/installment/UpdateInstallmentsByDebtCase";
-import type { GetInstallmentsByDebtInput, GetInstallmentsByDebtOutput } from "../../domain/business/useCases/installment/GetInstallmentsByDebtCase";
+import type {
+  UpdateInstallmentByDebtInput,
+  UpdateInstallmentByDebtOutput,
+} from "../../domain/business/useCases/installment/UpdateInstallmentsByDebtCase";
+import type {
+  GetInstallmentsByDebtInput,
+  GetInstallmentsByDebtOutput,
+} from "../../domain/business/useCases/installment/GetInstallmentsByDebtCase";
 import { installmentConverter } from "./Convert";
 import type { Installment } from "../../domain/business/entities/Installment";
-import type { CreateInstallmentsGatewayInput, CreateInstallmentsOutput } from "../../domain/business/useCases/installment/CreateInstallmentsUseCase";
-import type { GetByCollectorInput, GetByCollectorOutput, GetByCollectorError } from "../../domain/business/useCases/installment/GetByCollectorCase";
-import type { GetByIdInput, GetByIdOutput, GetByIdError } from "../../domain/business/useCases/installment/GetByIdCase";
-import type { UpdateByIdInput, UpdateByIdOutput, UpdateByIdError } from "../../domain/business/useCases/installment/UpdateByIdCase";
+import type {
+  CreateInstallmentsGatewayInput,
+  CreateInstallmentsOutput,
+} from "../../domain/business/useCases/installment/CreateInstallmentsUseCase";
+import type {
+  GetByCollectorInput,
+  GetByCollectorOutput,
+  GetByCollectorError,
+} from "../../domain/business/useCases/installment/GetByCollectorCase";
+import type {
+  GetByIdInput,
+  GetByIdOutput,
+  GetByIdError,
+} from "../../domain/business/useCases/installment/GetByIdCase";
+import type {
+  UpdateByIdInput,
+  UpdateByIdOutput,
+  UpdateByIdError,
+} from "../../domain/business/useCases/installment/UpdateByIdCase";
+import { mapToInstallment } from "../../domain/infraestructure/normalizador";
 
 export class FirebaseInstallmentRepository implements InstallmentGateway {
   async updateById(
-    input: UpdateByIdInput
+    input: UpdateByIdInput,
   ): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
     const { companyId, installment } = input;
 
@@ -33,7 +55,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         "companies",
         companyId,
         "installments",
-        installment.id
+        installment.id,
       );
 
       const snapshot = await getDoc(ref);
@@ -66,9 +88,8 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
     }
   }
 
-
   async getById(
-    input: GetByIdInput
+    input: GetByIdInput,
   ): Promise<Result<GetByIdOutput, GetByIdError>> {
     const { companyId, installmentId } = input;
 
@@ -78,7 +99,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         "companies",
         companyId,
         "installments",
-        installmentId
+        installmentId,
       );
 
       const snapshot = await getDoc(ref);
@@ -86,11 +107,8 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       if (!snapshot.exists()) {
         return fail({ code: "UNKNOWN_ERROR" });
       }
-
-      const installment: Installment = {
-        id: snapshot.id,
-        ...(snapshot.data() as Omit<Installment, "id">),
-      };
+      const raw = snapshot.data() as Partial<Installment>;
+      const installment = mapToInstallment(snapshot.id, raw);
 
       return ok({
         state: installment,
@@ -109,37 +127,25 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
   }
 
   async getByCollector(
-    input: GetByCollectorInput
+    input: GetByCollectorInput,
   ): Promise<Result<GetByCollectorOutput, GetByCollectorError>> {
     const { companyId, collectorId, status } = input;
 
     try {
-      console.log("llega")
-      console.log(collectorId)
+      console.log("llega");
+      console.log(collectorId);
 
-      const ref = collection(
-        firestore,
-        "companies",
-        companyId,
-        "installments"
-      );
-      console.log(collectorId)
+      const ref = collection(firestore, "companies", companyId, "installments");
+      console.log(collectorId);
 
-
-      const constraints = [
-        where("collectorId", "==", collectorId),
-      ];
+      const constraints = [where("collectorId", "==", collectorId)];
 
       // 👉 aplicar filtro solo si existe y tiene estados
       if (status && status.length > 0) {
         if (status.length === 1) {
-          constraints.push(
-            where("status", "==", status[0])
-          );
+          constraints.push(where("status", "==", status[0]));
         } else {
-          constraints.push(
-            where("status", "in", status)
-          );
+          constraints.push(where("status", "in", status));
         }
       }
 
@@ -147,10 +153,9 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
 
       const snapshot = await getDocs(q);
 
-      const installments: Installment[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Installment, "id">),
-      }));
+      const installments: Installment[] = snapshot.docs.map((doc) =>
+        mapToInstallment(doc.id, doc.data() as Partial<Installment>),
+      );
 
       return ok({
         state: installments,
@@ -167,7 +172,9 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }
-  async createForNewDebt(input: CreateInstallmentsGatewayInput): Promise<CreateInstallmentsOutput> {
+  async createForNewDebt(
+    input: CreateInstallmentsGatewayInput,
+  ): Promise<CreateInstallmentsOutput> {
     try {
       const { companyId, input: installments } = input;
 
@@ -177,7 +184,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         firestore,
         "companies",
         companyId,
-        "installments"
+        "installments",
       );
 
       for (const installment of installments) {
@@ -191,7 +198,6 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       await batch.commit();
 
       return { state: ok(null) };
-
     } catch (error) {
       if (error instanceof FirebaseError) {
         return { state: fail({ code: "NETWORK_ERROR" }) };
@@ -201,10 +207,8 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
     }
   }
 
-
-
   async updateByDebt(
-    input: UpdateInstallmentByDebtInput
+    input: UpdateInstallmentByDebtInput,
   ): Promise<UpdateInstallmentByDebtOutput> {
     try {
       const batch = writeBatch(firestore);
@@ -215,7 +219,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
           "companies",
           input.companyId,
           "installments",
-          installment.id
+          installment.id,
         );
 
         //  Nunca mandes el id dentro del documento
@@ -237,24 +241,23 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
   }
 
   async getByDebt(
-    input: GetInstallmentsByDebtInput
+    input: GetInstallmentsByDebtInput,
   ): Promise<GetInstallmentsByDebtOutput> {
     try {
       const ref = collection(
         firestore,
         "companies",
         input.companyId,
-        "installments"
+        "installments",
       ).withConverter(installmentConverter);
 
-      const q = query(
-        ref,
-        where("debtId", "==", input.debtId)
-      );
+      const q = query(ref, where("debtId", "==", input.debtId));
 
       const snapshot = await getDocs(q);
 
-      const installments = snapshot.docs.map(doc => doc.data());
+      const installments = snapshot.docs.map((doc) =>
+        mapToInstallment(doc.id, doc.data() as Partial<Installment>),
+      );
 
       return { state: ok<Installment[]>(installments) };
     } catch (error) {
@@ -262,6 +265,28 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         return { state: fail({ code: "NETWORK_ERROR" }) };
       }
       return { state: fail({ code: "UNKNOWN_ERROR" }) };
+    }
+  }
+
+
+  async deleteBatch(
+    companyId: string,
+    installmentIds: string[],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<Result<null, any>> {
+    try {
+      const batch = writeBatch(firestore);
+
+      for (const id of installmentIds) {
+        const ref = doc(firestore, "companies", companyId, "installments", id);
+        batch.delete(ref);
+      }
+
+      await batch.commit();
+      return ok(null);
+    } catch (error) {
+      console.log(error);
+      return fail({ code: "UNKNOWN_ERROR" });
     }
   }
 }

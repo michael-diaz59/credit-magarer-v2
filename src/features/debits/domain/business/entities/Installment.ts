@@ -17,10 +17,6 @@ export type InstallmentStatus =
   | 'cancelada';
 
 
-
-
-
-
 //mantener sincronizado con costumer.address
 export interface InstallmentAddress {
   //direccion
@@ -46,11 +42,14 @@ export interface Installment {
   //id de la deuda
   debtId: string;
 
-  /**tasa original de interes*/
-  originalInterestRate: number;
+  /**id de la comañia usada para las reglas de seguridad de grupos */
+  companyId:string
 
   /**tasa de interes*/
   interestRate: number;
+
+    /**tasa de interes para retraso*/
+  lateInterestRate: number
 
   /**id del collector */
   collectorId: string;
@@ -64,26 +63,32 @@ export interface Installment {
   /**nombre del cliente */
   costumerName: string;
 
-   /**celular del cliente */
+  /**celular del cliente */
   costumerNumber: string;
 
   /**direccion del cliente */
   costumerAddres: InstallmentAddress;
 
-    /**total de cuotas de la deuda */
+  /**total de cuotas de la deuda */
   installmentTotalNumber: number; // 6
 
   /**numero de cuota en la deuda */
   installmentNumber: number; // 1, 2, 3...
 
-  /**monto a pagar en la cuota, se puede manjear con monto pagado para seleccionar pagos incompletos */
+  /**valor de la cuota*/
   amount: number;
 
-  /**monto pagado */
-  paidAmount?: number;
+  /**monto pagado de la cuota */
+  paidAmount: number;
 
-  /**fecha de pago de cuota */
+    /**dinero extra que se debe pagar por atraso en el pago */
+  latepayment: number;
+
+  /**fecha de pago de la cuota*/
   dueDate: string;
+
+   /**fecha de pago de con retraso*/
+  lateDueDate: string;
 
   /**estado de la cuota:  "pendiente" | "pagada" | "en_mora" | "conflicto" | "cancelada"*/
   status: InstallmentStatus;
@@ -95,7 +100,10 @@ export interface Installment {
   createdAt: string;
 
   /**registro de pagos, es la lista de id de payments */
-  payments? : string[]
+  payments?: string[]
+
+  /** indica si la cuota fue aplazada */
+  aplazado?: boolean;
 }
 
 

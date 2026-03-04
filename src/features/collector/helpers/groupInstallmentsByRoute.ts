@@ -56,7 +56,7 @@ export function groupInstallmentsByRoute(
         ? routeGroups.get(routeName)!
         : unassigned;
 
-    if (installment.status !== "pendiente") continue;
+    if (installment.status !== "pendiente" && installment.status !== "incompleto") continue;
 
     if (IsFutureOrToday(installment.dueDate)) {
       targetGroup.pending.push(installment);

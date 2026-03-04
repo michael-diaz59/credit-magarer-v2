@@ -1,3 +1,3 @@
 export interface UserAuthentication {
-  id:string;
+  id: string;
 }

@@ -115,7 +115,7 @@ export const AuditDebtScreen = () => {
   if (!form) return null;
 
   return (
-    <Box p={3} maxWidth={600} mx="auto">
+    <Box p={3} width="100%" >
       <>
         <LoadingOverlay open={loading} />
         <BaseDialog
@@ -127,7 +127,7 @@ export const AuditDebtScreen = () => {
         />
       </>
       <Box position="relative">
-        <Card>
+        <Card  sx={{ width: "100%" }}>
           <CardContent>
             <Typography variant="h6" mb={2}>
               Detalle de la deuda

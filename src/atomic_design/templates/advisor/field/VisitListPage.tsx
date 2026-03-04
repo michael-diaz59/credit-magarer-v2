@@ -20,7 +20,7 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
 
 type SortOrder = "DESC" | "ASC";
-
+/**pantalla para ver las visitas de un cliente en base a su cedula */
 export const VisitListPage = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);

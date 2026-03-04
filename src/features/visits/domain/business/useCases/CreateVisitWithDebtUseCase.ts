@@ -1,4 +1,4 @@
-import { fail } from "../../../../../core/helpers/ResultC";
+import { fail, ok, type Result } from "../../../../../core/helpers/ResultC";
 import type Visit from "../entities/Visit";
 import type { Debt } from "../../../../debits/domain/business/entities/Debt";
 import type VisitGateway from "../../infraestructure/VisitGateway";
@@ -26,7 +26,7 @@ export class CreateVisitWithDebtUseCase {
         this.createDebtUseCase = new CreateDebtUseCase(debtGateway);
     }
 
-    async execute(input: CreateVisitWithDebtInput): Promise<CreateVisitOutput> {
+    async execute(input: CreateVisitWithDebtInput): Promise<Result<CreateVisitOutput, visitErros>> {
         // 1. Crear la visita primero
         const visitResult = await this.createVisitUseCase.execute({
             idCompany: input.idCompany,
@@ -34,17 +34,12 @@ export class CreateVisitWithDebtUseCase {
             visit: input.visit
         });
 
-        if (!visitResult.state.ok) {
-            return visitResult;
+        if (!visitResult.ok) {
+            return fail(visitResult.error);
         }
 
         // 2. Si la visita se creó, necesitamos su ID para la deuda
-        // El ID de la visita está en input.visit.id (si venía del form) 
-        // o se generó en CreateVisitUseCase.
-        // Dado que CreateVisitUseCase ya maneja la resolución del cliente,
-        // vamos a asegurarnos de que la deuda tenga los datos correctos.
-
-        const visitId = input.visit.id;
+        const visitId = visitResult.value.id;
 
         // 3. Crear la deuda asociada
         const debtInput = {
@@ -63,9 +58,9 @@ export class CreateVisitWithDebtUseCase {
             // pero siguiendo el patrón actual, retornamos el error de la visita si falló,
             // o notificamos éxito de visita aunque deuda fallara? 
             // Por simplicidad y consistencia, si la deuda falla devolvemos error.
-            return { state: fail<visitErros>({ code: "UNKNOWN_ERROR" }) };
+            return fail({ code: "UNKNOWN_ERROR" });
         }
 
-        return { state: { ok: true, value: null } };
+        return ok({ id: visitId });
     }
 }

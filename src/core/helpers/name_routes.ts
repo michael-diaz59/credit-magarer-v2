@@ -133,6 +133,7 @@ export const ScreenPaths = {
         visits: pathVisitsField,
         visits2: (documentCostumer: string) => pathVisitsField + `2/${documentCostumer}`,
         visit: (id: string) => `${pathVisitField}/${id}`,
+        customer2: (idCostumer: string)=> `${pathCostumerField}/costumer2/${idCostumer}`,
         Costumer: (idCostumer: string, idVisit: string) => `${pathCostumerField}/visits/${idVisit}/costumer/${idCostumer}`,
       },
     }
@@ -176,7 +177,7 @@ export const basphatsAppBar: RoutNav[] = [
 ];
 
 export const auditorAppBar: RoutNav[] = [
-  { label: "clientes", path: ScreenPaths.auditor.costumers },
+  { label: "clientes", path: ScreenPaths.auditor.debitsC },
   { label: "desembolsos", path: ScreenPaths.auditor.home },
   { label: "inicio", path: ScreenPaths.home },
 ];

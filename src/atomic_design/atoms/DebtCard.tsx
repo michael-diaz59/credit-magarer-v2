@@ -4,8 +4,29 @@ import {
   Typography,
   Stack,
   Divider,
+  Chip,
+  type ChipProps,
 } from "@mui/material";
-import type { Debt } from "../../features/debits/domain/business/entities/Debt";
+
+import type {
+  Debt,
+  DebtStatus,
+} from "../../features/debits/domain/business/entities/Debt";
+import { getDebtVisualStatus } from "../sub_atomic_particles/debtVisualStatus";
+
+const debtStatusConfig: Record<
+  DebtStatus,
+  { label: string; color: ChipProps["color"] }
+> = {
+  tentativa: { label: "Tentativa", color: "default" },
+  preAprobada: { label: "Pre-aprobada", color: "info" },
+  preparacion: { label: "En preparación", color: "warning" },
+  activa: { label: "Activa", color: "success" },
+  corregir: { label: "Corregir", color: "warning" },
+  pagada: { label: "Pagada", color: "success" },
+  en_mora: { label: "En mora", color: "error" },
+  cancelada: { label: "Cancelada", color: "default" },
+};
 
 interface Props {
   debt: Debt;
@@ -13,6 +34,7 @@ interface Props {
 }
 
 export const DebtCard = ({ debt, onClick }: Props) => {
+  const visualStatus = getDebtVisualStatus(debt);
   return (
     <Card
       variant="outlined"
@@ -20,8 +42,8 @@ export const DebtCard = ({ debt, onClick }: Props) => {
       sx={{
         cursor: onClick ? "pointer" : "default",
         width: "100%",
-        minWidth: 260,          // 👈 ancho mínimo
-        maxWidth: 360,          // 👈 evita tarjetas demasiado grandes
+        minWidth: 260, // 👈 ancho mínimo
+        maxWidth: 360, // 👈 evita tarjetas demasiado grandes
         borderRadius: 2,
         transition: "box-shadow 0.2s ease",
         "&:hover": onClick ? { boxShadow: 3 } : undefined,
@@ -29,7 +51,7 @@ export const DebtCard = ({ debt, onClick }: Props) => {
     >
       <CardContent
         sx={{
-          p: 2,                 // 👈 padding compacto
+          p: 2, // 👈 padding compacto
           "&:last-child": { pb: 2 },
         }}
       >
@@ -39,23 +61,21 @@ export const DebtCard = ({ debt, onClick }: Props) => {
             Creado el {debt.createdAt}
           </Typography>
 
+          <Chip
+            size="small"
+            label={debtStatusConfig[visualStatus].label}
+            color={debtStatusConfig[visualStatus].color}
+          />
+
           <Divider />
 
           {/* Nombre de la deuda */}
-          <Typography
-            variant="subtitle1"
-            fontWeight={600}
-            noWrap
-          >
+          <Typography variant="subtitle1" fontWeight={600} noWrap>
             {debt.name}
           </Typography>
 
           {/* Cliente */}
-          <Typography
-            variant="body2"
-            fontWeight={500}
-            noWrap
-          >
+          <Typography variant="body2" fontWeight={500} noWrap>
             {debt.costumerName}
           </Typography>
 

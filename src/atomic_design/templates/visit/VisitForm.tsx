@@ -13,7 +13,7 @@ import { Accordion, AccordionDetails, AccordionSummary, Typography, Switch, Form
 
 type Props = {
   defaultVisitValues?: Partial<Visit>;
-   defaultDebtValues?: Partial<Debt>;
+  defaultDebtValues?: Partial<Debt>;
   disabled?: boolean;
   documentCostumer?: string;
   actionLabel: string;
@@ -43,44 +43,44 @@ export const VisitForm = ({
     formState: { errors },
   } = useForm<Visit & { includeDebt: boolean; debtData: Omit<Debt, "id"> }>({
     defaultValues: {
-    id: "",
-    customerName: "",
-    customerDocument: documentCostumer,
-    custumerAddres: "",
-    customerId: "",
-    hasdebt: false,
-    observations: "",
-    userAssigned: "",
-    createdAt: "",
-    amountSolicited: 0,
-    debitId: "",
-    creatorsId: "",
-    state: { code: "earring" },
+      id: "",
+      customerName: "",
+      customerDocument: documentCostumer,
+      custumerAddres: "",
+      customerId: "",
+      hasdebt: false,
+      observations: "",
+      userAssigned: "",
+      createdAt: "",
+      amountSolicited: 0,
+      debitId: "",
+      creatorsId: "",
+      state: { code: "earring" },
 
-    ...defaultVisitValues,
+      ...defaultVisitValues,
 
-    includeDebt: defaultDebtValues!==undefined,
-    debtData: {
-      collectorId: "",
-      type: "credito",
-      debtTerms: "diario",
-      name: "",
-      status: "tentativa",
-      clientId: "",
-      costumerName: "",
-      costumerDocument: documentCostumer || "",
-      totalAmount: 0,
-      installmentCount: 1,
-      interestRate: 0,
-      startDate: new Date().toISOString().split("T")[0],
-      createdAt: new Date().toISOString().split("T")[0],
-      firstDueDate: "",
-      nextPaymentDue: "",
-      overdueInstallmentsCount: 0,
-      idVisit: "",
-      ...defaultDebtValues
+      includeDebt: defaultDebtValues !== undefined,
+      debtData: {
+        collectorId: "",
+        type: "credito",
+        debtTerms: "diario",
+        name: "",
+        status: "tentativa",
+        clientId: "",
+        costumerName: "",
+        costumerDocument: documentCostumer || "",
+        totalAmount: 0,
+        installmentCount: 1,
+        interestRate: 0,
+        startDate: new Date().toISOString().split("T")[0],
+        createdAt: new Date().toISOString().split("T")[0],
+        firstDueDate: "",
+        nextPaymentDue: "",
+        overdueInstallmentsCount: 0,
+        idVisit: "",
+        ...defaultDebtValues
+      },
     },
-  },
   });
 
   const includeDebt = watch("includeDebt");
@@ -161,7 +161,7 @@ export const VisitForm = ({
         />
 
         {/* Asesor */}
-        <Controller
+        {fieldAdvisors.length > 0 && (<Controller
           name="userAssigned"
           control={control}
           rules={{ required: "Debe seleccionar un asesor" }}
@@ -186,7 +186,7 @@ export const VisitForm = ({
               ))}
             </TextField>
           )}
-        />
+        />)}
 
         {/* Documento cliente */}
         <TextField

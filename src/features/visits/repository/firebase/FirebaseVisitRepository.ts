@@ -3,7 +3,7 @@ import {
     doc,
     getDoc,
     getDocs,
-    addDoc,
+    setDoc,
     updateDoc,
     deleteDoc,
     query,
@@ -19,7 +19,7 @@ import type Visit from "../../domain/business/entities/Visit";
 import type { visitErros } from "../../domain/business/entities/types";
 import type { GetVisitByCedulaInput, GetVisitByCedulaOutput } from "../../domain/business/useCases/getVisitByCedulaCase";
 import { FirebaseError } from "firebase/app";
-import type { CreateVisitInput, CreateVisitOutput } from "../../domain/business/useCases/CreateVisitUseCase";
+import type { CreateVisitInput } from "../../domain/business/useCases/CreateVisitUseCase";
 import type { EditVisitInput, EditVisitOutput } from "../../domain/business/useCases/EditVisitCase";
 import type { DeleteVisitInput, DeleteVisitOutput } from "../../domain/business/useCases/deleteVisitCase";
 import type { GetVisitsInput, GetVisitsOutput } from "../../domain/business/useCases/getVisitsCase";
@@ -89,7 +89,7 @@ export default class FirebaseVisitRepository implements VisitGateway {
     }
     async getVisitsByCustomerDocument(
         input: GetVisitsByCustomerDocumentInput
-    ): Promise<Result<GetVisitsByCustomerDocumentOutput,visitErros>> {
+    ): Promise<Result<GetVisitsByCustomerDocumentOutput, visitErros>> {
         try {
             const ref = collection(
                 firestore,
@@ -106,7 +106,7 @@ export default class FirebaseVisitRepository implements VisitGateway {
 
             const snapshot = await getDocs(q);
 
-            const visits:Visit[] = snapshot.docs.map((doc) => {
+            const visits: Visit[] = snapshot.docs.map((doc) => {
                 const data = doc.data();
 
                 const visit: Visit = {
@@ -130,8 +130,8 @@ export default class FirebaseVisitRepository implements VisitGateway {
                 return visit;
             });
 
-            return ok({state:visits})
-    
+            return ok({ state: visits })
+
         } catch (error) {
             console.log(error)
             if (error instanceof FirebaseError) {
@@ -273,22 +273,22 @@ export default class FirebaseVisitRepository implements VisitGateway {
     // --------------------------------
     async createVisit(
         input: CreateVisitInput
-    ): Promise<CreateVisitOutput> {
+    ): Promise<Result<string, visitErros>> {
         try {
             console.log("createVisit/idCompany" + input.idCompany)
 
-            const ref = collection(firestore, "companies", input.idCompany, "visits")
+            const ref = doc(firestore, "companies", input.idCompany, "visits", input.visit.id)
 
-            await addDoc(
+            await setDoc(
                 ref,
                 input.visit
             );
             console.log("visita creada con exito")
 
-            return { state: ok(null) };
+            return ok(input.visit.id);
         } catch (error) {
             console.log("visita creada sin exito")
-            return { state: this.mapError(error) };
+            return this.mapError(error);
         }
     }
 

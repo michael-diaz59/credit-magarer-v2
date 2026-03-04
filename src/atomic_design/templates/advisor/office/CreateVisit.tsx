@@ -67,10 +67,10 @@ export const CreateVisit = () => {
 
     setLoading(false);
 
-    if (result.state.ok) {
+    if (result.ok) {
       setBodyDialogOpen(debt ? "visita y deuda creadas correctamente" : "visita creada correctamente");
     } else {
-      if (result.state.error.code === "USER_NOT_FOUND") {
+      if (result.error.code === "USER_NOT_FOUND") {
         setBodyDialogOpen(
           "no se encontro un cliente con el documento indicado",
         );

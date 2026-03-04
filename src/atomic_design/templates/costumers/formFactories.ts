@@ -1,4 +1,6 @@
-import type { CostumerFormValues } from "./SchemasCostumer";
+import type {z} from "zod";
+import type { baseCostumerSchema } from "./SchemasCostumer";
+export type BaseCostumerFormValues = z.infer<typeof baseCostumerSchema>;
 
 const emptyAddress= {
     address: "",
@@ -7,14 +9,44 @@ const emptyAddress= {
     city: "",
   }
 
-  const emptyWorkInfo={
+const emptyWorkInfo={
     profession: "",
     economicSector: "",
     company: "",
     companyAddress: "",
   }
 
-export const emptyPersonalInfo = (): CostumerFormValues["applicant"] => ({
+export const emptyPersonalInfo = ():BaseCostumerFormValues["applicant"]  => ({
+  fullName: "",
+  idNumber: "",
+  birthCity: "",
+  birthDate: "",
+  issueCity: "",
+  issueDate: "",
+  maritalStatus: "SOLTERO",
+  childrenCount: 0,
+  phone: "",
+  address: {
+    address: "",
+    neighborhood: "",
+    stratum: 1,
+    city: "",
+  },
+  housing: {
+    type: "FAMILIAR",
+    landlordName: "",
+    landlordPhone: "",
+    rentValue: 0,
+  },
+  workInfo: {
+    profession: "",
+    economicSector: "",
+    company: "",
+    companyAddress: "",
+  },
+});
+
+export const emptyPersonalInfoC = (): BaseCostumerFormValues["applicant"] => ({
   fullName: "",
   idNumber: "",
   birthCity: "",
@@ -35,7 +67,8 @@ export const emptyPersonalInfo = (): CostumerFormValues["applicant"] => ({
 });
 
 
-export const emptyVehicle = (): CostumerFormValues["vehicle"][number] => ({
+export const emptyVehicle = (): 
+  BaseCostumerFormValues["vehicle"][number] => ({
   vehicleClass: "",
   model: "",
   brand: "",
@@ -44,11 +77,12 @@ export const emptyVehicle = (): CostumerFormValues["vehicle"][number] => ({
   serviceType: "PARTICULAR",
 });
 
-export const emptyFamilyReference = (): CostumerFormValues["familyReference"][number] => ({
+export const emptyFamilyReference = (): 
+  BaseCostumerFormValues["familyReference"][number] => ({
   fullName: "",
   phone: "",
   relationship: "",
-  address:emptyAddress,
+  address: emptyAddress,
   housingType: "FAMILIAR",
-  workInfo:emptyWorkInfo,
+  workInfo: emptyWorkInfo,
 });

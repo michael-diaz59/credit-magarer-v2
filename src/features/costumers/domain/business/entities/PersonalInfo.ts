@@ -9,7 +9,7 @@ export interface PersonalInfo {
 
   idJobReference?: string;
 
-  idPago?:string;
+  idPago?: string;
 
   fullName: string;
   //cedula

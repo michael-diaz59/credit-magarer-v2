@@ -8,7 +8,7 @@ export const mapClientFormToFirestore = (
   form: Customer
 ): ClientFirestore => ({
   applicant: mapPerson(form.applicant),
-  coSigner: form.coSigner?.map(mapPerson) ,
+  coSigner: form.coSigner?.map(mapPerson),
   vehicle: form.vehicle,
   familyReference: form.familyReference,
   active: true,

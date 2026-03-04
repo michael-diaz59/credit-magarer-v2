@@ -1,74 +1,132 @@
-import {  z } from "zod"
+import { z } from "zod";
+import { calificationValues } from "../../../features/costumers/domain/business/entities/Customer";
 
-export const addressSchema = z.object({
-    address: z.string().min(1),
-    neighborhood: z.string().min(1),
-    stratum: z.coerce.number<number>().min(1),
-    city: z.string().min(1),
+export const baseAddressSchema = z.object({
+  address: z.string().optional(),
+  neighborhood: z.string().optional(),
+  stratum: z.coerce.number<number>().optional(),
+  city: z.string().optional(),
+  location: z
+    .object({
+      latitud: z.number().optional(),
+      longitud: z.number().optional(),
+    })
+    .optional(),
 });
 
-export const housingSchema = z.object({
-    type: z.enum(["FAMILIAR", "PROPIA", "ALQUILADA"]),
-    landlordName: z.string().min(1),
-    landlordPhone: z.string().min(1),
-    rentValue: z.number().min(0),
+export const addressSchema = baseAddressSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional(); // 👈 hace opcional el objeto completo
+
+export const baseHousingSchema = z.object({
+  type: z.enum(["FAMILIAR", "PROPIA", "ALQUILADA"]).optional(),
+  landlordName: z.string().optional(),
+  landlordPhone: z.string().optional(),
+  rentValue: z.number().optional(),
 });
 
-export const workSchema = z.object({
-    profession: z.string().min(1),
-    economicSector: z.string().min(1),
-    company: z.string().min(1),
-    companyAddress: z.string().min(1),
+export const housingSchema = baseHousingSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional();
+
+export const baseWorkSchema = z.object({
+  profession: z.string().optional(),
+  economicSector: z.string().optional(),
+  company: z.string().optional(),
+  companyAddress: z.string().optional(),
 });
 
-export const personalInfoSchema = z.object({
-    fullName: z.string().min(1),
-    idNumber: z.string().min(1),
-    birthCity: z.string().min(1),
-    birthDate: z.string().min(1),
-    issueCity: z.string().min(1),
-    issueDate: z.string().min(1),
-    maritalStatus: z.enum([
-        "SOLTERO",
-        "CASADO",
-        "UNION_LIBRE",
-        "DIVORCIADO",
-        "VIUDO",
-    ]),
-    childrenCount: z.number().min(0),
-    phone: z.string().min(1),
-    address: addressSchema,
-    housing: housingSchema,
-    workInfo: workSchema,
+export const workSchema = baseWorkSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional();
+
+export const basePersonalInfoSchema = z.object({
+  fullName: z.string().optional(),
+  idNumber: z.string().optional(),
+  birthCity: z.string().optional(),
+  birthDate: z.string().optional(),
+  issueCity: z.string().optional(),
+  issueDate: z.string().optional(),
+  maritalStatus: z.enum([
+    "SOLTERO",
+    "CASADO",
+    "UNION_LIBRE",
+    "DIVORCIADO",
+    "VIUDO",
+  ]),
+  childrenCount: z.number().min(0),
+  phone: z.string().optional(),
+  address: addressSchema.optional(),
+  housing: housingSchema.optional(),
+  workInfo: workSchema.optional(),
 });
 
-export const vehicleSchema = z.object({
-    vehicleClass: z.string().min(1),
-    model: z.string().min(1),
-    brand: z.string().min(1),
-    commercialValue: z.number().min(1),
-    pledged: z.boolean(),
-    serviceType: z.enum(["PUBLICO", "PARTICULAR"]),
+export const personalInfoSchema = basePersonalInfoSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional();
+
+export const baseVehicleSchema = z.object({
+  vehicleClass: z.string().optional(),
+  model: z.string().optional(),
+  brand: z.string().optional(),
+  commercialValue: z.number().optional(),
+  pledged: z.boolean().optional(),
+  serviceType: z.enum(["PUBLICO", "PARTICULAR"]).optional(),
 });
 
-export const familyReferenceSchema = z.object({
-    fullName: z.string().min(1),
-    phone: z.string().min(1),
-    relationship: z.string().min(1),
-    address: addressSchema,
-    housingType: z.enum(["FAMILIAR", "PROPIA", "ALQUILADA"]),
-    workInfo: workSchema,
+export const vehicleSchema = baseVehicleSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional();
+
+export const baseFamilyReferenceSchema = z.object({
+  fullName: z.string().optional(),
+  phone: z.string().optional(),
+  relationship: z.string().optional(),
+  address: addressSchema,
+  housingType: z.enum(["FAMILIAR", "PROPIA", "ALQUILADA"]).optional(),
+  workInfo: workSchema,
 });
 
-export const costumerSchema = z.object({
-    id: z.string().nullable().optional(),
-    observations: z.string().nullable().optional(),
-    debtCounter: z.number(),
-    applicant: personalInfoSchema,
-    coSigner: z.array(personalInfoSchema).min(1).max(5),
-    vehicle: z.array(vehicleSchema).min(1).max(5),
-    familyReference: z.array(familyReferenceSchema).min(1).max(5),
-    listId: z.string().nullable().optional()
+export const familyReferenceSchema = baseFamilyReferenceSchema
+  .partial() // 👈 hace opcionales las propiedades
+  .optional();
+
+const applicantschema = z.object({
+  fullName: z.string().min(1, "El nombre es obligatorio"),
+  idNumber: z.string().min(1, "La cédula es obligatoria"),
+  phone: z.string().min(1, "El teléfono es obligatorio"),
+  childrenCount: z.number().min(0),
+
+  birthCity: z.string().optional(),
+  birthDate: z.string().optional(),
+  issueCity: z.string().optional(),
+  issueDate: z.string().optional(),
+  maritalStatus: z
+    .enum(["SOLTERO", "CASADO", "UNION_LIBRE", "DIVORCIADO", "VIUDO"])
+    .optional(),
+
+  address: addressSchema.optional(),
+  housing: housingSchema.optional(),
+  workInfo: workSchema.optional(),
 });
+
+export const baseCostumerSchema = z.object({
+  id: z.string().nullable().optional(),
+  observations: z.string().nullable().optional(),
+  calification: z.enum(calificationValues),
+  photoHouseUrl: z.string().optional(),
+  identificacionUrl: z.string().optional(),
+  laboralUrl: z.string().optional(),
+  documentUrl: z.string().optional(),
+  debtCounter: z.number().optional(),
+  applicant: applicantschema.partial(),
+  coSigner: z.array(personalInfoSchema),
+  vehicle: z.array(vehicleSchema),
+  familyReference: z.array(familyReferenceSchema),
+
+  listId: z.string().nullable().optional(),
+});
+
+export const costumerSchema = baseCostumerSchema;
 
 export type CostumerFormValues = z.infer<typeof costumerSchema>;

@@ -14,9 +14,10 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import StarIcon from "@mui/icons-material/Star";
 
 type CustomerListProps = {
-  navigateTo: (customerDocument: string,customerId?:string) => string;
+  navigateTo: (customerDocument: string, customerId?: string) => string;
 };
 
 export const CustomerList = ({ navigateTo }: CustomerListProps) => {
@@ -29,11 +30,18 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
   const filteredCustomer = useMemo(() => {
     if (!customers.length) return [];
 
-    const normalizedSearch = searchCustomer.toLowerCase();
+    const normalizedSearch = searchCustomer.toLowerCase().trim();
 
-    return [...customers].filter((v) =>
-      v.applicant.fullName.toLowerCase().includes(normalizedSearch),
-    );
+    if (!normalizedSearch) return customers;
+
+    return customers.filter((c) => {
+      const name = c.applicant.fullName.toLowerCase();
+      const document = c.applicant.idNumber.toLowerCase();
+
+      return (
+        name.includes(normalizedSearch) || document.includes(normalizedSearch)
+      );
+    });
   }, [customers, searchCustomer]);
 
   const navigate = useNavigate();
@@ -56,7 +64,7 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
         if (!mounted) return;
 
         if (result.ok) {
-          console.log(result.value.state)
+          console.log(result.value.state);
           setCustomers(result.value.state);
         } else {
           setDialogText("No se pudieron obtener los clientes.");
@@ -89,7 +97,7 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
       {loading && <LinearProgress sx={{ mb: 2 }} />}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
         <TextField
-          label="Buscar por nombre"
+          label="Buscar por nombre o cedula"
           value={searchCustomer}
           onChange={(e) => setSearchCustomer(e.target.value)}
           fullWidth
@@ -102,9 +110,10 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
             <CustomerCard
               customer={customer}
               onClick={() => {
-                console.log("idNumber:"+customer.applicant.idNumber)
-                console.log("id:"+customer.id)
-                navigate(navigateTo(customer.applicant.idNumber,customer.id))}}
+                console.log("idNumber:" + customer.applicant.idNumber);
+                console.log("id:" + customer.id);
+                navigate(navigateTo(customer.applicant.idNumber, customer.id));
+              }}
             />
           </Grid>
         ))}
@@ -129,11 +138,49 @@ export const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
     >
       <CardActionArea onClick={onClick}>
         <CardContent>
-          <Typography variant="subtitle1" fontWeight={600} noWrap>
-            {customer.applicant.fullName}
-          </Typography>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            {/* Nombre + documento */}
+            <Stack>
+              <Typography variant="subtitle1" fontWeight={600} noWrap>
+                {customer.applicant.fullName}
+              </Typography>
+
+              <Typography variant="subtitle2" fontWeight={400} noWrap>
+                {"documento: " + customer.applicant.idNumber}
+              </Typography>
+            </Stack>
+
+            {/* Calificación */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={0.5}
+              sx={{
+                color: getCalificationColor(customer.calification),
+              }}
+            >
+              <StarIcon sx={{ fontSize: 18 }} />
+              <Typography variant="caption" fontWeight={600}>
+                {customer.calification??"3"}
+              </Typography>
+            </Stack>
+          </Stack>
         </CardContent>
       </CardActionArea>
     </Card>
   );
+};
+
+const getCalificationColor = (calification: string) => {
+   if(calification===undefined) return "warning.main"; 
+  const value = Number(calification);
+
+  if (value >= 4) return "success.main"; // verde
+  if (value === 3) return "warning.main"; // amarillo
+ 
+  return "error.main"; // rojo
 };

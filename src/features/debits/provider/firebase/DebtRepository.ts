@@ -32,7 +32,7 @@ export class FirebaseDebtRepository implements DebtGateway {
 
     async getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>> {
         try {
-            const { companyId, statuses, customerId, limit } = input
+            const { companyId, statuses, customerId, idVisit, limit } = input
             const constraints = [];
 
             if (statuses && statuses.length > 0) {
@@ -41,6 +41,10 @@ export class FirebaseDebtRepository implements DebtGateway {
 
             if (customerId) {
                 constraints.push(where("customerId", "==", customerId));
+            }
+
+            if (idVisit) {
+                constraints.push(where("idVisit", "==", idVisit));
             }
 
             constraints.push(orderBy("createdAt", "desc"));
@@ -65,6 +69,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 const data = doc.data();
                 return {
                     id: doc.id,
+                    diasMes: data.diasMes as number,
                     name: data.name as string,
                     customerId: data.customerId as string,
                     customerName: data.customerName as string,
@@ -75,10 +80,10 @@ export class FirebaseDebtRepository implements DebtGateway {
                         : data.startDate,
                     clientId: data.clientId,
                     collectorId: data.collectorId,
-                    nextPaymentDue:data.startDate instanceof Timestamp
+                    nextPaymentDue: data.startDate instanceof Timestamp
                         ? data.startDate.toDate().toISOString().split("T")[0]
                         : data.startDate,
-                    overdueInstallmentsCount:data.overdueInstallmentsCount,
+                    overdueInstallmentsCount: data.overdueInstallmentsCount,
                     costumerDocument: data.costumerDocument,
                     costumerName: data.costumerName,
                     debtTerms: data.debtTerms,
@@ -87,14 +92,17 @@ export class FirebaseDebtRepository implements DebtGateway {
                     installmentCount: data.installmentCount,
                     interestRate: data.interestRate,
                     startDate: data.startDate,
-                    type: data.type
+                    type: data.type,
+                    capital: data.capital ?? data.totalAmount ?? 0,
                 };
             });
+
+            console.log("getByFilters")
 
             console.log(listDebts)
 
             return ok({ state: listDebts })
-        } catch (error)  {
+        } catch (error) {
             console.error("[createWithInstallments]", error);
 
             if (error instanceof FirebaseError) {
@@ -113,6 +121,7 @@ export class FirebaseDebtRepository implements DebtGateway {
         input: createWithInstallmentsInput
     ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
         try {
+            let debtNameOut = ""
             const db = getFirestore();
 
             const countersRef = doc(
@@ -162,6 +171,7 @@ export class FirebaseDebtRepository implements DebtGateway {
 
                 /** 🏷️ Nombre secuencial */
                 const debtName = `DEBT-${nextDebtNumber}`;
+                debtNameOut = debtName
 
                 /** 📌 Crear deuda */
                 tx.set(debtRef, {
@@ -183,7 +193,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 }
             });
 
-            return ok({ state: null });
+            return ok({ debtName: debtNameOut });
         } catch (error) {
             console.error("[createWithInstallments]", error);
 
@@ -243,14 +253,15 @@ export class FirebaseDebtRepository implements DebtGateway {
         return {
             id: doc.id,
             idVisit: data.idVisit ?? "",
+            diasMes: data.diasMes ?? 0,
             name: data.name ?? "",
             collectorId: data.collectorId ?? "",
             clientId: data.clientId ?? "",
 
-            nextPaymentDue:data.startDate instanceof Timestamp
-                        ? data.startDate.toDate().toISOString().split("T")[0]
-                        : data.startDate,
-                    overdueInstallmentsCount:data.overdueInstallmentsCount,
+            nextPaymentDue: data.startDate instanceof Timestamp
+                ? data.startDate.toDate().toISOString().split("T")[0]
+                : data.startDate,
+            overdueInstallmentsCount: data.overdueInstallmentsCount,
 
             costumerName: data.costumerName ?? "",
             costumerDocument: data.costumerDocument ?? "",
@@ -270,6 +281,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 typeof data.createdAt === "string"
                     ? data.createdAt
                     : data.createdAt?.toDate?.().toISOString().split("T")[0] ?? "",
+            capital: Number(data.capital ?? data.totalAmount ?? 0),
         };
     }
 
@@ -277,6 +289,7 @@ export class FirebaseDebtRepository implements DebtGateway {
         input: CreateDebtUInput
     ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
         try {
+            let debtNameOut = ""
             const countersRef = doc(
                 firestore,
                 "companies",
@@ -311,6 +324,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 }
 
                 const debtName = `DEBT-${nextDebtNumber}`;
+                debtNameOut = debtName
 
                 tx.set(doc(debtsRef), {
                     ...input.debt,
@@ -319,7 +333,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 });
             });
 
-            return ok({ state: null });
+            return ok({ debtName: debtNameOut });
         } catch (error) {
             if (error instanceof FirebaseError) {
                 return fail({ code: "NETWORK_ERROR" });
@@ -359,6 +373,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 startDate: debt.startDate,
                 createdAt: debt.createdAt,
                 firstDueDate: debt.firstDueDate,
+                capital: debt.capital,
             };
 
             await updateDoc(ref, updateData);

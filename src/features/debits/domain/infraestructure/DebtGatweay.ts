@@ -15,15 +15,15 @@ import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../busi
 
 
 export interface DebtGateway {
-  create(debt: 
+  create(debt:
     CreateDebtUInput
-  ): Promise<Result<CreateDebtUOutput,CreateDebtError>>;
+  ): Promise<Result<CreateDebtUOutput, CreateDebtError>>;
 
-  update(debt: 
+  update(debt:
     UpdateDebitInput
   ): Promise<UpdateDebitOutput>;
 
-  getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput,GetByFiltersError>>
+  getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>>
 
   getById(input: GetDebitByIdInput): Promise<GetDebitByIdOutput>;
 
@@ -39,16 +39,17 @@ export interface InstallmentGateway {
 
   createForNewDebt(input: CreateInstallmentsGatewayInput): Promise<CreateInstallmentsOutput>
 
-  getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput,GetByCollectorError>>
+  getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>>
 
-  updateByDebt(input: UpdateInstallmentByDebtInput):Promise<UpdateInstallmentByDebtOutput>;
+  updateByDebt(input: UpdateInstallmentByDebtInput): Promise<UpdateInstallmentByDebtOutput>;
 
   updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>>
 
 
-  getByDebt (input: GetInstallmentsByDebtInput) :Promise<GetInstallmentsByDebtOutput>;
-  getById(input: GetByIdInput): Promise<Result<GetByIdOutput,GetByIdError>>
-
+  getByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput>;
+  getById(input: GetByIdInput): Promise<Result<GetByIdOutput, GetByIdError>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  deleteBatch(companyId: string, installmentIds: string[]): Promise<Result<null, any>>;
 }
 
 export interface CollectionAssignmentGateway {
