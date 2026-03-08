@@ -28,6 +28,7 @@ import DebtOrchestrator from "../../../features/debits/domain/infraestructure/De
 import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
 import { calculateDebtFinancialsSimple } from "../../../features/debits/domain/business/useCases/helper";
 
+
 function parseLocalDate(dateString: string) {
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -56,7 +57,6 @@ export const PaymentsListScreen = () => {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [installment, setInstallment] = useState<Installment | null>(null);
-  const [allInstallments, setAllInstallments] = useState<Installment[]>([]);
 
   // Deferral Dialog State
   const [deferDialogOpen, setDeferDialogOpen] = useState(false);
@@ -68,6 +68,7 @@ export const PaymentsListScreen = () => {
   // Result Dialog State
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [resultMessage, setResultMessage] = useState("");
+
 
   useEffect(() => {
     if (!companyId || !idInstallment) {
@@ -101,16 +102,6 @@ export const PaymentsListScreen = () => {
           setInstallment(inst);
           setNewInterestRate(inst.interestRate);
           setNewDueDate(inst.dueDate);
-
-          // Fetch all installments for this debt to check renewable status
-          const allInstResult = await installmentOrchestrator.getByDebt({
-            companyId,
-            debtId: inst.debtId,
-          });
-
-          if (allInstResult.state.ok) {
-            setAllInstallments(allInstResult.state.value);
-          }
         }
       } catch (error) {
         console.error("Error cargando datos", error);
@@ -202,11 +193,7 @@ export const PaymentsListScreen = () => {
     }
   };
 
-  const isRenewable =
-    allInstallments.length > 0 &&
-    allInstallments.filter((i) => i.status === "liquidada" || i.status === "pagada")
-      .length >=
-    allInstallments.length / 2;
+
 
   if (loading) {
     return <CircularProgress />;
@@ -264,19 +251,6 @@ export const PaymentsListScreen = () => {
       >
         <Stack direction="row" alignItems="center" spacing={2}>
           <Typography variant="h5">Pagos registrados</Typography>
-          {isRenewable && (
-            <Chip
-              label="Cliente Renovable"
-              color="success"
-              variant="filled"
-              sx={{
-                fontWeight: "bold",
-                background: "linear-gradient(45deg, #2e7d32 30%, #4caf50 90%)",
-                color: "white",
-                boxShadow: "0 3px 5px 2px rgba(46, 125, 50, .3)",
-              }}
-            />
-          )}
         </Stack>
         <Button
           variant="contained"
@@ -286,6 +260,7 @@ export const PaymentsListScreen = () => {
           Aplazar deuda
         </Button>
       </Stack>
+
 
       <Stack spacing={2}>
         {payments.map((payment) => (

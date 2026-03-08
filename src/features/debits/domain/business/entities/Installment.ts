@@ -11,6 +11,7 @@
 */
 export type InstallmentStatus =
   | 'pendiente'
+  | 'renovada'
   | 'pagada'
   | 'incompleto'
   | 'liquidada'
@@ -43,12 +44,12 @@ export interface Installment {
   debtId: string;
 
   /**id de la comañia usada para las reglas de seguridad de grupos */
-  companyId:string
+  companyId: string
 
   /**tasa de interes*/
   interestRate: number;
 
-    /**tasa de interes para retraso*/
+  /**tasa de interes para retraso*/
   lateInterestRate: number
 
   /**id del collector */
@@ -81,13 +82,13 @@ export interface Installment {
   /**monto pagado de la cuota */
   paidAmount: number;
 
-    /**dinero extra que se debe pagar por atraso en el pago */
+  /**dinero extra que se debe pagar por atraso en el pago */
   latepayment: number;
 
   /**fecha de pago de la cuota*/
   dueDate: string;
 
-   /**fecha de pago de con retraso*/
+  /**fecha de pago de con retraso*/
   lateDueDate: string;
 
   /**estado de la cuota:  "pendiente" | "pagada" | "en_mora" | "conflicto" | "cancelada"*/
@@ -101,6 +102,9 @@ export interface Installment {
 
   /**registro de pagos, es la lista de id de payments */
   payments?: string[]
+
+  /**dinero total pagado por interes de mora de esta cuota */
+  paidLatePayment: number;
 
   /** indica si la cuota fue aplazada */
   aplazado?: boolean;

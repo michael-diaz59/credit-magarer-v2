@@ -92,6 +92,7 @@ export function generateInstallments2(
       lateInterestRate: 0,
       aplazado: false,
       latepayment: 0,
+      paidLatePayment: 0,
 
       companyId: companyId,
       id: crypto.randomUUID(),

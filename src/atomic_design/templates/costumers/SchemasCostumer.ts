@@ -119,6 +119,7 @@ export const baseCostumerSchema = z.object({
   laboralUrl: z.string().optional(),
   documentUrl: z.string().optional(),
   debtCounter: z.number().optional(),
+  renovationsCounter: z.number().optional(),
   applicant: applicantschema.partial(),
   coSigner: z.array(personalInfoSchema),
   vehicle: z.array(vehicleSchema),

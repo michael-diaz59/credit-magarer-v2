@@ -14,11 +14,11 @@ import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import { DebtForm, type DebtFormAction } from "../DebtForm";
+import { RenewalComparisonForm } from "../RenewalComparisonForm";
 
 export const AuditDebtScreen = () => {
-  const companyId = useAppSelector(
-    (state) => state.user.user?.companyId || "undefined",
-  );
+  const user = useAppSelector((state) => state.user.user);
+  const companyId = user?.companyId || "undefined";
   const { debitId } = useParams<{ debitId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -30,25 +30,19 @@ export const AuditDebtScreen = () => {
   }>({
     body: "",
   });
-  console.log(debitId)
 
   const handleUpdateDebt = async (_: DebtFormAction, data: Omit<Debt, "id">) => {
-    console.log(data)
-    console.log(debitId)
     if (!data || !debitId) return;
 
-    setLoading(true); // 1️⃣ mostrar loading
-    setDialogOpen(false); // aseguramos que esté cerrado
+    setLoading(true);
+    setDialogOpen(false);
 
     try {
       const orchestrator = new DebtOrchestrator();
-
-      console.log(debitId)
       const debtToUpdate: Debt = {
-        ...data, // 👈 resto de campos del formulario
-        id: debitId, // 👈 el ID viene de la URL
+        ...data,
+        id: debitId,
       };
-      console.log(debtToUpdate.id)
 
       const update = await orchestrator.updateDebtUse({
         isNewCollector: true,
@@ -62,13 +56,10 @@ export const AuditDebtScreen = () => {
           body: "La deuda fue actualizada correctamente.",
           buttonText: "Entendido",
         });
-
       } else {
         setDialogConfig({
           title: "Error al actualizar",
-          body:
-            update.state.error.code ??
-            "Ocurrió un error inesperado al actualizar la deuda.",
+          body: update.state.error.code ?? "Ocurrió un error inesperado al actualizar la deuda.",
           buttonText: "Cerrar",
         });
       }
@@ -79,19 +70,18 @@ export const AuditDebtScreen = () => {
         buttonText: "Cerrar",
       });
     } finally {
-      setLoading(false); // 2️⃣ ocultar loading
+      setLoading(false);
       setTimeout(() => {
-        // 3️⃣ pequeño delay UX-friendly
-        setDialogOpen(true); // 4️⃣ mostrar popup
+        setDialogOpen(true);
       }, 200);
     }
   };
 
   const [form, setForm] = useState<Omit<Debt, "id"> | null>(null);
+  const [originalDebt, setOriginalDebt] = useState<Omit<Debt, "id"> | null>(null);
 
   useEffect(() => {
     const loadDebt = async () => {
-        //valida si la pantalla debe cargar una deuda
       if (!debitId) return;
 
       const orchestrator = new DebtOrchestrator();
@@ -100,22 +90,30 @@ export const AuditDebtScreen = () => {
         companyId: companyId,
       });
 
-      if (result.state.ok) {
-        setForm(result.state.value);
-      } else {
-        console.log(result.state.error);
+      if (result.state.ok && result.state.value) {
+        const currentDebt = result.state.value;
+        setForm(currentDebt);
+
+        if (currentDebt.status === "preAprobada" && currentDebt.originalDebt) {
+          const originalResult = await orchestrator.getDebitById({
+            idDebt: currentDebt.originalDebt,
+            companyId: companyId,
+          });
+
+          if (originalResult.state.ok && originalResult.state.value) {
+            setOriginalDebt(originalResult.state.value);
+          }
+        }
       }
     };
 
     loadDebt();
-  }, [debitId]);
-
-
+  }, [debitId, companyId]);
 
   if (!form) return null;
 
   return (
-    <Box p={3} width="100%" >
+    <Box p={3} width="100%">
       <>
         <LoadingOverlay open={loading} />
         <BaseDialog
@@ -127,19 +125,29 @@ export const AuditDebtScreen = () => {
         />
       </>
       <Box position="relative">
-        <Card  sx={{ width: "100%" }}>
+        <Card sx={{ width: "100%" }}>
           <CardContent>
             <Typography variant="h6" mb={2}>
-              Detalle de la deuda
+              {originalDebt ? "Aprobar Renovación de Deuda" : "Detalle de la deuda"}
             </Typography>
 
-            <DebtForm
-              defaultValues={form}
-              debtId={debitId}
-              mode={"audit"}
-              allowedActions={["update"]}
-              onSubmit={handleUpdateDebt }
-            />
+            {originalDebt && debitId ? (
+              <RenewalComparisonForm
+                debtId={debitId}
+                originalDebt={originalDebt}
+                proposedDebt={form}
+                mode="audit"
+                onSubmit={handleUpdateDebt}
+              />
+            ) : (
+              <DebtForm
+                defaultValues={form}
+                debtId={debitId}
+                mode="audit"
+                allowedActions={["update"]}
+                onSubmit={handleUpdateDebt}
+              />
+            )}
 
             <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
               <Button onClick={() => navigate(-1)} disabled={loading}>

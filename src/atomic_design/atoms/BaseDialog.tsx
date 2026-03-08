@@ -5,12 +5,13 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  Box,
 } from "@mui/material";
 
 interface BaseDialogProps {
   open: boolean;
   title?: string;
-  body: string;
+  body: React.ReactNode;
   onClick: () => void | Promise<void>;
   butonText?: string;
 }
@@ -27,7 +28,11 @@ export const BaseDialog = ({
       {title && <DialogTitle>{title}</DialogTitle>}
 
       <DialogContent>
-        <DialogContentText>{body}</DialogContentText>
+        {typeof body === "string" ? (
+          <DialogContentText>{body}</DialogContentText>
+        ) : (
+          <Box>{body}</Box>
+        )}
       </DialogContent>
 
       <DialogActions>

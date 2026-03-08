@@ -9,7 +9,7 @@ const defaultInstallmentAddress: InstallmentAddress = {
 
 export const defaultInstallment: Omit<Installment, "id"> = {
   debtId: "",
-  companyId:"",
+  companyId: "",
   interestRate: 0,
   lateInterestRate: 0,
   collectorId: "",
@@ -28,6 +28,7 @@ export const defaultInstallment: Omit<Installment, "id"> = {
   status: "pendiente",
   createdAt: "",
   payments: [],
+  paidLatePayment: 0,
   aplazado: false,
 };
 
@@ -39,7 +40,7 @@ export function mapToInstallment(
 
   return {
     id,
-    companyId:data.companyId??"",
+    companyId: data.companyId ?? "",
     debtId: data.debtId ?? "",
     interestRate: data.interestRate ?? 0,
     lateInterestRate: data.lateInterestRate ?? 0,
@@ -67,6 +68,7 @@ export function mapToInstallment(
     paidAt: data.paidAt ?? "",
     createdAt: data.createdAt ?? "",
     payments: data.payments ?? [],
+    paidLatePayment: data.paidLatePayment ?? 0,
     aplazado: data.aplazado ?? false,
   };
 }

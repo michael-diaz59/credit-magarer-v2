@@ -133,7 +133,7 @@ export const ScreenPaths = {
         visits: pathVisitsField,
         visits2: (documentCostumer: string) => pathVisitsField + `2/${documentCostumer}`,
         visit: (id: string) => `${pathVisitField}/${id}`,
-        customer2: (idCostumer: string)=> `${pathCostumerField}/costumer2/${idCostumer}`,
+        customer2: (idCostumer: string) => `${pathCostumerField}/costumer2/${idCostumer}`,
         Costumer: (idCostumer: string, idVisit: string) => `${pathCostumerField}/visits/${idVisit}/costumer/${idCostumer}`,
       },
     }
@@ -141,6 +141,7 @@ export const ScreenPaths = {
   collector: {
     home: pathColllector,
     installment: (id: string) => `${pathColllectorInstallment}/${id}`,
+    debtInstallments: (debtId: string) => `${pathColllector}/debt/${debtId}/installments`,
     route: (id: string) => `${pathColllectorRoute}/${id}`,
     costumer: (id: string) => `${pathCollectorCostumer}/${id}`,
   },

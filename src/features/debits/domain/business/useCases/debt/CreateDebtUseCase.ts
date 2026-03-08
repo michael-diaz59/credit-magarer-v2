@@ -1,7 +1,7 @@
 
 import { fail, type Result } from "../../../../../../core/helpers/ResultC";
-import CustomerOrchestrator from "../../../../../costumers/domain/infraestructure/CustomerOrchestrator";
-import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
+import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
+import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { generateInstallments2 } from "../helper";
@@ -33,16 +33,23 @@ export interface createWithInstallmentsInput {
 
 export class CreateDebtUseCase {
   private debtGateway: DebtGateway;
-  private costumerOrchestrator: CustomerOrchestrator;
+  private costumerGateway: CostumerGateway;
+  private installmentGateway: InstallmentGateway;
 
-  constructor(debtGateway: DebtGateway) {
+  constructor(
+    debtGateway: DebtGateway,
+    costumerGateway: CostumerGateway,
+    installmentGateway: InstallmentGateway,
+  ) {
     this.debtGateway = debtGateway;
-    this.costumerOrchestrator = new CustomerOrchestrator();
+    this.costumerGateway = costumerGateway;
+    this.installmentGateway = installmentGateway;
   }
 
   async execute(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
     /** 1️⃣ Estado válido */
-    if (input.debt.status !== "tentativa") {
+    const allowedStatuses = ["tentativa", "preAprobada", "activa"];
+    if (!allowedStatuses.includes(input.debt.status)) {
       return fail({ code: "STATE_INVALID" });
     }
 
@@ -53,7 +60,7 @@ export class CreateDebtUseCase {
 
     /** 2️⃣ Buscar cliente */
     const costumerResult =
-      await this.costumerOrchestrator.getCostumerByIdNumber({
+      await this.costumerGateway.getCostumerByIdNumber({
         companyId: input.companyId,
         documentId: input.debt.costumerDocument,
       });
@@ -70,13 +77,31 @@ export class CreateDebtUseCase {
 
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
-      ...input.debt,
       id: crypto.randomUUID(),
+      collectorId: input.debt.collectorId,
+      type: input.debt.type,
+      idVisit: input.debt.idVisit,
+      debtTerms: input.debt.debtTerms,
+      name: input.debt.name || "",
+      diasMes: input.debt.diasMes,
+      status: input.debt.status,
       clientId: costumer.id,
       costumerName: costumer.applicant.fullName,
+      costumerDocument: input.debt.costumerDocument,
+      totalAmount: input.debt.totalAmount,
+      totalPaid: 0,
+      totalPaymentForLate: 0,
+      installmentCount: input.debt.installmentCount,
+      interestRate: input.debt.interestRate,
+      startDate: input.debt.startDate,
       createdAt: new Date().toISOString().slice(0, 10),
       firstDueDate: "", // se calcula abajo
+      nextPaymentDue: "", // se calcula abajo
+      dateLastPayment: "",
+      installmentsPaid: 0,
+      overdueInstallmentsCount: 0,
       capital: input.debt.totalAmount,
+      originalDebt: input.debt.originalDebt ?? null,
     };
 
     /** 4️⃣ Generar cuotas */
@@ -94,10 +119,79 @@ export class CreateDebtUseCase {
     debt.firstDueDate = firstDueDate;
 
     /** 5️⃣ Persistir TODO */
-    return await this.debtGateway.createWithInstallments({
+    const result = await this.debtGateway.createWithInstallments({
       companyId: input.companyId,
       debt,
       installments,
     });
+
+    if (result.ok) {
+      const preliminaryStates = ["tentativa", "preAprobada"];
+      if (!preliminaryStates.includes(debt.status)) {
+        if (debt.originalDebt) {
+          costumer.renovationsCounter = (costumer.renovationsCounter ?? 0) + 1;
+
+          // 🆕 Marcar cuotas de la deuda original como renovadas
+          try {
+            const originalInstallmentsResult =
+              await this.installmentGateway.getByDebt({
+                companyId: input.companyId,
+                debtId: debt.originalDebt,
+              });
+
+            if (originalInstallmentsResult.state.ok) {
+              const toUpdate = originalInstallmentsResult.state.value.filter(
+                (inst) =>
+                  inst.status !== "pagada" && inst.status !== "liquidada",
+              );
+
+              if (toUpdate.length > 0) {
+                const updatedInstallments = toUpdate.map((inst) => ({
+                  ...inst,
+                  status: "renovada" as const,
+                  paidAmount: inst.amount, // Marcarlas como "pagadas" al renovar
+                }));
+
+                await this.installmentGateway.updateByDebt({
+                  companyId: input.companyId,
+                  debtId: debt.originalDebt,
+                  installments: updatedInstallments,
+                });
+              }
+            }
+
+            // 🆕 Vincular deuda original con el ID de la nueva deuda
+            const originalDebtResult = await this.debtGateway.getById({
+              idDebt: debt.originalDebt,
+              companyId: input.companyId,
+            });
+
+            if (originalDebtResult.state.ok && originalDebtResult.state.value) {
+              const originalDebtEntity = originalDebtResult.state.value;
+              await this.debtGateway.update({
+                companyId: input.companyId,
+                isNewCollector: false,
+                debt: {
+                  ...originalDebtEntity,
+                  renewedToDebtId: debt.id,
+                },
+              });
+            }
+          } catch (error) {
+            console.error("Error al actualizar la deuda original durante la renovación", error);
+          }
+        } else {
+          costumer.debtCounter = (costumer.debtCounter ?? 0) + 1;
+        }
+        await this.costumerGateway.UpdateCostumer({
+          companyId: input.companyId,
+          costumer: costumer,
+          idUser: "",
+          isNameChange: false,
+        });
+      }
+    }
+
+    return result;
   }
 }

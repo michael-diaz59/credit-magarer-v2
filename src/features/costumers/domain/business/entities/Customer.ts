@@ -8,8 +8,11 @@ export interface Customer {
   /**numero de deudas del costumer */
   debtCounter: number
 
+  /**numero de renovaciones del costumer */
+  renovationsCounter: number
 
-  calification:Calification
+
+  calification: Calification
 
   photoHouseUrl?: string
   identificacionUrl?: string

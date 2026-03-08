@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -25,7 +25,6 @@ import {
   InputLabel,
 } from "@mui/material";
 import {
-  cloneInstallment,
   type Installment,
 } from "../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
@@ -45,16 +44,23 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BankAccountOrchestrator from "../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
 import type { BankAccount } from "../../../features/bankAccounts/domain/business/entities/BankAccount";
 import UserOrchestrator from "../../../features/users/domain/infraestructure/UserOrchestrator";
+import { ScreenPaths } from "../../../core/helpers/name_routes";
+import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
+import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
+import { DebtRenewalModule } from "../../organisms/DebtRenewalModule";
 
 interface PartialPaymentForm {
   amount: number;
 }
 
 export const InstallmentDetailScreen = () => {
+  const [debt, setDebt] = useState<Debt | null>(null);
+  const [installmentsOfDebt, setInstallmentsOfDebt] = useState<Installment[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogBody, setDialogBody] = useState("");
   const [dialogTitle, setDialogTitle] = useState<string | undefined>(undefined);
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { id: installmentId } = useParams<{ id: string }>();
 
   const user = useAppSelector((state) => state.user.user);
@@ -88,6 +94,7 @@ export const InstallmentDetailScreen = () => {
     aplazado: false,
     latepayment: 0,
     payments: [],
+    paidLatePayment: 0,
     paidAmount: 0,
     paidAt: "",
     interestRate: 0,
@@ -146,8 +153,6 @@ export const InstallmentDetailScreen = () => {
     const fetchInstallment = async () => {
       try {
         setLoading(true);
-        // Using memoized instance
-        // const installmentsOrchestrator = new InstallmentsOrchestrator();
 
         const result = await installmentsOrchestrator.getById({
           companyId: companyId,
@@ -156,17 +161,36 @@ export const InstallmentDetailScreen = () => {
         });
 
         if (result.ok) {
-          console.log(result.value.state);
-          setInstallment(result.value.state);
-          setLoading(false);
+          const currentInstallment = result.value.state;
+          setInstallment(currentInstallment);
+
+          // Fetch associated debt and its installments
+          const debtOrchestrator = new DebtOrchestrator();
+          const debtResult = await debtOrchestrator.getDebitById({
+            idDebt: currentInstallment.debtId,
+            companyId: companyId,
+          });
+
+          if (debtResult.state.ok && debtResult.state.value) {
+            setDebt(debtResult.state.value);
+
+            const allInstResult = await installmentsOrchestrator.getByDebt({
+              companyId: companyId,
+              debtId: currentInstallment.debtId,
+            });
+            if (allInstResult.state.ok) {
+              setInstallmentsOfDebt(allInstResult.state.value);
+            }
+          }
         }
       } catch (error) {
-        setLoading(false);
         console.error("Error cargando cuotas:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchInstallment();
-  }, [installmentId, companyId, collectorId, installmentsOrchestrator]);
+  }, [installmentId, companyId, collectorId, installmentsOrchestrator, dispatch]);
 
   const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false);
   const [selectedMethod, setSelectedMethod] =
@@ -257,7 +281,7 @@ export const InstallmentDetailScreen = () => {
         }
       }
 
-      // 3. Create Payment
+      // 3. Register Payment (Atomic: Payment + Installment + Debt)
       const payment = createPaymentObject(
         amount,
         location,
@@ -266,59 +290,33 @@ export const InstallmentDetailScreen = () => {
         method,
         method === "consignacion" ? selectedBankAccountId : undefined,
       );
-      const paymentResult = await paymentOrchestrator.createPayment({
+
+      const registerResult = await paymentOrchestrator.registerPayment({
         payment,
         companyId,
       });
 
-      if (!paymentResult.ok) {
-        throw new Error("Error creating payment");
-      }
-
-      // 2. Update Installment
-      const cache = cloneInstallment(installment);
-      const newPaidAmount = (cache.paidAmount || 0) + amount;
-
-      if (newPaidAmount >= cache.amount) {
-        cache.status = "pagada";
-        cache.paidAt = new Date().toISOString().split("T")[0];
-      } else {
-        cache.status = "incompleto";
-      }
-      cache.paidAmount = newPaidAmount;
-
-      const createdPaymentId = paymentResult.value.payment.id;
-      cache.payments = [...(cache.payments || []), createdPaymentId];
-
-      const result = await installmentsOrchestrator.updateById({
-        companyId,
-        installment: cache,
-      });
-
-      if (result.ok) {
-        setInstallment(cache);
-        if (cache.status === "pagada") {
-          setDialogTitle("Pago Registrado");
-          setDialogBody("El pago completo fue registrado correctamente.");
-        } else {
-          setDialogTitle("Abono Registrado");
-          setDialogBody(`Se registró un abono de $${amount.toLocaleString()}.`);
+      if (!registerResult.ok) {
+        if (registerResult.error.code === "EXCEEDS_TOTAL_DEBT") {
+          setDialogTitle("Límite de Abono Excedido");
+          const max = (registerResult.error as any).maxAllowed;
+          setDialogBody(`No puedes abonar más de $${max.toLocaleString()}. Este valor corresponde a la deuda total pendiente de la cuota actual más el valor base de las cuotas futuras.`);
+          setLoading(false);
+          setDialogOpen(true);
+          return;
         }
-      } else {
-        // ROLLBACK
-        console.error(
-          "Error updating installment, rolling back payment:",
-          createdPaymentId,
-        );
-        await paymentOrchestrator.deletePayment({
-          companyId,
-          paymentId: createdPaymentId,
-        });
+        throw new Error("Error al registrar el pago.");
+      }
 
-        setDialogTitle("Error");
-        setDialogBody(
-          "No se pudo actualizar la cuota. La transacción ha sido cancelada.",
-        );
+      const { installment: updatedInstallment } = registerResult.value;
+
+      setInstallment(updatedInstallment);
+      if (updatedInstallment.status === "pagada") {
+        setDialogTitle("Pago Registrado");
+        setDialogBody("El pago completo fue registrado correctamente.");
+      } else {
+        setDialogTitle("Abono Registrado");
+        setDialogBody(`Se registró un abono de $${amount.toLocaleString()}.`);
       }
     } catch (error) {
       console.error(error);
@@ -782,8 +780,37 @@ export const InstallmentDetailScreen = () => {
                     setPartialPaymentDialogOpen(true);
                   }}
                 >
-                  Pago Parcial
+                  Abono
                 </Button>
+
+                <Button
+                  variant="text"
+                  color="primary"
+                  fullWidth
+                  onClick={() => navigate(ScreenPaths.collector.debtInstallments(installment.debtId))}
+                  sx={{ mt: 1 }}
+                >
+                  Ver todas las cuotas de esta deuda
+                </Button>
+
+                {debt && (
+                  <Box mt={2} borderTop="1px solid" borderColor="divider" pt={2}>
+                    <DebtRenewalModule
+                      companyId={companyId}
+                      currentDebt={debt}
+                      context="collector"
+                      totalPaid={installmentsOfDebt.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0)}
+                      remainingBalance={debt.totalAmount - installmentsOfDebt.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0)}
+                      buttonVariant="contained"
+                      buttonColor="secondary"
+                      buttonText="Renovar Deuda"
+                      onSuccess={() => {
+                        // Refresh logic if needed
+                        navigate(ScreenPaths.collector.debtInstallments(debt.id));
+                      }}
+                    />
+                  </Box>
+                )}
               </Stack>
             )}
 

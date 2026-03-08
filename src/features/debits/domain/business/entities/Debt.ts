@@ -18,7 +18,8 @@ export type DebtStatus =
   | "corregir"
   | "pagada"
   | "en_mora"
-  | "cancelada";
+  | "cancelada"
+
 
 export type DebtTerms = "diario" | "semanal" | "quincenal" | "mensual";
 
@@ -49,8 +50,15 @@ export interface Debt {
 
   costumerDocument: string;
 
-  //total del prestamo pedido
+  //total del prestamo pedido con intereses
   totalAmount: number;
+
+
+  //total pagado hasta el momento
+  totalPaid: number;
+
+  /** total pagado por interes de mora de la deuda */
+  totalPaymentForLate: number;
 
   /**numero de cuotas de una deuda*/
   installmentCount: number;
@@ -72,9 +80,21 @@ export interface Debt {
   //fecha del proximo pago que debe ser cancelado, si esta fecha es menor o igual a la fecha actual indica que la deuda esta en mora, si es valor esta vacio indica que la deuda fue pagada
   nextPaymentDue: string;
 
+  //fecha del ultimo pago
+  dateLastPayment: string;
+
+  //installments paids
+  installmentsPaid: number;
+
   // NUEVO (Opcional): Cantidad de cuotas vencidas actualmente
   overdueInstallmentsCount: number;
 
   /** total del capital prestado sin intereses */
   capital: number;
+
+  /** id de la deuda original en caso de ser una renovacion */
+  originalDebt?: string | null;
+
+  /** id de la nueva deuda que se creo como renovacion de esta */
+  renewedToDebtId?: string | null;
 }

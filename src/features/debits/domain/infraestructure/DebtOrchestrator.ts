@@ -1,6 +1,7 @@
 import type { Result } from "../../../../core/helpers/ResultC";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
+import { FirebaseCostumerRepository } from "../../../costumers/repository/FirebaseCostumerRepository";
 import { CreateDebtUseCase, type CreateDebtError, type CreateDebtUInput, type CreateDebtUOutput } from "../business/useCases/debt/CreateDebtUseCase";
 import { GetByFiltersCase, type GetByFiltersError, type GetByFiltersInput, type GetByFiltersOutput } from "../business/useCases/debt/GetByFiltersCase";
 import { GetDebitByIdCase, type GetDebitByIdInput, type GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
@@ -14,76 +15,77 @@ import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
 
 export default class DebtOrchestrator {
 
-    private createDebtCase:CreateDebtUseCase
-    private getDebtsCase:GetDebtsCase
+    private createDebtCase: CreateDebtUseCase
+    private getDebtsCase: GetDebtsCase
     private getByFiltersCase: GetByFiltersCase
-    private getDebitByIdCase:GetDebitByIdCase
+    private getDebitByIdCase: GetDebitByIdCase
     private getDebstByCostumerDocumentCase: GetDebstByCostumerDocumentCase
-    private updateDebtUseCase:UpdateDebtUseCase
-    private debtGateway:DebtGateway
-    private simulateDebtCase:SimulateDebtCase
+    private updateDebtUseCase: UpdateDebtUseCase
+    private debtGateway: DebtGateway
+    private simulateDebtCase: SimulateDebtCase
 
-    private getInstallmentsByDebtCase:GetInstallmentsByDebtCase
+    private getInstallmentsByDebtCase: GetInstallmentsByDebtCase
     private updateInstallmentByDebtCase: UpdateInstallmentByDebtCase
     private installmentGateway: InstallmentGateway
 
 
     constructor() {
-            this.debtGateway = new FirebaseDebtRepository()
-        
-            this.simulateDebtCase=new SimulateDebtCase()
-            this.installmentGateway = new FirebaseInstallmentRepository()
-            this.createDebtCase = new CreateDebtUseCase(this.debtGateway)
-            this.getDebitByIdCase= new GetDebitByIdCase(this.debtGateway)
-            this.getByFiltersCase=new GetByFiltersCase(this.debtGateway)
-            this.getDebtsCase= new GetDebtsCase(this.debtGateway)
-            this.getDebstByCostumerDocumentCase = new GetDebstByCostumerDocumentCase(this.debtGateway)
-            this.updateDebtUseCase= new UpdateDebtUseCase(this.debtGateway,this.installmentGateway)
-            this.getInstallmentsByDebtCase=new GetInstallmentsByDebtCase(this.installmentGateway)
-            this.updateInstallmentByDebtCase= new UpdateInstallmentByDebtCase(this.installmentGateway)
-        }
+        this.debtGateway = new FirebaseDebtRepository()
 
-        async  getDebts(input:GetDebtsInput ):Promise<GetDebtsOutput> {
-              return this.getDebtsCase.execute(input)
-        }
+        this.simulateDebtCase = new SimulateDebtCase()
+        this.installmentGateway = new FirebaseInstallmentRepository()
+        const costumerGateway = new FirebaseCostumerRepository()
+        this.createDebtCase = new CreateDebtUseCase(this.debtGateway, costumerGateway, this.installmentGateway)
+        this.getDebitByIdCase = new GetDebitByIdCase(this.debtGateway)
+        this.getByFiltersCase = new GetByFiltersCase(this.debtGateway)
+        this.getDebtsCase = new GetDebtsCase(this.debtGateway)
+        this.getDebstByCostumerDocumentCase = new GetDebstByCostumerDocumentCase(this.debtGateway)
+        this.updateDebtUseCase = new UpdateDebtUseCase(this.debtGateway, this.installmentGateway, costumerGateway)
+        this.getInstallmentsByDebtCase = new GetInstallmentsByDebtCase(this.installmentGateway)
+        this.updateInstallmentByDebtCase = new UpdateInstallmentByDebtCase(this.installmentGateway)
+    }
 
-        async getByFilters(input:GetByFiltersInput):Promise<Result<GetByFiltersOutput,GetByFiltersError>>  {
-            return this.getByFiltersCase.execute(input)
-        }
+    async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
+        return this.getDebtsCase.execute(input)
+    }
 
-         async  getDebtsForCustomer(input:GetDebtsInput ):Promise<GetDebtsOutput> {
-              return this.getDebtsCase.execute(input)
-        }
+    async getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>> {
+        return this.getByFiltersCase.execute(input)
+    }
 
-        async simulateDebt(input: SimulateDebtInput): Promise<Result<SimulateDebtOutput, SimulateDebtError>>{
-              return this.simulateDebtCase.execute(input)
-        }
+    async getDebtsForCustomer(input: GetDebtsInput): Promise<GetDebtsOutput> {
+        return this.getDebtsCase.execute(input)
+    }
+
+    async simulateDebt(input: SimulateDebtInput): Promise<Result<SimulateDebtOutput, SimulateDebtError>> {
+        return this.simulateDebtCase.execute(input)
+    }
 
 
 
-        async createDebt(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput,CreateDebtError>>{
-            return this.createDebtCase.execute(input)
-        }
+    async createDebt(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
+        return this.createDebtCase.execute(input)
+    }
 
-         async getDebitById(input: GetDebitByIdInput): Promise<GetDebitByIdOutput>{
-            return this.getDebitByIdCase.execute(input)
-        } 
-         async getDebstByCostumerDocument(input: GetDebstByCostumerDocumentInput): Promise<GetDebstByCostumerDocumentOutput>{
-            return this.getDebstByCostumerDocumentCase.execute(input)
-        } 
+    async getDebitById(input: GetDebitByIdInput): Promise<GetDebitByIdOutput> {
+        return this.getDebitByIdCase.execute(input)
+    }
+    async getDebstByCostumerDocument(input: GetDebstByCostumerDocumentInput): Promise<GetDebstByCostumerDocumentOutput> {
+        return this.getDebstByCostumerDocumentCase.execute(input)
+    }
 
-          async updateDebtUse(input: UpdateDebitInput): Promise<UpdateDebitOutput>{
-            return this.updateDebtUseCase.execute(input)
-        } 
-        
+    async updateDebtUse(input: UpdateDebitInput): Promise<UpdateDebitOutput> {
+        return this.updateDebtUseCase.execute(input)
+    }
 
-         async getInstallmentsByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput>{
-            return this.getInstallmentsByDebtCase.execute(input)
-        } 
 
-         async updateInstallmentByDebt(input: UpdateInstallmentByDebtInput): Promise<UpdateInstallmentByDebtOutput>{
-            return this.updateInstallmentByDebtCase.execute(input)
-        } 
-    
+    async getInstallmentsByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput> {
+        return this.getInstallmentsByDebtCase.execute(input)
+    }
+
+    async updateInstallmentByDebt(input: UpdateInstallmentByDebtInput): Promise<UpdateInstallmentByDebtOutput> {
+        return this.updateInstallmentByDebtCase.execute(input)
+    }
+
 
 }

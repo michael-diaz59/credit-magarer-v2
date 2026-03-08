@@ -8,6 +8,9 @@ import { UploadProofCase, type UploadProofError, type UploadProofInput } from ".
 import { GetPaymentsByInstallmentCase } from "../business/useCases/payment/GetPaymentsByInstallmentCase";
 import type { GetPaymentsByInstallmentInput, GetPaymentsByInstallmentOutput } from "../business/useCases/payment/GetPaymentsByInstallmentCaseTypes";
 import { GetPaymentByIdCase, type GetPaymentError, type GetPaymentInput, type GetPaymentOutput } from "../business/useCases/payment/GetPaymentByIdCase";
+import { RegisterPaymentUseCase, type RegisterPaymentInput, type RegisterPaymentOutput, type RegisterPaymentError } from "../business/useCases/payment/RegisterPaymentUseCase";
+import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
+import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -16,6 +19,7 @@ export default class PaymentOrchestrator {
     private readonly getPaymentById: GetPaymentByIdCase;
     private readonly uploadProofCase: UploadProofCase;
     private readonly getByInstallmentCase: GetPaymentsByInstallmentCase;
+    private readonly registerPaymentCase: RegisterPaymentUseCase;
 
     constructor() {
         this.paymentGateway = new FirebasePaymentRepository();
@@ -24,6 +28,14 @@ export default class PaymentOrchestrator {
         this.getPaymentById = new GetPaymentByIdCase(this.paymentGateway)
         this.uploadProofCase = new UploadProofCase(this.paymentGateway);
         this.getByInstallmentCase = new GetPaymentsByInstallmentCase(this.paymentGateway);
+
+        const installmentGateway = new FirebaseInstallmentRepository();
+        const debtGateway = new FirebaseDebtRepository();
+        this.registerPaymentCase = new RegisterPaymentUseCase(this.paymentGateway, installmentGateway, debtGateway);
+    }
+
+    async registerPayment(input: RegisterPaymentInput): Promise<Result<RegisterPaymentOutput, RegisterPaymentError>> {
+        return this.registerPaymentCase.execute(input);
     }
 
     async createPayment(input: CreatePaymentInput): Promise<Result<CreatePaymentOutput, CreatePaymentError>> {

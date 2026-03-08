@@ -2,10 +2,11 @@ import { fail, ok, type Result } from "../../../../../core/helpers/ResultC";
 import type Visit from "../entities/Visit";
 import type { Debt } from "../../../../debits/domain/business/entities/Debt";
 import type VisitGateway from "../../infraestructure/VisitGateway";
-import type { DebtGateway } from "../../../../debits/domain/infraestructure/DebtGatweay";
+import type { DebtGateway, InstallmentGateway } from "../../../../debits/domain/infraestructure/DebtGatweay";
 import { CreateVisitUseCase, type CreateVisitOutput } from "./CreateVisitUseCase";
 import { CreateDebtUseCase } from "../../../../debits/domain/business/useCases/debt/CreateDebtUseCase";
 import type { visitErros } from "../entities/types";
+import type CostumerGateway from "../../../../costumers/domain/infraestructure/CostumerGateway";
 
 export interface CreateVisitWithDebtInput {
     idCompany: string;
@@ -20,10 +21,12 @@ export class CreateVisitWithDebtUseCase {
 
     constructor(
         visitGateway: VisitGateway,
-        debtGateway: DebtGateway
+        debtGateway: DebtGateway,
+        installmentGateway: InstallmentGateway,
+        costumerGateway: CostumerGateway
     ) {
         this.createVisitUseCase = new CreateVisitUseCase(visitGateway);
-        this.createDebtUseCase = new CreateDebtUseCase(debtGateway);
+        this.createDebtUseCase = new CreateDebtUseCase(debtGateway, costumerGateway, installmentGateway);
     }
 
     async execute(input: CreateVisitWithDebtInput): Promise<Result<CreateVisitOutput, visitErros>> {

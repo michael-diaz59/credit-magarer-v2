@@ -15,6 +15,9 @@ import { FirebaseDebtRepository } from "../../../debits/provider/firebase/DebtRe
 import type { DebtGateway, InstallmentGateway } from "../../../debits/domain/infraestructure/DebtGatweay"
 import { FirebaseInstallmentRepository } from "../../../debits/provider/firebase/FirebaseInstallmentRepository"
 import { UpdateVisitWithDebtUseCase, type UpdateVisitWithDebtInput } from "../business/useCases/UpdateVisitWithDebtUseCase"
+import type CostumerGateway from "../../../costumers/domain/infraestructure/CostumerGateway"
+import { FirebaseCostumerRepository } from "../../../costumers/repository/FirebaseCostumerRepository"
+
 
 
 export default class VisitOrchestrator {
@@ -34,10 +37,11 @@ export default class VisitOrchestrator {
     ) {
         const repository: VisitGateway = new FirebaseVisitRepository()
         const debtRepository: DebtGateway = new FirebaseDebtRepository()
+        const costumerRepository: CostumerGateway = new FirebaseCostumerRepository()
         const installmentRepository: InstallmentGateway = new FirebaseInstallmentRepository()
 
         this.createVisitCase = new CreateVisitUseCase(repository)
-        this.createVisitWithDebtCase = new CreateVisitWithDebtUseCase(repository, debtRepository)
+        this.createVisitWithDebtCase = new CreateVisitWithDebtUseCase(repository, debtRepository, installmentRepository, costumerRepository)
         this.getVisitByStateCase = new GetVisitByStateCase(repository)
         this.getVisitsCase = new GetVisitsCase(repository)
         this.getVisitByIdCase = new GetVisitByIdCase(repository)
@@ -45,7 +49,7 @@ export default class VisitOrchestrator {
         this.getVisitByCedulaCase = new GetVisitByCedulaCase(repository)
         this.deleteVisitCase = new DeleteVisitCase(repository)
         this.editVisitCase = new EditVisitCase(repository)
-        this.updateVisitWithDebtCase = new UpdateVisitWithDebtUseCase(repository, debtRepository, installmentRepository)
+        this.updateVisitWithDebtCase = new UpdateVisitWithDebtUseCase(repository, debtRepository, installmentRepository, costumerRepository)
     }
 
     async createVisit(input: CreateVisitInput): Promise<Result<CreateVisitOutput, visitErros>> {

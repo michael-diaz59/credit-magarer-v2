@@ -37,6 +37,7 @@ import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileS
 import { PaymentsListScreen } from "../atomic_design/templates/audit/AuditPaymentsListScreen.tsx";
 import { PaymentDetailScreen } from "../atomic_design/templates/audit/PaymentDetailScreen.tsx";
 import { AuditorInstallmentsScreen } from "../atomic_design/templates/audit/AuditorInstallmentsScreen.tsx";
+import { CollectorDebtInstallmentsScreen } from "../atomic_design/templates/recollector/CollectorDebtInstallmentsScreen.tsx";
 import { CreateVisit } from "../atomic_design/templates/advisor/office/CreateVisit.tsx";
 
 function NotFound() {
@@ -86,7 +87,7 @@ export default function App() {
         <Route index element={<SelectAdvisorRolePage />} />
       </Route>
 
-           {/* rutas de configuracion */}
+      {/* rutas de configuracion */}
       <Route
         path={ScreenPaths.Configuration.home}
         element={
@@ -95,11 +96,11 @@ export default function App() {
           </ProtectedAuth>
         }
       >
-         {/* home  de configuracion */}
+        {/* home  de configuracion */}
         <Route index element={<ProfileScreen />} />
 
       </Route>
-        {/* rutas de cobrador */}
+      {/* rutas de cobrador */}
       <Route
         path={ScreenPaths.collector.home}
         element={
@@ -110,13 +111,19 @@ export default function App() {
           </ProtectedAuth>
         }
       >
-         {/* home  de cobrador */}
+        {/* home  de cobrador */}
         <Route index element={<RecolectorHome />} />
 
-         {/* installment de un cobrador*/}
+        {/* installment de un cobrador*/}
         <Route
           path={ScreenPaths.collector.installment(":id")}
           element={<InstallmentDetailScreen />}
+        />
+
+        {/* cuotas de una deuda para el cobrador */}
+        <Route
+          path={ScreenPaths.collector.debtInstallments(":debtId")}
+          element={<CollectorDebtInstallmentsScreen />}
         />
 
       </Route>
@@ -141,13 +148,13 @@ export default function App() {
           element={<AuditEntryPoint />}
         />
 
-         {/* rutas de auditor lista de deudas por estado*/}
+        {/* rutas de auditor lista de deudas por estado*/}
         <Route
           path={ScreenPaths.auditor.debitsS}
           element={<AuditorDebtsFiltersScreen />}
         />
 
-         {/* rutas de auditor, lista de debitos de un cliente*/}
+        {/* rutas de auditor, lista de debitos de un cliente*/}
         <Route
           path={ScreenPaths.auditor.debitsCustomer(":docCostumer")}
           element={<DebtsForCustomer />}
@@ -159,13 +166,13 @@ export default function App() {
           element={<AuditDebtScreen />}
         />
 
-          {/* rutas de auditor,ver los  clientes*/}
+        {/* rutas de auditor,ver los  clientes*/}
         <Route
           path={ScreenPaths.auditor.costumers}
           element={<CustomersAudit />}
         />
 
-         {/* rutas de auditor, clientes*/}
+        {/* rutas de auditor, clientes*/}
         <Route
           path={ScreenPaths.auditor.customer(":idCustomer")}
           element={<CostumerForm />}
@@ -177,20 +184,20 @@ export default function App() {
           element={<AuditorInstallmentsScreen />}
         />
 
-         {/* rutas de auditor, ver pagos*/}
+        {/* rutas de auditor, ver pagos*/}
         <Route
           path={ScreenPaths.auditor.payments(":idInstallment")}
           element={<PaymentsListScreen />}
         />
 
-           {/* rutas de auditor, ver la informacion de un pago*/}
+        {/* rutas de auditor, ver la informacion de un pago*/}
         <Route
           path={ScreenPaths.auditor.payment(":paymentId")}
           element={<PaymentDetailScreen />}
         />
       </Route>
 
-{/* rutas de asesor de oficina*/}
+      {/* rutas de asesor de oficina*/}
       <Route
         path={ScreenPaths.advisor.office.home}
         element={
@@ -267,7 +274,7 @@ export default function App() {
         />
       </Route>
 
-  {/* rutas asesor de campo*/}
+      {/* rutas asesor de campo*/}
       <Route
         path={ScreenPaths.advisor.field.home}
         element={
@@ -286,7 +293,7 @@ export default function App() {
         />
 
 
-  {/*sesor de campo:  lista de visitas de un cliente*/}
+        {/*sesor de campo:  lista de visitas de un cliente*/}
         <Route
           path={ScreenPaths.advisor.field.visit.visits2(":documentCostumer")}
           element={<VisitListPage />}
@@ -298,15 +305,15 @@ export default function App() {
         <Route
           path={ScreenPaths.advisor.field.visit.customer2(":costumerId")}
           element={<CostumerForm />}
-        />   
-      </Route>
-        <Route
-          path={ScreenPaths.advisor.field.visit.Costumer(
-            ":costumerId",
-            ":visitId",
-          )}
-          element={<FieldVisit />}
         />
+      </Route>
+      <Route
+        path={ScreenPaths.advisor.field.visit.Costumer(
+          ":costumerId",
+          ":visitId",
+        )}
+        element={<FieldVisit />}
+      />
     </Routes>
   );
 }

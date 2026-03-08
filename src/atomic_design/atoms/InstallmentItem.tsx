@@ -15,6 +15,7 @@ const statusColorMap: Record<
   pendiente: "warning",
   incompleto: "warning",
   pagada: "success",
+  renovada: "success",
   cancelada: "default",
   liquidada: "success",
 };
@@ -23,7 +24,7 @@ export const InstallmentItem = ({ installment }: Props) => {
   const navigate = useNavigate();
   const isLate = isInstallmentLate(installment);
 
-   const chipColor = isLate
+  const chipColor = isLate
     ? "error"
     : statusColorMap[installment.status];
 
@@ -57,7 +58,7 @@ export const InstallmentItem = ({ installment }: Props) => {
           {installment.amount + installment.latepayment}
         </Typography>
 
-         <Chip
+        <Chip
           label={chipLabel}
           color={chipColor}
           size="small"

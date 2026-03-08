@@ -67,6 +67,9 @@ export const CreateDebtScreen = () => {
 
     const debt: Debt = {
       id: "",
+      originalDebt: "",
+      dateLastPayment: "",
+      installmentsPaid: 0,
       collectorId: formValues.collectorId,
       costumerDocument: formValues.costumerDocument,
       type: formValues.type,
@@ -85,6 +88,8 @@ export const CreateDebtScreen = () => {
       name: "",
       nextPaymentDue: "",
       overdueInstallmentsCount: 0,
+      totalPaid: 0,
+      totalPaymentForLate: 0,
       capital: formValues.totalAmount,
     };
 

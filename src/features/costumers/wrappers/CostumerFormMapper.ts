@@ -100,6 +100,7 @@ export class CostumerFormMapper {
     return {
       id: form.id ?? crypto.randomUUID(),
       debtCounter: form.debtCounter ?? 0,
+      renovationsCounter: form.renovationsCounter ?? 0,
       listId: form.listId ?? "",
       observations: form.observations ?? "",
       photoHouseUrl: form.photoHouseUrl ?? "",
@@ -107,7 +108,7 @@ export class CostumerFormMapper {
       laboralUrl: form.laboralUrl ?? "",
       documentUrl: form.documentUrl ?? "",
 
-      calification:form.calification??"3",
+      calification: form.calification ?? "3",
       applicant: normalizePersonalInfo(form.applicant),
 
       coSigner: (form.coSigner ?? []).map(normalizePersonalInfo),
@@ -120,20 +121,25 @@ export class CostumerFormMapper {
     };
   }
   static toForm(costumer: Customer): CostumerFormValues {
-     return {
-    debtCounter: costumer.debtCounter,
-    observations: costumer.observations,
-    id: costumer.id,
-    listId: costumer.listId,
-    calification: costumer.calification,
+    return {
+      debtCounter: costumer.debtCounter,
+      renovationsCounter: costumer.renovationsCounter,
+      observations: costumer.observations,
+      id: costumer.id,
+      listId: costumer.listId,
+      calification: costumer.calification,
+      photoHouseUrl: costumer.photoHouseUrl,
+      identificacionUrl: costumer.identificacionUrl,
+      laboralUrl: costumer.laboralUrl,
+      documentUrl: costumer.documentUrl,
 
-    applicant: personalInfoToForm(costumer.applicant),
+      applicant: personalInfoToForm(costumer.applicant),
 
-    coSigner: (costumer.coSigner ?? []).map(personalInfoToForm),
+      coSigner: (costumer.coSigner ?? []).map(personalInfoToForm),
 
-    vehicle: costumer.vehicle ?? [],
-    familyReference: costumer.familyReference ?? [],
-  };
+      vehicle: costumer.vehicle ?? [],
+      familyReference: costumer.familyReference ?? [],
+    };
   }
 }
 
@@ -166,9 +172,9 @@ function addressToForm(a?: Address): FormAddress | undefined {
     city: a.city,
     location: a.location
       ? {
-          latitud: a.location.latitud,
-          longitud: a.location.longitud,
-        }
+        latitud: a.location.latitud,
+        longitud: a.location.longitud,
+      }
       : undefined,
   };
 }

@@ -127,7 +127,7 @@ export class CreateInstallmentsUseCase {
     debt: Debt,
     costumerAddress: InstallmentAddress,
     customer: Customer,
-    companyId:string,
+    companyId: string,
     options?: {
       startNumber?: number;
       installmentCount?: number;
@@ -155,7 +155,7 @@ export class CreateInstallmentsUseCase {
         lateDueDate: "",
         lateInterestRate: 0,
         aplazado: false,
-        companyId:companyId,
+        companyId: companyId,
         latepayment: 0,
         paidAmount: 0,
         paidAt: "",
@@ -167,6 +167,7 @@ export class CreateInstallmentsUseCase {
         costumerName: debt.costumerName,
         costumerAddres: costumerAddress,
         payments: [],
+        paidLatePayment: 0,
         costumerNumber: customer.applicant.phone,
         installmentNumber: currentInstallmentNumber,
         amount: installmentAmount,

@@ -6,6 +6,7 @@ import type { DebtGateway, InstallmentGateway } from "../../../../debits/domain/
 import EditVisitCase from "./EditVisitCase";
 import { UpdateDebtUseCase } from "../../../../debits/domain/business/useCases/debt/UpdateDebtUseCase";
 import type { visitErros } from "../entities/types";
+import type CostumerGateway from "../../../../costumers/domain/infraestructure/CostumerGateway";
 
 export interface UpdateVisitWithDebtInput {
     idCompany: string;
@@ -21,10 +22,11 @@ export class UpdateVisitWithDebtUseCase {
     constructor(
         visitGateway: VisitGateway,
         debtGateway: DebtGateway,
-        installmentGateway: InstallmentGateway
+        installmentGateway: InstallmentGateway,
+        costumerGateway: CostumerGateway
     ) {
         this.editVisitCase = new EditVisitCase(visitGateway);
-        this.updateDebtUseCase = new UpdateDebtUseCase(debtGateway, installmentGateway);
+        this.updateDebtUseCase = new UpdateDebtUseCase(debtGateway, installmentGateway, costumerGateway);
     }
 
     async execute(input: UpdateVisitWithDebtInput): Promise<Result<null, visitErros | any>> {

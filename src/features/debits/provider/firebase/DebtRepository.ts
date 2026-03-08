@@ -94,6 +94,11 @@ export class FirebaseDebtRepository implements DebtGateway {
                     startDate: data.startDate,
                     type: data.type,
                     capital: data.capital ?? data.totalAmount ?? 0,
+                    totalPaid: Number(data.totalPaid ?? 0),
+                    totalPaymentForLate: Number(data.totalPaymentForLate ?? 0),
+                    originalDebt: data.originalDebt ?? null,
+                    dateLastPayment: data.dateLastPayment ?? "",
+                    installmentsPaid: data.installmentsPaid ?? 0,
                 };
             });
 
@@ -282,6 +287,11 @@ export class FirebaseDebtRepository implements DebtGateway {
                     ? data.createdAt
                     : data.createdAt?.toDate?.().toISOString().split("T")[0] ?? "",
             capital: Number(data.capital ?? data.totalAmount ?? 0),
+            totalPaid: Number(data.totalPaid ?? 0),
+            totalPaymentForLate: Number(data.totalPaymentForLate ?? 0),
+            originalDebt: data.originalDebt ?? null,
+            dateLastPayment: data.dateLastPayment ?? "",
+            installmentsPaid: data.installmentsPaid ?? 0,
         };
     }
 
@@ -374,6 +384,9 @@ export class FirebaseDebtRepository implements DebtGateway {
                 createdAt: debt.createdAt,
                 firstDueDate: debt.firstDueDate,
                 capital: debt.capital,
+                originalDebt: debt.originalDebt ?? null,
+                dateLastPayment: debt.dateLastPayment ?? "",
+                installmentsPaid: debt.installmentsPaid ?? 0,
             };
 
             await updateDoc(ref, updateData);
@@ -409,14 +422,41 @@ export class FirebaseDebtRepository implements DebtGateway {
                     state: ok(null)
                 };
             }
-            const data = snapshot.data() as Omit<Debt, "id">;
+            const data = snapshot.data();
+            if (!data) return { state: ok(null) };
 
+            const debt: Debt = {
+                id: snapshot.id,
+                collectorId: data.collectorId ?? "",
+                type: data.type ?? "credito",
+                idVisit: data.idVisit ?? "",
+                debtTerms: data.debtTerms ?? "diario",
+                name: data.name ?? "",
+                diasMes: data.diasMes ?? 0,
+                status: data.status ?? "tentativa",
+                clientId: data.clientId ?? "",
+                costumerName: data.costumerName ?? "",
+                costumerDocument: data.costumerDocument ?? "",
+                totalAmount: data.totalAmount ?? 0,
+                totalPaid: data.totalPaid ?? 0,
+                totalPaymentForLate: data.totalPaymentForLate ?? 0,
+                installmentCount: data.installmentCount ?? 0,
+                interestRate: data.interestRate ?? 0,
+                startDate: data.startDate ?? "",
+                createdAt: data.createdAt instanceof Timestamp
+                    ? data.createdAt.toDate().toISOString().split("T")[0]
+                    : data.createdAt ?? "",
+                firstDueDate: data.firstDueDate ?? "",
+                nextPaymentDue: data.nextPaymentDue ?? "",
+                dateLastPayment: data.dateLastPayment ?? "",
+                installmentsPaid: data.installmentsPaid ?? 0,
+                overdueInstallmentsCount: data.overdueInstallmentsCount ?? 0,
+                capital: data.capital ?? 0,
+                originalDebt: data.originalDebt ?? null,
+            };
 
             return {
-                state: ok({
-                    id: snapshot.id,
-                    ...data,
-                }),
+                state: ok(debt),
             };
         } catch (error) {
             if (error instanceof FirebaseError) {
@@ -449,19 +489,37 @@ export class FirebaseDebtRepository implements DebtGateway {
                 const data = doc.data()
 
                 return {
-                    ...data,
                     id: doc.id,
-                    createdAt: data.createdAt instanceof Timestamp
-                        ? data.createdAt.toDate().toISOString().split("T")[0]
-                        : data.createdAt,
-
+                    collectorId: data.collectorId ?? "",
+                    type: data.type ?? "credito",
+                    idVisit: data.idVisit ?? "",
+                    debtTerms: data.debtTerms ?? "diario",
+                    name: data.name ?? "",
+                    diasMes: data.diasMes ?? 0,
+                    status: data.status ?? "tentativa",
+                    clientId: data.clientId ?? "",
+                    costumerName: data.costumerName ?? "",
+                    costumerDocument: data.costumerDocument ?? "",
+                    totalAmount: data.totalAmount ?? 0,
+                    totalPaid: data.totalPaid ?? 0,
+                    totalPaymentForLate: data.totalPaymentForLate ?? 0,
+                    installmentCount: data.installmentCount ?? 0,
+                    interestRate: data.interestRate ?? 0,
                     startDate: data.startDate instanceof Timestamp
                         ? data.startDate.toDate().toISOString().split("T")[0]
-                        : data.startDate,
-
+                        : data.startDate ?? "",
+                    createdAt: data.createdAt instanceof Timestamp
+                        ? data.createdAt.toDate().toISOString().split("T")[0]
+                        : data.createdAt ?? "",
                     firstDueDate: data.firstDueDate instanceof Timestamp
                         ? data.firstDueDate.toDate().toISOString().split("T")[0]
-                        : data.firstDueDate,
+                        : data.firstDueDate ?? "",
+                    nextPaymentDue: data.nextPaymentDue ?? "",
+                    dateLastPayment: data.dateLastPayment ?? "",
+                    installmentsPaid: data.installmentsPaid ?? 0,
+                    overdueInstallmentsCount: data.overdueInstallmentsCount ?? 0,
+                    capital: data.capital ?? 0,
+                    originalDebt: data.originalDebt ?? null,
                 } as Debt;
             });
 

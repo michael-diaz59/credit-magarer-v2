@@ -1,19 +1,10 @@
-import { Card, CardContent, Divider, Stack, Typography } from "@mui/material";
+import { Box, Button, Typography, Stack, Card, CardContent } from "@mui/material";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
-import { SectionInstallments } from "../molecules/SectionInstallments";
-import type { CollectorPayment } from "../../features/collector/domain/business/entities/CollectorPayment";
-
-export interface ToCollectBodyProps {
-  pending: Installment[];
-  overdue: Installment[];
-  onClick: (installment: Installment) => void;
-}
-
-import { Box, Button } from "@mui/material";
-// import AddRoadIcon from '@mui/icons-material/AddRoad'; // Assuming icon exists or using text
 import { useState } from "react";
 import { groupInstallmentsByRoute } from "../../features/collector/helpers/groupInstallmentsByRoute";
 import { RouteGroup } from "../molecules/RouteGroup";
+import { CustomerAccordion } from "../molecules/CustomerAccordion";
+import type { CollectorPayment } from "../../features/collector/domain/business/entities/CollectorPayment";
 
 export interface ToCollectBodyProps {
   pending: Installment[];
@@ -32,6 +23,7 @@ export const ToCollectBody = ({
   onOpenRouteManagement,
 }: ToCollectBodyProps) => {
   const [expandedRoutes, setExpandedRoutes] = useState<Map<string, boolean>>(new Map());
+  const [expandedUnassigned, setExpandedUnassigned] = useState<Map<string, boolean>>(new Map());
 
   // Agrupar cuotas
   const allInstallments = [...pending, ...overdue];
@@ -41,6 +33,12 @@ export const ToCollectBody = ({
     const newExpanded = new Map(expandedRoutes);
     newExpanded.set(route, isExpanded);
     setExpandedRoutes(newExpanded);
+  };
+
+  const toggleUnassignedCustomer = (customerId: string, isExpanded: boolean) => {
+    const newExpanded = new Map(expandedUnassigned);
+    newExpanded.set(customerId, isExpanded);
+    setExpandedUnassigned(newExpanded);
   };
 
   return (
@@ -65,42 +63,33 @@ export const ToCollectBody = ({
         <RouteGroup
           key={routeName}
           routeName={routeName}
-          pending={data.pending}
-          overdue={data.overdue}
+          customers={data.customers}
           expanded={expandedRoutes.get(routeName) ?? true} // Por defecto expandido
           onChange={(isExpanded) => toggleRoute(routeName, isExpanded)}
           onClick={onClick}
         />
       ))}
 
-      {/* 2. Sin Ruta Asignada (mostramos como secciones planas si hay rutas, o normal si no hay rutas definidas) */}
-      {(unassigned.pending.length > 0 || unassigned.overdue.length > 0) && (
+      {/* 2. Sin Ruta Asignada */}
+      {unassigned.customers.size > 0 && (
         <Box mt={routeGroups.size > 0 ? 4 : 0}>
           {routeGroups.size > 0 && (
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+            <Typography variant="h6" color="text.secondary" gutterBottom sx={{ ml: 1, mb: 2 }}>
               Sin Ruta Asignada
             </Typography>
           )}
 
-          {unassigned.overdue.length > 0 && (
-            <SectionInstallments
-              title="Cuotas en mora"
-              color="error"
-              installments={unassigned.overdue}
+          {Array.from(unassigned.customers.entries()).map(([customerId, data]) => (
+            <CustomerAccordion
+              key={customerId}
+              customerName={data.customerName}
+              pending={data.pending}
+              overdue={data.overdue}
+              expanded={expandedUnassigned.get(customerId) ?? true}
+              onChange={(isExpanded) => toggleUnassignedCustomer(customerId, isExpanded)}
               onClick={onClick}
             />
-          )}
-
-          {(unassigned.overdue.length > 0 && unassigned.pending.length > 0) && <Divider sx={{ my: 3 }} />}
-
-          {unassigned.pending.length > 0 && (
-            <SectionInstallments
-              title="Cuotas pendientes"
-              color="warning"
-              installments={unassigned.pending}
-              onClick={onClick}
-            />
-          )}
+          ))}
         </Box>
       )}
 
@@ -120,13 +109,48 @@ export interface CollectedBodyProps {
 }
 
 export const CollectedBody = ({ paid, onClick }: CollectedBodyProps) => {
+  const [expandedCustomers, setExpandedCustomers] = useState<Map<string, boolean>>(new Map());
+
+  // Agrupar por cliente (aquí no filtramos por deuda vieja porque ya están pagadas, pero agrupamos por cliente)
+  const customers = new Map<string, { customerName: string; installments: Installment[] }>();
+
+  paid.forEach(i => {
+    if (!customers.has(i.costumerId)) {
+      customers.set(i.costumerId, { customerName: i.costumerName, installments: [] });
+    }
+    customers.get(i.costumerId)!.installments.push(i);
+  });
+
+  const toggleCustomer = (customerId: string, isExpanded: boolean) => {
+    const newExpanded = new Map(expandedCustomers);
+    newExpanded.set(customerId, isExpanded);
+    setExpandedCustomers(newExpanded);
+  };
+
   return (
-    <SectionInstallments
-      title="Cuotas pagadas"
-      color="success"
-      installments={paid}
-      onClick={onClick}
-    />
+    <Box>
+      <Typography variant="h6" color="success.main" mb={2} sx={{ ml: 1 }}>
+        Cuotas pagadas ({paid.length})
+      </Typography>
+
+      {Array.from(customers.entries()).map(([customerId, data]) => (
+        <CustomerAccordion
+          key={customerId}
+          customerName={data.customerName}
+          pending={data.installments} // Reutilizamos pending para mostrar las pagadas
+          overdue={[]}
+          expanded={expandedCustomers.get(customerId) ?? false}
+          onChange={(isExpanded) => toggleCustomer(customerId, isExpanded)}
+          onClick={onClick}
+        />
+      ))}
+
+      {paid.length === 0 && (
+        <Typography align="center" color="text.secondary" mt={4}>
+          No hay cuotas pagadas recientemente.
+        </Typography>
+      )}
+    </Box>
   );
 };
 

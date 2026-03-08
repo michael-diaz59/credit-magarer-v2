@@ -1,4 +1,4 @@
-import { Box, Typography, CircularProgress, Grid } from "@mui/material";
+import { Box, Typography, CircularProgress, Grid, useMediaQuery, useTheme } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
@@ -6,12 +6,17 @@ import DebtOrchestrator from "../../../../features/debits/domain/infraestructure
 import { DebtCard } from "../../../atoms/DebtCard";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
 import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
+import DebtTable from "../../../molecules/DebtTable";
 
 export const DebtsForCustomer = () => {
   const navigate = useNavigate();
   const { docCostumer } = useParams<{ docCostumer: string }>();
 
   const companyId = useAppSelector((state) => state.user.user?.companyId);
+
+  // 🔥 detectar tamaño de pantalla
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,16 +88,26 @@ export const DebtsForCustomer = () => {
           Este cliente no tiene deudas registradas
         </Typography>
       ) : (
-        <Grid container spacing={2}>
-          {debts.map((debt: Debt) => (
-            <Grid key={debt.id}>
-              <DebtCard
-                debt={debt}
-                onClick={(d) => navigate(ScreenPaths.auditor.debit(d.id))}
-              />
+        <>
+          {/* 📱 Mobile → Cards */}
+          {isMobile && (
+            <Grid container spacing={2}>
+              {debts.map((debt: Debt) => (
+                <Grid >
+                  <DebtCard
+                    debt={debt}
+                    onClick={(d) =>
+                      navigate(ScreenPaths.auditor.debit(d.id))
+                    }
+                  />
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          )}
+
+          {/* 💻 Desktop → Tabla */}
+          {!isMobile && <DebtTable debts={debts} onClick={(d) => navigate(ScreenPaths.auditor.debit(d.id))} />}
+        </>
       )}
     </Box>
   );

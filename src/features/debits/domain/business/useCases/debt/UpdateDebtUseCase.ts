@@ -10,6 +10,7 @@ import { UpdateInstallmentByDebtCase } from "../installment/UpdateInstallmentsBy
 import { CreateInstallmentsUseCase } from "../installment/CreateInstallmentsUseCase";
 import { GetDebitByIdCase } from "./GetDebitByIdCase";
 import type { Customer } from "../../../../../costumers/domain/business/entities/Customer";
+import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
 
 export type UpdateDebtError =
   | { code: "no hay un cobrador" }
@@ -34,13 +35,16 @@ export class UpdateDebtUseCase {
   private createInstallmentsUseCase: CreateInstallmentsUseCase;
   private getDebitByIdCase: GetDebitByIdCase;
   private installmentGateway: InstallmentGateway;
+  private costumerGateway: CostumerGateway;
 
   constructor(
     debtGateway: DebtGateway,
     installmentGateway: InstallmentGateway,
+    costumerGateway: CostumerGateway,
   ) {
     this.debtGateway = debtGateway;
     this.installmentGateway = installmentGateway;
+    this.costumerGateway = costumerGateway;
     this.getInstallmentsByDebtCase = new GetInstallmentsByDebtCase(
       this.installmentGateway,
     );
@@ -110,7 +114,82 @@ export class UpdateDebtUseCase {
       }
     }
 
-    return this.debtGateway.update(input);
+    const updateResult = await this.debtGateway.update(input);
+
+    // 3. Actualizar contadores del cliente si la deuda pasa a un estado "activo"
+    const preliminaryStates = ["tentativa", "preAprobada"];
+    const isNowActive = !preliminaryStates.includes(input.debt.status);
+    const wasPreliminary = preliminaryStates.includes(currentDebt.status);
+
+    if (updateResult.state.ok && wasPreliminary && isNowActive) {
+      const customerResult = await this.costumerGateway.getCostumerById(input.companyId, input.debt.clientId);
+      if (customerResult.ok && customerResult.value) {
+        const customer = customerResult.value;
+        if (input.debt.originalDebt) {
+          customer.renovationsCounter = (customer.renovationsCounter ?? 0) + 1;
+
+          // 🆕 Marcar cuotas de la deuda original como renovadas al aprobar
+          try {
+            const originalInstallmentsResult = await this.installmentGateway.getByDebt({
+              companyId: input.companyId,
+              debtId: input.debt.originalDebt,
+            });
+
+            if (originalInstallmentsResult.state.ok) {
+              const toUpdate = originalInstallmentsResult.state.value.filter(
+                (inst) => inst.status !== "pagada" && inst.status !== "liquidada"
+              );
+
+              if (toUpdate.length > 0) {
+                const updatedInstallments = toUpdate.map((inst) => ({
+                  ...inst,
+                  status: "renovada" as const,
+                  paidAmount: inst.amount,
+                }));
+
+                await this.installmentGateway.updateByDebt({
+                  companyId: input.companyId,
+                  debtId: input.debt.originalDebt,
+                  installments: updatedInstallments,
+                });
+              }
+            }
+
+            // 🆕 Vincular deuda original con el ID de la nueva deuda (si no se hizo al crear)
+            const originalDebtResult = await this.debtGateway.getById({
+              idDebt: input.debt.originalDebt,
+              companyId: input.companyId,
+            });
+
+            if (originalDebtResult.state.ok && originalDebtResult.state.value) {
+              const originalDebtEntity = originalDebtResult.state.value;
+              if (originalDebtEntity.renewedToDebtId !== input.debt.id) {
+                await this.debtGateway.update({
+                  companyId: input.companyId,
+                  isNewCollector: false,
+                  debt: {
+                    ...originalDebtEntity,
+                    renewedToDebtId: input.debt.id,
+                  },
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Error al actualizar la deuda original durante la aprobación", error);
+          }
+        } else {
+          customer.debtCounter = (customer.debtCounter ?? 0) + 1;
+        }
+        await this.costumerGateway.UpdateCostumer({
+          companyId: input.companyId,
+          costumer: customer,
+          idUser: "",
+          isNameChange: false
+        });
+      }
+    }
+
+    return updateResult;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
@@ -170,6 +249,7 @@ export class UpdateDebtUseCase {
     // Podemos "mockear" el customer usando los datos que ya vienen en la deuda (costumerName, costumerDocument, etc.)
     const mockCustomer: Customer = {
       debtCounter: 0,
+      renovationsCounter: 0,
       listId: "",
       observations: "",
       calification: "3",

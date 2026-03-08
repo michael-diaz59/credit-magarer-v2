@@ -339,6 +339,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
   dataToCostumer(data: DocumentData, id: string): Customer {
     return {
       id: id,
+      renovationsCounter: data.renovationsCounter ?? 0,
       calification: data.calification ?? "3",
       identificacionUrl: data.identificacionUrl ?? "",
       laboralUrl: data.laboralUrl ?? "",
@@ -560,52 +561,80 @@ export class FirebaseCostumerRepository implements CostumerGateway {
   }
 
   private async syncCustomerDataAcrossDocuments(params: {
-  companyId: string;
-  customer: Customer;
-  oldIdNumber: string;
-  isNameChange: boolean;
-}) {
-  const { companyId, customer, oldIdNumber, isNameChange } = params;
+    companyId: string;
+    customer: Customer;
+    oldIdNumber: string;
+    isNameChange: boolean;
+  }) {
+    const { companyId, customer, oldIdNumber, isNameChange } = params;
 
-  const batchSize = 400;
+    const batchSize = 400;
 
-  const newIdNumber = customer.applicant.idNumber;
-  const fullName = customer.applicant.fullName;
+    const newIdNumber = customer.applicant.idNumber;
+    const fullName = customer.applicant.fullName;
 
-  const isDocumentChange = oldIdNumber !== newIdNumber;
+    const isDocumentChange = oldIdNumber !== newIdNumber;
 
-  /* =====================================================
-     PREPARAR UPDATE DE DEBTS (solo si algo cambió)
-  ===================================================== */
+    /* =====================================================
+       PREPARAR UPDATE DE DEBTS (solo si algo cambió)
+    ===================================================== */
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateDebtData: Record<string, any> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateDebtData: Record<string, any> = {};
 
-  if (isNameChange) {
-    updateDebtData.costumerName = fullName;
-  }
+    if (isNameChange) {
+      updateDebtData.costumerName = fullName;
+    }
 
-  if (isDocumentChange) {
-    updateDebtData.costumerDocument = newIdNumber;
-  }
+    if (isDocumentChange) {
+      updateDebtData.costumerDocument = newIdNumber;
+    }
 
-  let batch = writeBatch(firestore);
-  let opCount = 0;
+    let batch = writeBatch(firestore);
+    let opCount = 0;
 
-  /* =====================================================
-     UPDATE DEBTS (CONDICIONAL)
-  ===================================================== */
+    /* =====================================================
+       UPDATE DEBTS (CONDICIONAL)
+    ===================================================== */
 
-  if (Object.keys(updateDebtData).length > 0) {
-    const debtsQuery = query(
-      collection(firestore, "companies", companyId, "debts"),
+    if (Object.keys(updateDebtData).length > 0) {
+      const debtsQuery = query(
+        collection(firestore, "companies", companyId, "debts"),
+        where("clientId", "==", customer.id)
+      );
+
+      const debtsSnap = await getDocs(debtsQuery);
+
+      for (const debtDoc of debtsSnap.docs) {
+        batch.update(debtDoc.ref, updateDebtData);
+
+        opCount++;
+
+        if (opCount === batchSize) {
+          await batch.commit();
+          batch = writeBatch(firestore);
+          opCount = 0;
+        }
+      }
+    }
+
+    /* =====================================================
+       UPDATE INSTALLMENTS (SIEMPRE)
+       🔥 UNA SOLA QUERY GLOBAL
+    ===================================================== */
+
+    const installmentsQuery = query(
+      collectionGroup(firestore, "installments"),
       where("clientId", "==", customer.id)
     );
 
-    const debtsSnap = await getDocs(debtsQuery);
+    const installmentsSnap = await getDocs(installmentsQuery);
 
-    for (const debtDoc of debtsSnap.docs) {
-      batch.update(debtDoc.ref, updateDebtData);
+    for (const installmentDoc of installmentsSnap.docs) {
+      batch.update(installmentDoc.ref, {
+        costumerName: fullName,
+        costumerDocument: newIdNumber,
+      });
 
       opCount++;
 
@@ -615,39 +644,11 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         opCount = 0;
       }
     }
-  }
 
-  /* =====================================================
-     UPDATE INSTALLMENTS (SIEMPRE)
-     🔥 UNA SOLA QUERY GLOBAL
-  ===================================================== */
-
-  const installmentsQuery = query(
-    collectionGroup(firestore, "installments"),
-    where("clientId", "==", customer.id)
-  );
-
-  const installmentsSnap = await getDocs(installmentsQuery);
-
-  for (const installmentDoc of installmentsSnap.docs) {
-    batch.update(installmentDoc.ref, {
-      costumerName: fullName,
-      costumerDocument: newIdNumber,
-    });
-
-    opCount++;
-
-    if (opCount === batchSize) {
+    if (opCount > 0) {
       await batch.commit();
-      batch = writeBatch(firestore);
-      opCount = 0;
     }
   }
-
-  if (opCount > 0) {
-    await batch.commit();
-  }
-}
 
   async createCostumer(
     input: SaveCostumerInput,

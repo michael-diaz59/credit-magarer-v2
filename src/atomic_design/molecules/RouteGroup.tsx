@@ -1,12 +1,12 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Chip, Divider, Typography } from "@mui/material";
-// import ExpandMoreIcon from "@mui/icons-material/ExpandMore"; // Asegurarse de tener iconos o usar texto
+import { Accordion, AccordionDetails, AccordionSummary, Box, Chip, Typography } from "@mui/material";
+import { CustomerAccordion } from "./CustomerAccordion";
+import { useState } from "react";
+import type { CustomerGroupData } from "../../features/collector/helpers/groupInstallmentsByRoute";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
-import { SectionInstallments } from "./SectionInstallments";
 
 interface RouteGroupProps {
     routeName: string;
-    pending: Installment[];
-    overdue: Installment[];
+    customers: Map<string, CustomerGroupData>;
     expanded: boolean;
     onChange: (isExpanded: boolean) => void;
     onClick: (installment: Installment) => void;
@@ -14,14 +14,26 @@ interface RouteGroupProps {
 
 export const RouteGroup = ({
     routeName,
-    pending,
-    overdue,
+    customers,
     expanded,
     onChange,
     onClick,
 }: RouteGroupProps) => {
-    const totalCount = pending.length + overdue.length;
-    const overdueCount = overdue.length;
+    const [expandedCustomers, setExpandedCustomers] = useState<Map<string, boolean>>(new Map());
+
+    const toggleCustomer = (customerId: string, isExpanded: boolean) => {
+        const newExpanded = new Map(expandedCustomers);
+        newExpanded.set(customerId, isExpanded);
+        setExpandedCustomers(newExpanded);
+    };
+
+    let totalInstallments = 0;
+    let overdueInstallments = 0;
+
+    customers.forEach(customer => {
+        totalInstallments += customer.pending.length + customer.overdue.length;
+        overdueInstallments += customer.overdue.length;
+    });
 
     return (
         <Accordion
@@ -33,50 +45,42 @@ export const RouteGroup = ({
                 mb: 2,
                 border: '1px solid',
                 borderColor: 'divider',
-                '&:before': { display: 'none' }
+                borderRadius: '12px !important',
+                '&:before': { display: 'none' },
+                overflow: 'hidden'
             }}
         >
             <AccordionSummary
-                // expandIcon={<ExpandMoreIcon />} // Si no hay iconos configurados, omitimos por ahora o usamos Unicode
                 expandIcon={<span>▼</span>}
                 aria-controls={`${routeName}-content`}
                 id={`${routeName}-header`}
                 sx={{ backgroundColor: 'action.hover' }}
             >
                 <Box display="flex" alignItems="center" width="100%" justifyContent="space-between" mr={2}>
-                    <Typography fontWeight="bold">{routeName}</Typography>
+                    <Typography fontWeight="bold" variant="h6">{routeName}</Typography>
 
                     <Box display="flex" gap={1}>
-                        {overdueCount > 0 && <Chip label={`${overdueCount} vencidas`} color="error" size="small" />}
-                        <Chip label={`${totalCount} total`} size="small" />
+                        {overdueInstallments > 0 && <Chip label={`${overdueInstallments} vencidas`} color="error" size="small" />}
+                        <Chip label={`${customers.size} cliente${customers.size !== 1 ? 's' : ''}`} size="small" />
                     </Box>
                 </Box>
             </AccordionSummary>
-            <AccordionDetails sx={{ p: 2 }}>
-                {overdue.length > 0 && (
-                    <>
-                        <SectionInstallments
-                            title="Vencidas"
-                            color="error"
-                            installments={overdue}
-                            onClick={onClick}
-                        />
-                        {pending.length > 0 && <Divider sx={{ my: 2 }} />}
-                    </>
-                )}
-
-                {pending.length > 0 && (
-                    <SectionInstallments
-                        title="Pendientes"
-                        color="warning"
-                        installments={pending}
+            <AccordionDetails sx={{ p: 2, backgroundColor: 'action.selected' }}>
+                {Array.from(customers.entries()).map(([customerId, data]) => (
+                    <CustomerAccordion
+                        key={customerId}
+                        customerName={data.customerName}
+                        pending={data.pending}
+                        overdue={data.overdue}
+                        expanded={expandedCustomers.get(customerId) ?? true}
+                        onChange={(isExpanded) => toggleCustomer(customerId, isExpanded)}
                         onClick={onClick}
                     />
-                )}
+                ))}
 
-                {totalCount === 0 && (
+                {customers.size === 0 && (
                     <Typography variant="body2" color="text.secondary" align="center" py={2}>
-                        No hay cuotas asignadas a esta ruta actualmente.
+                        No hay clientes asignados a esta ruta actualmente.
                     </Typography>
                 )}
             </AccordionDetails>

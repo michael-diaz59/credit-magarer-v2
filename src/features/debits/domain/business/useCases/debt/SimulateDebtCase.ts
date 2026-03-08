@@ -31,7 +31,8 @@ export class SimulateDebtCase {
 
   async execute(input: SimulateDebtInput): Promise<Result<SimulateDebtOutput, SimulateDebtError>> {
     /** 1️⃣ Estado válido */
-    if (input.debt.status !== "tentativa") {
+    const allowedStatuses = ["tentativa", "preAprobada", "activa"];
+    if (!allowedStatuses.includes(input.debt.status)) {
       return fail({ code: "STATE_INVALID" });
     }
 
