@@ -25,15 +25,33 @@ export const InstallmentCard = ({
             <Typography fontWeight="bold">
               {installment.costumerName}
             </Typography>
-            <Chip
-              label={installment.status.replace("_", " ")}
-              color={
-                installment.status === "pendiente"
-                  ? "error"
-                  : "warning"
-              }
-              size="small"
-            />
+            <Stack direction="row" spacing={1} alignItems="center">
+              {installment.managed && installment.managementDate === new Date().toISOString().split("T")[0] && (
+                <Chip
+                  label="Gestionado"
+                  color="info"
+                  size="small"
+                  variant="filled"
+                />
+              )}
+              {installment.attemptedCollection && installment.dateAttemptedPayment === new Date().toISOString().split("T")[0] && (
+                <Chip
+                  label="Intento realizado"
+                  color="warning"
+                  size="small"
+                  variant="filled"
+                />
+              )}
+              <Chip
+                label={installment.status.replace("_", " ")}
+                color={
+                  installment.status === "pendiente"
+                    ? "error"
+                    : "warning"
+                }
+                size="small"
+              />
+            </Stack>
           </Stack>
 
           <Typography variant="body2">

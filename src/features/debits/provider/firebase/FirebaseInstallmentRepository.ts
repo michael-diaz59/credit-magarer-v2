@@ -44,6 +44,13 @@ import type {
 import { mapToInstallment } from "../../domain/infraestructure/normalizador";
 
 export class FirebaseInstallmentRepository implements InstallmentGateway {
+
+  removeUndefined<T extends object>(obj: T): Partial<T> {
+    return Object.fromEntries(
+      Object.entries(obj).filter(([, value]) => value !== undefined)
+    ) as Partial<T>;
+  }
+
   async updateById(
     input: UpdateByIdInput,
   ): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
@@ -69,7 +76,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       const { id, ...dataToUpdate } = installment;
 
       await updateDoc(ref, {
-        ...dataToUpdate,
+        ...this.removeUndefined(dataToUpdate),
       });
 
       return ok({
@@ -77,6 +84,8 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       });
     } catch (error) {
       console.log(error);
+
+      console.log(installment);
 
       if (error instanceof FirebaseError) {
         if (error.code === "unavailable") {
@@ -225,7 +234,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         //  Nunca mandes el id dentro del documento
         const { ...data } = installment;
 
-        batch.update(ref, data);
+        batch.update(ref, this.removeUndefined(data));
       }
 
       await batch.commit();
@@ -233,6 +242,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return { state: ok(null) };
     } catch (error) {
       if (error instanceof FirebaseError) {
+        console.log(error);
         return { state: fail({ code: "NETWORK_ERROR" }) };
       }
 
@@ -272,7 +282,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
   async deleteBatch(
     companyId: string,
     installmentIds: string[],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<Result<null, any>> {
     try {
       const batch = writeBatch(firestore);
@@ -286,6 +296,40 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return ok(null);
     } catch (error) {
       console.log(error);
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
+  async getByDebtAndNumber(input: {
+    companyId: string;
+    debtId: string;
+    installmentNumber: number;
+  }): Promise<Result<Installment | null, any>> {
+    try {
+      const { companyId, debtId, installmentNumber } = input;
+      const ref = collection(firestore, "companies", companyId, "installments");
+
+      const q = query(
+        ref,
+        where("debtId", "==", debtId),
+        where("installmentNumber", "==", installmentNumber),
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return ok(null);
+      }
+
+      const doc = snapshot.docs[0];
+      const installment = mapToInstallment(
+        doc.id,
+        doc.data() as Partial<Installment>,
+      );
+
+      return ok(installment);
+    } catch (error) {
+      console.error("[getByDebtAndNumber]", error);
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }

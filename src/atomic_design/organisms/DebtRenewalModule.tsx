@@ -60,6 +60,8 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
     const [renewalDebtName, setRenewalDebtName] = useState("");
 
     const handleOpenRenewal = async () => {
+        console.log("currentDebt", currentDebt);
+        console.log("renewedToDebtId", currentDebt.renewedToDebtId);
         if (currentDebt.renewedToDebtId) {
             try {
                 const orchestrator = new DebtOrchestrator();

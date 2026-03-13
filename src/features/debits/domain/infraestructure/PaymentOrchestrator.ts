@@ -1,6 +1,7 @@
 import type { Result } from "../../../../core/helpers/ResultC";
 import { CreatePaymentCase, type CreatePaymentError, type CreatePaymentInput, type CreatePaymentOutput } from "../business/useCases/payment/CreatePayment";
 import { FirebasePaymentRepository } from "../../provider/firebase/FirebasePaymentRepository";
+import type { Payment } from "../business/entities/Payment";
 import type { PaymentGateway } from "./PaymentGateway";
 
 import { DeletePaymentCase, type DeletePaymentError, type DeletePaymentInput, type DeletePaymentOutput } from "../business/useCases/payment/DeletePaymentCase";
@@ -62,5 +63,9 @@ export default class PaymentOrchestrator {
 
     generatePaymentId(companyId: string): string {
         return this.paymentGateway.generateId(companyId);
+    }
+
+    async getByDate(companyId: string, date: string): Promise<Result<Payment[], any>> {
+        return this.paymentGateway.getAllByDate(companyId, date);
     }
 }

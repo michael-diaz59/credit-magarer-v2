@@ -3,8 +3,10 @@ import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseI
 import { GetByCollectorCase, type GetByCollectorError, type GetByCollectorInput, type GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
 import { GetByIdCase, type GetByIdError, type GetByIdInput, type GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
 import { UpdateByIdCase, type UpdateByIdError, type UpdateByIdInput, type UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
-import type { InstallmentGateway } from "./DebtGatweay";
+import type { InstallmentGateway, DebtGateway } from "./DebtGatweay";
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
+import { GetNextInstallmentsByCollectorUseCase, type GetNextInstallmentsByCollectorError, type GetNextInstallmentsByCollectorInput, type GetNextInstallmentsByCollectorOutput } from "../business/useCases/installment/GetNextInstallmentsByCollectorUseCase";
+import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 
 export default class InstallmentsOrchestrator {
 
@@ -12,14 +14,17 @@ export default class InstallmentsOrchestrator {
   private readonly getByIdCase: GetByIdCase
   private readonly updateByIdCase: UpdateByIdCase
   private readonly getByDebtCase: GetInstallmentsByDebtCase
+  private readonly getNextByCollectorCase: GetNextInstallmentsByCollectorUseCase
 
 
   constructor() {
     const installmentsGateway: InstallmentGateway = new FirebaseInstallmentRepository()
+    const debtGateway: DebtGateway = new FirebaseDebtRepository()
     this.getByCollectorCase = new GetByCollectorCase(installmentsGateway)
     this.getByIdCase = new GetByIdCase(installmentsGateway)
     this.updateByIdCase = new UpdateByIdCase(installmentsGateway)
     this.getByDebtCase = new GetInstallmentsByDebtCase(installmentsGateway)
+    this.getNextByCollectorCase = new GetNextInstallmentsByCollectorUseCase(debtGateway, installmentsGateway)
   }
 
   async updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
@@ -37,6 +42,10 @@ export default class InstallmentsOrchestrator {
 
   async getByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput> {
     return this.getByDebtCase.execute(input);
+  }
+
+  async getNextByCollector(input: GetNextInstallmentsByCollectorInput): Promise<Result<GetNextInstallmentsByCollectorOutput, GetNextInstallmentsByCollectorError>> {
+    return this.getNextByCollectorCase.execute(input);
   }
 
 };

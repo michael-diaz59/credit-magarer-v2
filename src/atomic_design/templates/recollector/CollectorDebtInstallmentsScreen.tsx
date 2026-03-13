@@ -6,6 +6,7 @@ import { useAppSelector } from "../../../store/redux/coreRedux";
 import type { Installment } from "../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
+import { processInstallments, type ProcessedInstallment } from "../../../core/helpers/installments/getFirstPayableInstallment";
 
 export const CollectorDebtInstallmentsScreen = () => {
     const { debtId } = useParams<{ debtId: string }>();
@@ -15,6 +16,10 @@ export const CollectorDebtInstallmentsScreen = () => {
 
     const [loading, setLoading] = useState(true);
     const [installments, setInstallments] = useState<Installment[]>([]);
+
+    const [processedInstallments, setProcessedInstallments] = useState<ProcessedInstallment[]>([]);
+
+
 
     useEffect(() => {
         if (!debtId || !companyId) {
@@ -34,6 +39,7 @@ export const CollectorDebtInstallmentsScreen = () => {
 
                 if (result.state.ok) {
                     setInstallments(result.state.value);
+                    setProcessedInstallments(processInstallments(result.state.value))
                 }
             } catch (error) {
                 console.error("Error cargando cuotas de la deuda", error);
@@ -84,30 +90,47 @@ export const CollectorDebtInstallmentsScreen = () => {
             )}
 
             <Stack spacing={2}>
-                {sortedInstallments.map((i) => (
+                {processedInstallments.map((i) => (
                     <Box
                         key={i.id}
                         p={2}
                         border="1px solid"
-                        borderColor="divider"
+                        borderColor={i.isActive ? "primary.main" : "divider"}
                         borderRadius={2}
                         sx={{
-                            cursor: "pointer",
-                            "&:hover": { backgroundColor: "action.hover" },
-                            backgroundColor: 'background.paper'
+                            cursor: i.isSelectable ? "pointer" : "not-allowed",
+                            opacity: i.isSelectable || i.isPaid ? 1 : 0.45,
+                            backgroundColor: "background.paper",
+                            "&:hover": i.isSelectable
+                                ? { backgroundColor: "action.hover" }
+                                : {}
                         }}
-                        onClick={() => navigate(ScreenPaths.collector.installment(i.id))}
+                        onClick={() => {
+                            if (!i.isSelectable) return;
+                            navigate(ScreenPaths.collector.installment(i.id));
+                        }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
                             <Typography fontWeight="500">
                                 Cuota #{i.installmentNumber}
                             </Typography>
-                            <Chip
-                                label={i.status}
-                                color={getStatusColor(i.status)}
-                                size="small"
-                                variant="outlined"
-                            />
+
+                            <Stack direction="row" spacing={1}>
+                                {i.isActive && (
+                                    <Chip
+                                        label="Cuota actual"
+                                        color="primary"
+                                        size="small"
+                                    />
+                                )}
+
+                                <Chip
+                                    label={i.status}
+                                    color={getStatusColor(i.status)}
+                                    size="small"
+                                    variant="outlined"
+                                />
+                            </Stack>
                         </Stack>
 
                         <Typography variant="h6" color="primary.main">
@@ -118,6 +141,7 @@ export const CollectorDebtInstallmentsScreen = () => {
                             <Typography variant="body2" color="text.secondary">
                                 Vence: {new Date(i.dueDate).toLocaleDateString()}
                             </Typography>
+
                             {i.paidAmount > 0 && (
                                 <Typography variant="body2" color="success.main">
                                     Pagado: ${i.paidAmount.toLocaleString()}
@@ -126,12 +150,6 @@ export const CollectorDebtInstallmentsScreen = () => {
                         </Stack>
                     </Box>
                 ))}
-
-                {sortedInstallments.length === 0 && (
-                    <Typography color="text.secondary" align="center" mt={4}>
-                        No se encontraron cuotas para esta deuda.
-                    </Typography>
-                )}
             </Stack>
         </Box>
     );

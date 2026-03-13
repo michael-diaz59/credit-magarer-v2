@@ -1,10 +1,10 @@
 import { Stack, TextField, MenuItem, Button } from "@mui/material";
 import { Controller, useForm } from "react-hook-form";
-import type {
-  Debt,
-  DebtStatus,
-  DebtTerms,
-  DebtType,
+import {
+  debtStatusList,
+  type Debt,
+  type DebtTerms,
+  type DebtType,
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
 
@@ -15,14 +15,7 @@ const debtTermsList: DebtTerms[] = [
   "quincenal",
   "mensual",
 ];
-const debtStatusList: DebtStatus[] = [
-  "tentativa",
-  "preparacion",
-  "activa",
-  "en_mora",
-  "pagada",
-  "cancelada",
-];
+
 
 type Props = {
   defaultValues: Omit<Debt, "id">;
@@ -116,7 +109,7 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
           error={!!errors.interestRate}
           helperText={errors.interestRate?.message}
           {...register("interestRate", {
-             valueAsNumber: true,
+            valueAsNumber: true,
             min: {
               value: 0,
               message: "La tasa no puede ser negativa",
@@ -133,7 +126,7 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
           error={!!errors.totalAmount}
           helperText={errors.totalAmount?.message}
           {...register("totalAmount", {
-             valueAsNumber: true,
+            valueAsNumber: true,
             required: "El monto es obligatorio",
             min: {
               value: 10001,
@@ -175,7 +168,7 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
           error={!!errors.installmentCount}
           helperText={errors.installmentCount?.message}
           {...register("installmentCount", {
-             valueAsNumber: true,
+            valueAsNumber: true,
             min: {
               value: 1,
               message: "Debe haber al menos una cuota",

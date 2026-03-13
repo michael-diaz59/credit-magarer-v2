@@ -23,6 +23,7 @@ import {
   MenuItem,
   Select,
   InputLabel,
+  Checkbox,
 } from "@mui/material";
 import {
   type Installment,
@@ -59,6 +60,11 @@ export const InstallmentDetailScreen = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogBody, setDialogBody] = useState("");
   const [dialogTitle, setDialogTitle] = useState<string | undefined>(undefined);
+
+  const [attemptDialogOpen, setAttemptDialogOpen] = useState(false);
+  const [attemptDescription, setAttemptDescription] = useState("");
+  const [attemptLoading, setAttemptLoading] = useState(false);
+
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { id: installmentId } = useParams<{ id: string }>();
@@ -446,6 +452,84 @@ export const InstallmentDetailScreen = () => {
     initiatePayment("partial", Number(data.amount));
   };
 
+  const handleRegisterAttempt = async () => {
+    if (!installmentId || !companyId || !collectorId) return;
+
+    setAttemptLoading(true);
+    try {
+      let location: import("../../../features/debits/domain/business/entities/Payment").GeoLocation | undefined;
+      try {
+        location = await getCurrentLocation();
+      } catch (error) {
+        console.warn("Could not get location for attempt:", error);
+      }
+
+      const orchestrator = new (await import("../../../features/debits/domain/infraestructure/CollectionAttemptOrchestrator")).CollectionAttemptOrchestrator();
+
+      const result = await orchestrator.createAttempt({
+        companyId,
+        collectorId,
+        installmentId,
+        description: attemptDescription,
+        location
+      });
+
+      if (result.ok) {
+        setAttemptDialogOpen(false);
+        setAttemptDescription("");
+        setDialogTitle("Éxito");
+        setDialogBody("Intento de cobro registrado correctamente.");
+        setDialogOpen(true);
+
+        // Actualizar estado local para feedback visual inmediato
+        setInstallment(prev => ({
+          ...prev,
+          attemptedCollection: true,
+          dateAttemptedPayment: new Date().toISOString().split("T")[0]
+        }));
+      } else {
+        throw new Error("Error registering attempt");
+      }
+    } catch (error) {
+      console.error(error);
+      setDialogTitle("Error");
+      setDialogBody("No se pudo registrar el intento de cobro.");
+      setDialogOpen(true);
+    } finally {
+      setAttemptLoading(false);
+    }
+  };
+
+  const handleToggleManaged = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!installmentId || !companyId || !installment) return;
+
+    const isChecked = event.target.checked;
+    const today = new Date().toISOString().split("T")[0];
+
+    // Actualización optimista local
+    const updatedInstallment = {
+      ...installment,
+      managed: isChecked,
+      managementDate: isChecked ? today : undefined
+    };
+    setInstallment(updatedInstallment);
+
+    try {
+      const result = await installmentsOrchestrator.updateById({
+        companyId,
+        installment: updatedInstallment
+      });
+
+      if (!result.ok) {
+        throw new Error("Failed to update managed status");
+      }
+    } catch (error) {
+      console.error("Error updating managed status", error);
+      // Revertir en caso de error
+      setInstallment(installment);
+    }
+  };
+
   if (!installment) {
     return <Typography>No se encontró la cuota</Typography>;
   }
@@ -480,6 +564,10 @@ export const InstallmentDetailScreen = () => {
     if (status === "incompleto") return "warning";
     return "success";
   };
+
+  console.log("manejp:", installment.managed);
+
+  console.log("fecha de manejp:", installment.managementDate);
 
   return (
     <Box p={2}>
@@ -603,6 +691,52 @@ export const InstallmentDetailScreen = () => {
             disabled={(selectedMethod === "consignacion" && (!proofFile || !selectedBankAccountId))}
           >
             Continuar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* DIALOGO INTENTO DE COBRO */}
+      <Dialog
+        open={attemptDialogOpen}
+        onClose={() => !attemptLoading && setAttemptDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Registrar Intento de Cobro</DialogTitle>
+        <DialogContent>
+          <Box mt={1}>
+            <Typography variant="body2" gutterBottom color="text.secondary">
+              Describe brevemente por qué no se pudo completar el cobro.
+            </Typography>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Descripción del intento"
+              type="text"
+              fullWidth
+              multiline
+              rows={3}
+              variant="outlined"
+              value={attemptDescription}
+              onChange={(e) => setAttemptDescription(e.target.value)}
+              disabled={attemptLoading}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setAttemptDialogOpen(false)}
+            disabled={attemptLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleRegisterAttempt}
+            variant="contained"
+            color="primary"
+            disabled={attemptLoading || !attemptDescription.trim()}
+          >
+            {attemptLoading ? <CircularProgress size={24} /> : "Registrar Intento"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -756,6 +890,29 @@ export const InstallmentDetailScreen = () => {
               </Typography>
             </Box>
 
+            {/* GESTIÓN DIARIA */}
+            <Box border="1px solid" borderColor="divider" borderRadius={2} p={1} bgcolor="rgba(0,0,0,0.02)">
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!!installment.managed && installment.managementDate === new Date().toISOString().split("T")[0]}
+                    onChange={handleToggleManaged}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body1" fontWeight="500">
+                      Gestionado hoy
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Indica que ya contactaste u operaste sobre esta cuota.
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
+
             {/* ACCIÓN */}
             {canBePaid && (
               <Stack spacing={2}>
@@ -781,6 +938,16 @@ export const InstallmentDetailScreen = () => {
                   }}
                 >
                   Abono
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  size="large"
+                  disabled={loading || attemptLoading}
+                  onClick={() => setAttemptDialogOpen(true)}
+                >
+                  Intento de Cobro
                 </Button>
 
                 <Button

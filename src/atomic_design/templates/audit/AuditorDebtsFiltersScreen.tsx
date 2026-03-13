@@ -10,36 +10,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
-import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
+import { debtStatusList, type Debt, type DebtStatus } from "../../../features/debits/domain/business/entities/Debt";
 import { useAppSelector } from "../../../store/redux/coreRedux";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 
-/* =======================
-   Tipos
-======================= */
-
-export type DebtStatus =
-  | "preAprobada"
-  | "tentativa"
-  | "preparacion"
-  | "activa"
-  | "pagada"
-  | "en_mora"
-  | "cancelada";
-
-/* =======================
-   Config
-======================= */
-
-const ALL_STATUSES: DebtStatus[] = [
-  "preAprobada",
-  "preparacion",
-  "activa",
-  "pagada",
-  "tentativa",
-  "en_mora",
-  "cancelada",
-];
 
 /* =======================
    Screen
@@ -112,7 +86,7 @@ export const AuditorDebtsFiltersScreen = () => {
 
       <Paper sx={{ p: 2, my: 2 }}>
         <Stack direction="row" spacing={1} flexWrap="wrap">
-          {ALL_STATUSES.map((status) => {
+          {debtStatusList.map((status) => {
             const active = isActive(status);
 
             return (

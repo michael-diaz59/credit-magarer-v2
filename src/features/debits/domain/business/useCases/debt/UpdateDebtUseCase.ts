@@ -93,6 +93,7 @@ export class UpdateDebtUseCase {
       // Sincronizar cuotas
       const syncResult = await this.syncInstallments(input, currentDebt);
       if (!syncResult.ok) {
+        console.log(syncResult.error);
         return { state: fail({ code: "ERROR_INSTALLMENTS" }) };
       }
     } else if (input.isNewCollector) {
@@ -329,6 +330,7 @@ export class UpdateDebtUseCase {
     if (updateInstallmentByDebtCase.state.ok) {
       return ok(null);
     } else {
+      console.log(updateInstallmentByDebtCase.state.error);
       return fail<UpdateDebtError>({ code: "ERROR_INSTALLMENTS" });
     }
   }

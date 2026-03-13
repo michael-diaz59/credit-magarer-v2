@@ -131,7 +131,7 @@ export const AuditDebtScreen = () => {
               {originalDebt ? "Aprobar Renovación de Deuda" : "Detalle de la deuda"}
             </Typography>
 
-            {originalDebt && debitId ? (
+            {originalDebt && debitId && form.status === "preAprobada" ? (
               <RenewalComparisonForm
                 debtId={debitId}
                 originalDebt={originalDebt}

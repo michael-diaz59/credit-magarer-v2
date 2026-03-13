@@ -34,11 +34,18 @@ import Collector_layout from "./collector/Collector_layout.tsx";
 import { RecolectorHome } from "../atomic_design/templates/recollector/RecolectorHome.tsx";
 import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetailScreen.tsx";
 import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileScreen.tsx";
+import { RouteAdministrationScreen } from "../atomic_design/templates/configuration/RouteAdministrationScreen.tsx";
+import { CreateRouteScreen } from "../atomic_design/templates/configuration/CreateRouteScreen.tsx";
+import { EditRouteScreen } from "../atomic_design/templates/configuration/EditRouteScreen.tsx";
 import { PaymentsListScreen } from "../atomic_design/templates/audit/AuditPaymentsListScreen.tsx";
 import { PaymentDetailScreen } from "../atomic_design/templates/audit/PaymentDetailScreen.tsx";
 import { AuditorInstallmentsScreen } from "../atomic_design/templates/audit/AuditorInstallmentsScreen.tsx";
 import { CollectorDebtInstallmentsScreen } from "../atomic_design/templates/recollector/CollectorDebtInstallmentsScreen.tsx";
+import { CollectorDebtsScreen } from "../atomic_design/templates/recollector/CollectorDebtsScreen.tsx";
 import { CreateVisit } from "../atomic_design/templates/advisor/office/CreateVisit.tsx";
+import { DailyOperationsScreen } from "../atomic_design/templates/audit/DailyOperationsScreen.tsx";
+import { CollectionAttemptDetailScreen } from "../atomic_design/templates/audit/CollectionAttemptDetailScreen.tsx";
+import { BankAccountsAdministrationScreen } from "../atomic_design/templates/configuration/BankAccountsAdministrationScreen.tsx";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -98,6 +105,14 @@ export default function App() {
       >
         {/* home  de configuracion */}
         <Route index element={<ProfileScreen />} />
+        
+        {/* Rutas de administracion de rutas */}
+        <Route path="routes" element={<RouteAdministrationScreen />} />
+        <Route path="routes/create" element={<CreateRouteScreen />} />
+        <Route path="routes/edit/:routeId" element={<EditRouteScreen />} />
+
+        {/* Rutas de administracion de cuentas bancarias */}
+        <Route path="bank-accounts" element={<BankAccountsAdministrationScreen />} />
 
       </Route>
       {/* rutas de cobrador */}
@@ -118,6 +133,18 @@ export default function App() {
         <Route
           path={ScreenPaths.collector.installment(":id")}
           element={<InstallmentDetailScreen />}
+        />
+
+        {/* clientes de un cobrador */}
+        <Route
+          path={ScreenPaths.collector.costumers}
+          element={<CollectorDebtsScreen />}
+        />
+
+        {/* deudas activas del cliente de un cobrador */}
+        <Route
+          path={ScreenPaths.collector.costumer(":id")}
+          element={<CollectorDebtInstallmentsScreen />}
         />
 
         {/* cuotas de una deuda para el cobrador */}
@@ -194,6 +221,18 @@ export default function App() {
         <Route
           path={ScreenPaths.auditor.payment(":paymentId")}
           element={<PaymentDetailScreen />}
+        />
+
+        {/* rutas de auditor, operaciones del dia*/}
+        <Route
+          path={ScreenPaths.auditor.dailyOperations}
+          element={<DailyOperationsScreen />}
+        />
+
+        {/* rutas de auditor, detalle de intento de cobro*/}
+        <Route
+          path={ScreenPaths.auditor.collectionAttemptDetail(":attemptId")}
+          element={<CollectionAttemptDetailScreen />}
         />
       </Route>
 

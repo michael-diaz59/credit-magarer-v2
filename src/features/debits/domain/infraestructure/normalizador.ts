@@ -56,6 +56,13 @@ export function mapToInstallment(
       stratum: data.costumerAddres?.stratum ?? 0,
       city: data.costumerAddres?.city ?? "",
     },
+    managed: data.managed ?? false,
+    managementDate: data.managementDate ?? "",
+
+    attemptedCollection: data.attemptedCollection ?? false,
+    dateAttemptedPayment: data.dateAttemptedPayment ?? "",
+    descriptionAttemptedPayment: data.descriptionAttemptedPayment ?? "",
+    locationAttemptedPayment: data.locationAttemptedPayment,
 
     installmentTotalNumber: data.installmentTotalNumber ?? 0,
     installmentNumber: data.installmentNumber ?? 0,

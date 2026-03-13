@@ -48,11 +48,11 @@ export default function DebtTable({ debts, onClick }: Props) {
             <Table stickyHeader size="small">
                 <TableHead>
                     <TableRow>
-                        <TableCell>Nombre deuda</TableCell>
+                        <TableCell>codificacion</TableCell>
                         <TableCell>Cliente</TableCell>
                         <TableCell>Capital</TableCell>
                         <TableCell>Interés</TableCell>
-                        <TableCell>Frecuencia</TableCell>
+                        <TableCell>modalidad</TableCell>
                         <TableCell>Días totales</TableCell>
                         <TableCell>Valor cuota</TableCell>
                         <TableCell>Próximo pago</TableCell>

@@ -112,7 +112,7 @@ export const RecolectorHome = () => {
         setLoading(true);
         const orchestrator = new InstallmentsOrchestrator();
 
-        const result = await orchestrator.getByCollector({
+        const result = await orchestrator.getNextByCollector({
           companyId,
           collectorId,
         });
@@ -133,17 +133,36 @@ export const RecolectorHome = () => {
   /* =======================
      DERIVADOS
      ======================= */
+  const debtIdsWithAttempt = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const ids = new Set<string>();
+    items.forEach((i) => {
+      if (i.attemptedCollection && i.dateAttemptedPayment === todayStr) {
+        ids.add(i.debtId);
+      }
+    });
+    return ids;
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((i) => !debtIdsWithAttempt.has(i.debtId));
+  }, [items, debtIdsWithAttempt]);
+
   const { pending, overdue, paid } = useMemo(() => {
     return {
-      pending: items.filter(
-        (i) => (i.status === "pendiente" || i.status === "incompleto") && IsFutureOrToday(i.dueDate)
+      pending: filteredItems.filter(
+        (i) =>
+          (i.status === "pendiente" || i.status === "incompleto") &&
+          IsFutureOrToday(i.dueDate)
       ),
-      overdue: items.filter(
-        (i) => (i.status === "pendiente" || i.status === "incompleto") && IsPastDate(i.dueDate)
+      overdue: filteredItems.filter(
+        (i) =>
+          (i.status === "pendiente" || i.status === "incompleto") &&
+          IsPastDate(i.dueDate)
       ),
-      paid: items.filter((i) => i.status === "pagada"),
+      paid: items.filter((i) => i.status === "pagada"), // Paid items should stay
     };
-  }, [items]);
+  }, [filteredItems, items]);
 
   const allCustomers = useMemo(() => {
     const seen = new Set<string>();

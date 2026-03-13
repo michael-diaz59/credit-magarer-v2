@@ -24,9 +24,10 @@ import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import type { UpdateDebitInput, UpdateDebitOutput } from "../../domain/business/useCases/debt/UpdateDebtUseCase";
 import type { GetDebitByIdInput, GetDebitByIdOutput } from "../../domain/business/useCases/debt/GetDebitByIdCase";
 import type { GetDebstByCostumerDocumentInput, GetDebstByCostumerDocumentOutput } from "../../domain/business/useCases/debt/GetDebstByCostumerDocumentCase";
-import type { Debt } from "../../domain/business/entities/Debt";
+import type { Debt, DebtStatus } from "../../domain/business/entities/Debt";
 import type { GetDebtsInput, GetDebtsOutput } from "../../domain/business/useCases/debt/GetDebtsCase";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../../domain/business/useCases/debt/GetByFiltersCase";
+import { cleanFirestoreData } from "../../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseDebtRepository implements DebtGateway {
 
@@ -97,6 +98,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                     totalPaid: Number(data.totalPaid ?? 0),
                     totalPaymentForLate: Number(data.totalPaymentForLate ?? 0),
                     originalDebt: data.originalDebt ?? null,
+                    renewedToDebtId: data.renewedToDebtId ?? null,
                     dateLastPayment: data.dateLastPayment ?? "",
                     installmentsPaid: data.installmentsPaid ?? 0,
                 };
@@ -127,6 +129,7 @@ export class FirebaseDebtRepository implements DebtGateway {
     ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
         try {
             let debtNameOut = ""
+            let debtIdOut = ""
             const db = getFirestore();
 
             const countersRef = doc(
@@ -173,6 +176,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 /** 🆔 Auto ID */
                 const debtRef = doc(debtsCol);
                 const debtId = debtRef.id;
+                debtIdOut = debtId;
 
                 /** 🏷️ Nombre secuencial */
                 const debtName = `DEBT-${nextDebtNumber}`;
@@ -198,7 +202,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 }
             });
 
-            return ok({ debtName: debtNameOut });
+            return ok({ debtName: debtNameOut, debtId: debtIdOut });
         } catch (error) {
             console.error("[createWithInstallments]", error);
 
@@ -290,6 +294,7 @@ export class FirebaseDebtRepository implements DebtGateway {
             totalPaid: Number(data.totalPaid ?? 0),
             totalPaymentForLate: Number(data.totalPaymentForLate ?? 0),
             originalDebt: data.originalDebt ?? null,
+            renewedToDebtId: data.renewedToDebtId ?? null,
             dateLastPayment: data.dateLastPayment ?? "",
             installmentsPaid: data.installmentsPaid ?? 0,
         };
@@ -300,6 +305,7 @@ export class FirebaseDebtRepository implements DebtGateway {
     ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
         try {
             let debtNameOut = ""
+            let debtIdOut = ""
             const countersRef = doc(
                 firestore,
                 "companies",
@@ -336,14 +342,19 @@ export class FirebaseDebtRepository implements DebtGateway {
                 const debtName = `DEBT-${nextDebtNumber}`;
                 debtNameOut = debtName
 
-                tx.set(doc(debtsRef), {
+                const debtRef = doc(debtsRef);
+                const debtId = debtRef.id;
+                debtIdOut = debtId;
+
+                tx.set(debtRef, {
                     ...input.debt,
+                    id: debtId,
                     name: debtName,
                     createdAt: serverTimestamp(),
                 });
             });
 
-            return ok({ debtName: debtNameOut });
+            return ok({ debtName: debtNameOut, debtId: debtIdOut });
         } catch (error) {
             if (error instanceof FirebaseError) {
                 return fail({ code: "NETWORK_ERROR" });
@@ -384,16 +395,24 @@ export class FirebaseDebtRepository implements DebtGateway {
                 createdAt: debt.createdAt,
                 firstDueDate: debt.firstDueDate,
                 capital: debt.capital,
-                originalDebt: debt.originalDebt ?? null,
+                diasMes: debt.diasMes,
+                nextPaymentDue: debt.nextPaymentDue,
+                overdueInstallmentsCount: debt.overdueInstallmentsCount,
+                originalDebt: debt.originalDebt ?? undefined,
+                renewedToDebtId: debt.renewedToDebtId ?? undefined,
+                totalPaid: debt.totalPaid,
+                idVisit: debt.idVisit,
+                totalPaymentForLate: debt.totalPaymentForLate,
                 dateLastPayment: debt.dateLastPayment ?? "",
                 installmentsPaid: debt.installmentsPaid ?? 0,
             };
 
-            await updateDoc(ref, updateData);
+            await updateDoc(ref, cleanFirestoreData(updateData));
 
             return { state: ok(null) };
         } catch (error) {
             console.log(error)
+            console.log("debt", input.debt)
             if (error instanceof FirebaseError) {
                 return { state: fail({ code: "UNKNOWN_ERROR" }) };
             }
@@ -435,6 +454,8 @@ export class FirebaseDebtRepository implements DebtGateway {
                 diasMes: data.diasMes ?? 0,
                 status: data.status ?? "tentativa",
                 clientId: data.clientId ?? "",
+                renewedToDebtId: data.renewedToDebtId ?? null,
+                originalDebt: data.originalDebt ?? null,
                 costumerName: data.costumerName ?? "",
                 costumerDocument: data.costumerDocument ?? "",
                 totalAmount: data.totalAmount ?? 0,
@@ -451,8 +472,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 dateLastPayment: data.dateLastPayment ?? "",
                 installmentsPaid: data.installmentsPaid ?? 0,
                 overdueInstallmentsCount: data.overdueInstallmentsCount ?? 0,
-                capital: data.capital ?? 0,
-                originalDebt: data.originalDebt ?? null,
+                capital: data.capital ?? 0
             };
 
             return {
@@ -520,6 +540,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                     overdueInstallmentsCount: data.overdueInstallmentsCount ?? 0,
                     capital: data.capital ?? 0,
                     originalDebt: data.originalDebt ?? null,
+                    renewedToDebtId: data.renewedToDebtId ?? null,
                 } as Debt;
             });
 
@@ -531,5 +552,35 @@ export class FirebaseDebtRepository implements DebtGateway {
             return { state: fail({ code: "UNKNOWN_ERROR" }) };
         }
     }
-}
 
+    async getDebtsByCollectorAndStatus(input: {
+        companyId: string;
+        collectorId: string;
+        statuses: DebtStatus[];
+        dateLimit?: string;
+    }): Promise<Result<GetDebtsOutput, any>> {
+        try {
+            const { companyId, collectorId, statuses, dateLimit } = input;
+            const ref = collection(firestore, "companies", companyId, "debts");
+
+            const constraints = [
+                where("collectorId", "==", collectorId),
+                where("status", "in", statuses)
+            ];
+
+            if (dateLimit) {
+                constraints.push(where("nextPaymentDue", "<=", dateLimit));
+            }
+
+            const q = query(ref, ...constraints);
+            const snapshot = await getDocs(q);
+
+            const debts: Debt[] = snapshot.docs.map(doc => this.mapFirestoreDebt(doc as QueryDocumentSnapshot<DocumentData>));
+
+            return ok({ state: ok(debts) });
+        } catch (error) {
+            console.error("[getDebtsByCollectorAndStatus]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+}

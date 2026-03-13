@@ -202,4 +202,36 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
+
+    async getAllByDate(companyId: string, date: string): Promise<Result<Payment[], any>> {
+        try {
+            console.log("[FirebasePaymentRepository.getAllByDate]", companyId, date);
+            const ref = collection(firestore, "companies", companyId, "payments");
+
+            // Calculamos el límite del día siguiente para el rango
+            const nextDayDate = new Date(date);
+            nextDayDate.setDate(nextDayDate.getDate() + 1);
+            const nextDay = nextDayDate.toISOString().split("T")[0];
+
+            const q = query(
+                ref,
+                where("paidAt", ">=", date),
+                where("paidAt", "<", nextDay)
+            );
+
+            const snapshot = await getDocs(q);
+
+            const payments: Payment[] = snapshot.docs.map(doc => ({
+                ...doc.data(),
+                id: doc.id
+            } as Payment));
+
+            console.log("[FirebasePaymentRepository.getAllByDate]", payments);
+
+            return ok(payments);
+        } catch (error) {
+            console.error("[FirebasePaymentRepository.getAllByDate]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
 }

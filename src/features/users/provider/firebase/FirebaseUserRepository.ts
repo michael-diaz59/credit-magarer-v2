@@ -6,6 +6,7 @@ import type { UserGateway } from "../../domain/infraestructure/UserGateway";
 import { firestore } from "../../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
 import type { GetUserByCompanyInput, GetUserByCompanyOutput } from "../../domain/business/useCases/GetUsersByCompanyCase";
+import type { GetUsersByRouteInput, GetUsersByRouteOutput } from "../../domain/business/useCases/GetUsersByRouteUseCase";
 
 export interface Globaluser {
   id: string
@@ -61,7 +62,8 @@ export class FirebaseUserRepository implements UserGateway {
         return {
           id: doc.id,
           ...data,
-          collectorRoutes
+          collectorRoutes,
+          idRoutes: data.idRoutes || []
         } as User;
       });
 
@@ -144,6 +146,7 @@ export class FirebaseUserRepository implements UserGateway {
         name: dataUserCompany.name ?? dataGlobalUser.name,
         roles: dataGlobalUser.roles,
         collectorRoutes,
+        idRoutes: dataUserCompany.idRoutes || [],
       };
 
       console.log("usuario encontrado", userCompany);
@@ -263,6 +266,99 @@ export class FirebaseUserRepository implements UserGateway {
       }
 
       return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
+  async updateUserRoutes(
+    userId: string,
+    companyId: string,
+    idRoutes: string[]
+  ): Promise<Result<void, setUserError>> {
+    try {
+      const refUserCompany = doc(
+        firestore,
+        "companies",
+        companyId,
+        "users",
+        userId
+      );
+
+      await setDoc(
+        refUserCompany,
+        {
+          idRoutes: idRoutes,
+        },
+        { merge: true }
+      );
+
+      return ok(undefined);
+    } catch (error) {
+      console.error("Error updating user routes", error);
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "permission-denied":
+          case "unavailable":
+            return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
+  async getUsersByRoute(
+    input: GetUsersByRouteInput
+  ): Promise<GetUsersByRouteOutput> {
+    try {
+      const refUsersCompany = collection(
+        firestore,
+        "companies",
+        input.companyId,
+        "users"
+      );
+
+      const usersQuery = query(
+        refUsersCompany,
+        where("idRoutes", "array-contains", input.routeId)
+      );
+
+      const snapshot = await getDocs(usersQuery);
+
+      const users: User[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+
+        let collectorRoutes: Map<string, string[]> | undefined;
+        if (data.collectorRoutes) {
+          try {
+            collectorRoutes = new Map(Object.entries(data.collectorRoutes));
+          } catch (e) {
+            console.error("Error parsing collectorRoutes", e);
+          }
+        }
+
+        return {
+          id: doc.id,
+          ...data,
+          collectorRoutes,
+          idRoutes: data.idRoutes || []
+        } as User;
+      });
+
+      return {
+        state: ok(users),
+      };
+    } catch (error) {
+       console.error("Error getting users by route", error);
+       if (error instanceof FirebaseError) {
+         switch (error.code) {
+           case "permission-denied":
+             return { state: fail({ code: "UNKNOWN_ERROR" }) };
+           case "unavailable":
+             return { state: fail({ code: "NETWORK_ERROR" }) };
+         }
+       }
+       return { state: fail({ code: "UNKNOWN_ERROR" }) };
     }
   }
 }

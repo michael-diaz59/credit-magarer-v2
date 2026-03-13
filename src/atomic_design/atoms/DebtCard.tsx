@@ -25,7 +25,8 @@ const debtStatusConfig: Record<
   corregir: { label: "Corregir", color: "warning" },
   pagada: { label: "Pagada", color: "success" },
   en_mora: { label: "En mora", color: "error" },
-  cancelada: { label: "Cancelada", color: "default" },
+  inactivo: { label: "Inactivo", color: "default" },
+  anulado: { label: "Anulado", color: "default" },
 };
 
 interface Props {

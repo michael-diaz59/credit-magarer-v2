@@ -22,7 +22,8 @@ export interface CreateDebtUInput {
 
 
 export interface CreateDebtUOutput {
-  debtName: string
+  debtName: string;
+  debtId: string;
 }
 
 export interface createWithInstallmentsInput {
@@ -95,13 +96,13 @@ export class CreateDebtUseCase {
       interestRate: input.debt.interestRate,
       startDate: input.debt.startDate,
       createdAt: new Date().toISOString().slice(0, 10),
-      firstDueDate: "", // se calcula abajo
-      nextPaymentDue: "", // se calcula abajo
+      firstDueDate: "",
+      nextPaymentDue: "",
       dateLastPayment: "",
       installmentsPaid: 0,
       overdueInstallmentsCount: 0,
       capital: input.debt.totalAmount,
-      originalDebt: input.debt.originalDebt ?? null,
+      originalDebt: input.debt.originalDebt ?? undefined,
     };
 
     /** 4️⃣ Generar cuotas */
@@ -168,14 +169,16 @@ export class CreateDebtUseCase {
 
             if (originalDebtResult.state.ok && originalDebtResult.state.value) {
               const originalDebtEntity = originalDebtResult.state.value;
-              await this.debtGateway.update({
-                companyId: input.companyId,
-                isNewCollector: false,
-                debt: {
-                  ...originalDebtEntity,
-                  renewedToDebtId: debt.id,
-                },
-              });
+              if (originalDebtEntity.renewedToDebtId !== result.value.debtId) {
+                await this.debtGateway.update({
+                  companyId: input.companyId,
+                  isNewCollector: false,
+                  debt: {
+                    ...originalDebtEntity,
+                    renewedToDebtId: result.value.debtId,
+                  },
+                });
+              }
             }
           } catch (error) {
             console.error("Error al actualizar la deuda original durante la renovación", error);

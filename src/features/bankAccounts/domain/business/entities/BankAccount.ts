@@ -7,4 +7,5 @@ export interface BankAccount {
     accountType: string;
     tope: number;
     monto: number;
+    idUser: string;
 }

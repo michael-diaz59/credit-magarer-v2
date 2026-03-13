@@ -1,6 +1,7 @@
 export type RoutNav = {
   label: string;
   path: string;
+  exact?: boolean;
 };
 
 
@@ -62,6 +63,8 @@ export const pathVisitField = pathVisitsField
 
 
 const pathColllector = "/collector"
+
+const pathCollectorCostumers = pathColllector + "/costumers"
 const pathColllectorInstallment = pathColllector + "/installment"
 
 const pathColllectorRoutes = pathColllector + "/routes"
@@ -144,6 +147,7 @@ export const ScreenPaths = {
     debtInstallments: (debtId: string) => `${pathColllector}/debt/${debtId}/installments`,
     route: (id: string) => `${pathColllectorRoute}/${id}`,
     costumer: (id: string) => `${pathCollectorCostumer}/${id}`,
+    costumers: pathCollectorCostumers,
   },
   auditor: {
     home: pathAuditor,
@@ -156,6 +160,8 @@ export const ScreenPaths = {
     installments: (idDebt: string) => `${pathAuditorinstallments}/${idDebt}`,
     payments: (idInstallment: string) => `${pathAuditorpayments}/${idInstallment}`,
     payment: (idInstallment: string) => `${pathAuditorpayment}/${idInstallment}`,
+    dailyOperations: pathAuditor + "/daily-operations",
+    collectionAttemptDetail: (id: string) => `${pathAuditor}/collection-attempt/${id}`,
 
   },
   accountant: {
@@ -175,6 +181,13 @@ export const officeAdvisorAppBar: RoutNav[] = [
 export const basphatsAppBar: RoutNav[] = [
   { label: "configuracion", path: ScreenPaths.Configuration.home },
   { label: "inicio", path: ScreenPaths.home },
+];
+
+export const collectorAppBar: RoutNav[] = [
+  { label: "perfil", path: ScreenPaths.Configuration.home },
+  { label: "cobros", path: ScreenPaths.collector.home, exact: true },
+  { label: "clientes", path: ScreenPaths.collector.costumers },
+  { label: "inicio", path: ScreenPaths.home, exact: true },
 ];
 
 export const auditorAppBar: RoutNav[] = [

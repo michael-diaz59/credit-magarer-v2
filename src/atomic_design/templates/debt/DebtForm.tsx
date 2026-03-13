@@ -1,8 +1,8 @@
 import { Button, MenuItem, Stack, TextField, Grid } from "@mui/material";
-import type {
-  Debt,
-  DebtStatus,
-  DebtType,
+import {
+  debtStatusList,
+  type Debt,
+  type DebtType,
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
 import { Controller, useForm } from "react-hook-form";
@@ -24,15 +24,7 @@ export type DebtFormProps = {
   onSubmit: (action: DebtFormAction, data: Omit<Debt, "id">) => void;
 };
 
-const debtStatusList: DebtStatus[] = [
-  "tentativa",
-  "preparacion",
-  "activa",
-  "en_mora",
-  "pagada",
-  "cancelada",
-  "preAprobada",
-];
+
 
 const debtTypes: DebtType[] = ["credito", "prenda"];
 

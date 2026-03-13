@@ -1,8 +1,8 @@
 import { Button, MenuItem, Stack, TextField, Grid, Typography, Box } from "@mui/material";
-import type {
-    Debt,
-    DebtStatus,
-    DebtType,
+import {
+    debtStatusList,
+    type Debt,
+    type DebtType,
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
 import { Controller, useForm } from "react-hook-form";
@@ -24,15 +24,7 @@ export type RenewalComparisonFormProps = {
     onSubmit: (action: DebtFormAction, data: Omit<Debt, "id">) => void;
 };
 
-const debtStatusList: DebtStatus[] = [
-    "tentativa",
-    "preparacion",
-    "activa",
-    "en_mora",
-    "pagada",
-    "cancelada",
-    "preAprobada",
-];
+
 
 const debtTypes: DebtType[] = ["credito", "prenda"];
 
@@ -90,7 +82,11 @@ export const RenewalComparisonForm = ({
     return (
         <form
             onSubmit={handleSubmit((data) => {
-                onSubmit("update", data);
+                onSubmit("update", {
+                    ...proposedDebt,
+                    ...data,
+                    status: "activa",
+                });
             })}
         >
             <Grid container spacing={2}>
@@ -295,7 +291,6 @@ export const RenewalComparisonForm = ({
                                 type="date"
                                 sx={textFieldSX}
                                 fullWidth
-                                disabled={mode === "view" || mode === "audit"}
                                 InputLabelProps={{ shrink: true }}
                                 error={!!errors.startDate}
                                 helperText={errors.startDate?.message}

@@ -3,6 +3,7 @@ import type { CreatePaymentError, CreatePaymentInput, CreatePaymentOutput } from
 import type { GetPaymentError, GetPaymentInput, GetPaymentOutput } from "../business/useCases/payment/GetPaymentByIdCase"
 import type { DeletePaymentError, DeletePaymentInput, DeletePaymentOutput } from "../business/useCases/payment/DeletePaymentCase"
 import type { GetPaymentsByInstallmentInput, GetPaymentsByInstallmentOutput } from "../business/useCases/payment/GetPaymentsByInstallmentCaseTypes"
+import type { Payment } from "../business/entities/Payment"
 
 
 /** contrato de acceso a datos para payments */
@@ -38,4 +39,10 @@ export interface PaymentGateway {
   generateId(
     companyId: string
   ): string
+
+  /** obtiene todos los pagos de una empresa por fecha */
+  getAllByDate(
+    companyId: string,
+    date: string
+  ): Promise<Result<Payment[], any>>
 }

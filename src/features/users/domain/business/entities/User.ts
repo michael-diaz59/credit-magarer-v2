@@ -14,6 +14,9 @@ export interface User {
    * Value: array de customerIds asignados a esa ruta
    */
   collectorRoutes?: Record<string, string[]>
+
+  /** IDs de las rutas (Route) asignadas a este cobrador/usuario */
+  idRoutes?: string[];
 }
 
 export type Role = "ADMIN" | "OFFICE_ADVISOR" | "FIELD_ADVISOR" | "COLLECTOR" | "AUDITOR" | "ACCOUNTANT"

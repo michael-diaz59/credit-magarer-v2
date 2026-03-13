@@ -1,4 +1,4 @@
-import { basphatsAppBar } from "../../core/helpers/name_routes";
+import { basphatsAppBar, collectorAppBar } from "../../core/helpers/name_routes";
 import { AppBarBaseC } from "../molecules/AppBarBaseC";
 
 const AppbarBase2 = () => {
@@ -6,3 +6,10 @@ const AppbarBase2 = () => {
 };
 
 export default AppbarBase2;
+
+
+const CollectorAppBar = () => {
+  return <AppBarBaseC items={collectorAppBar} />;
+};
+
+export { CollectorAppBar };

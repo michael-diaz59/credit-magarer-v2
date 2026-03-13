@@ -12,6 +12,8 @@ import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from ".
 import type { GetByCollectorError, GetByCollectorInput, GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
 import type { GetByIdError, GetByIdInput, GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
 import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
+import type { DebtStatus } from "../business/entities/Debt";
+import type { Installment } from "../business/entities/Installment";
 
 
 export interface DebtGateway {
@@ -32,7 +34,12 @@ export interface DebtGateway {
   getBycostumerDocument(input: GetDebstByCostumerDocumentInput): Promise<GetDebstByCostumerDocumentOutput>;
   createWithInstallments(input: createWithInstallmentsInput): Promise<Result<CreateDebtUOutput, CreateDebtError>>;
 
-
+  getDebtsByCollectorAndStatus(input: {
+    companyId: string;
+    collectorId: string;
+    statuses: DebtStatus[];
+    dateLimit?: string;
+  }): Promise<Result<GetDebtsOutput, any>>;
 }
 
 export interface InstallmentGateway {
@@ -48,6 +55,11 @@ export interface InstallmentGateway {
 
   getByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput>;
   getById(input: GetByIdInput): Promise<Result<GetByIdOutput, GetByIdError>>
+  getByDebtAndNumber(input: {
+    companyId: string;
+    debtId: string;
+    installmentNumber: number;
+  }): Promise<Result<Installment | null, any>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deleteBatch(companyId: string, installmentIds: string[]): Promise<Result<null, any>>;
 }

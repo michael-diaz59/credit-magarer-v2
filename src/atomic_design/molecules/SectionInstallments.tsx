@@ -8,7 +8,7 @@ interface SectionProps {
   installments: Installment[];
   onClick: (installment: Installment) => void;
 }
-export const SectionInstallments = ({ title, color, installments,onClick }: SectionProps) => {
+export const SectionInstallments = ({ title, color, installments, onClick }: SectionProps) => {
 
   return (
     <Box>
@@ -22,7 +22,7 @@ export const SectionInstallments = ({ title, color, installments,onClick }: Sect
 
       <Stack spacing={2}>
         {installments.map((i) => (
-          <InstallmentCard key={i.id} installment={i} onClick={onClick}/>
+          <InstallmentCard key={i.id} installment={i} onClick={onClick} />
         ))}
       </Stack>
     </Box>

@@ -35,6 +35,8 @@ export function cloneInstallment(original: Installment): Installment {
   return structuredClone(original);
 }
 
+import type { GeoLocation } from "./Payment";
+
 /**representa la cuota a pagar, este se usa en el modulo de cobrador para ver las rutas */
 export interface Installment {
 
@@ -108,6 +110,24 @@ export interface Installment {
 
   /** indica si la cuota fue aplazada */
   aplazado?: boolean;
+
+  /** indica si el cobrador ya gestionó la cuota hoy */
+  managed?: boolean;
+
+  /** fecha en la que se marcó como gestionada */
+  managementDate?: string;
+
+  /** indica si se intentó cobrar la cuota */
+  attemptedCollection?: boolean;
+
+  /** fecha del último intento de cobro */
+  dateAttemptedPayment?: string;
+
+  /** descripción del último intento de cobro */
+  descriptionAttemptedPayment?: string;
+
+  /** ubicación del último intento de cobro */
+  locationAttemptedPayment?: GeoLocation;
 }
 
 

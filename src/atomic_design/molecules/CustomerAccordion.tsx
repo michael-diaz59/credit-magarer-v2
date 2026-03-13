@@ -1,6 +1,14 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Chip, Divider, Typography } from "@mui/material";
+import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Box,
+    Divider
+} from "@mui/material";
+
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
-import { SectionInstallments } from "./SectionInstallments";
+import { SectionInstallments } from "../molecules/SectionInstallments";
+import { CustomerAccordionHeader } from "../atoms/CustomerAccordionHeader";
 
 interface CustomerAccordionProps {
     customerName: string;
@@ -30,11 +38,11 @@ export const CustomerAccordion = ({
             elevation={0}
             sx={{
                 mb: 1,
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: '8px !important',
-                '&:before': { display: 'none' },
-                overflow: 'hidden'
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: "8px !important",
+                "&:before": { display: "none" },
+                overflow: "hidden",
             }}
         >
             <AccordionSummary
@@ -42,20 +50,18 @@ export const CustomerAccordion = ({
                 aria-controls={`${customerName}-content`}
                 id={`${customerName}-header`}
                 sx={{
-                    backgroundColor: 'background.paper',
+                    backgroundColor: "background.paper",
                     minHeight: 48,
-                    '&.Mui-expanded': { minHeight: 48 }
+                    "&.Mui-expanded": { minHeight: 48 },
                 }}
             >
-                <Box display="flex" alignItems="center" width="100%" justifyContent="space-between" mr={2}>
-                    <Typography fontWeight="500" variant="body1">{customerName}</Typography>
-
-                    <Box display="flex" gap={1}>
-                        {overdueCount > 0 && <Chip label={`${overdueCount} mora`} color="error" size="small" variant="outlined" />}
-                        <Chip label={`${totalCount} deuda${totalCount > 1 ? 's' : ''}`} size="small" />
-                    </Box>
-                </Box>
+                <CustomerAccordionHeader
+                    customerName={customerName}
+                    totalCount={totalCount}
+                    overdueCount={overdueCount}
+                />
             </AccordionSummary>
+
             <AccordionDetails sx={{ p: 2, pt: 0 }}>
                 {overdue.length > 0 && (
                     <Box mt={1}>

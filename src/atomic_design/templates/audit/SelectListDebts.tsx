@@ -14,6 +14,10 @@ export const SelectListDebts = () => {
     navigate(ScreenPaths.auditor.debitsC);
   };
 
+  const goToDailyOperations = () => {
+    navigate(ScreenPaths.auditor.dailyOperations);
+  };
+
   return (
     <>
       {/* 🔔 Dialogo de permisos */}
@@ -26,7 +30,7 @@ export const SelectListDebts = () => {
       >
         <Stack spacing={4} alignItems="center">
           <Typography variant="h4" fontWeight={700}>
-           elige como quieres buscar los prestamos
+            elige como quieres buscar los prestamos
           </Typography>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
@@ -38,6 +42,10 @@ export const SelectListDebts = () => {
             <CardButton
               label="buscar deudas por clientes"
               onClick={goToDebtsByCustomers}
+            />
+            <CardButton
+              label="operaciones del dia"
+              onClick={goToDailyOperations}
             />
           </Stack>
         </Stack>

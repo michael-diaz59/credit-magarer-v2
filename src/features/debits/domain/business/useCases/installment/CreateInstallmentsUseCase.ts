@@ -58,6 +58,7 @@ export class CreateInstallmentsUseCase {
         ).map((installment) => ({
           ...installment,
           costumerId: costumerInstallmentData.costumerId,
+          costumerNumber: costumerInstallmentData.costumerNumber,
           costumerDocument: costumerInstallmentData.costumerDocument,
           costumerName: costumerInstallmentData.costumerName,
         }));
@@ -78,7 +79,7 @@ export class CreateInstallmentsUseCase {
     personalInfo: PersonalInfo;
   }): Pick<
     Installment,
-    "costumerId" | "costumerDocument" | "costumerName" | "costumerAddres"
+    "costumerId" | "costumerDocument" | "costumerName" | "costumerAddres" | "costumerNumber"
   > {
     const { costumerId, personalInfo } = input;
 
@@ -86,6 +87,7 @@ export class CreateInstallmentsUseCase {
       costumerId,
       costumerDocument: personalInfo.idNumber,
       costumerName: personalInfo.fullName,
+      costumerNumber: personalInfo.phone,
       costumerAddres: {
         address: personalInfo.address.address,
         neighborhood: personalInfo.address.neighborhood,

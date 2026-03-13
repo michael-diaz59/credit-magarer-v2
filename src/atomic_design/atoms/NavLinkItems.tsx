@@ -25,6 +25,7 @@ export function NavLinkItems({
         <NavLink
           key={item.path}
           to={item.path}
+          end
           style={({ isActive }) => ({
             whiteSpace: "nowrap",
             padding: "8px 12px",
@@ -54,8 +55,8 @@ export function MenuNavLinkItems({
   callback: () => void;
 }) {
   const theme = useTheme();
-    const firstItemRef = useRef<HTMLLIElement | null>(null);
-   // 👇 Enfoca el primer item cuando el menú se abre
+  const firstItemRef = useRef<HTMLLIElement | null>(null);
+
   useEffect(() => {
     if (firstItemRef.current) {
       firstItemRef.current.focus();
@@ -63,15 +64,16 @@ export function MenuNavLinkItems({
   }, []);
 
   return (
-    <Box sx={{ width: "100%" }}  >
+    <Box sx={{ width: "100%" }}>
       {items.map((item) => (
         <MenuItem
           key={item.path}
           component={NavLink}
           to={item.path}
+          end={item.exact}   // 👈 AQUÍ ESTA LA CLAVE
           onClick={() => callback()}
-          role="menuitem" // 🔹 Mejora la semántica accesible
-          tabIndex={0} // 🔹 Garantiza que pueda recibir foco con Tab
+          role="menuitem"
+          tabIndex={0}
           sx={{
             display: "block",
             width: "100%",

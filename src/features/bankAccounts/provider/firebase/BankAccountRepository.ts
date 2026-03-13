@@ -68,7 +68,8 @@ export class FirebaseBankAccountRepository implements BankAccountGateway {
                     accountNumber: data.accountNumber ?? "",
                     accountType: data.accountType ?? "",
                     tope: data.tope ?? 0,
-                    monto: data.monto ?? 0
+                    monto: data.monto ?? 0,
+                    idUser: data.idUser ?? ""
                 } as BankAccount;
             });
 
