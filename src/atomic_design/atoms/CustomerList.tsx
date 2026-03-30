@@ -3,11 +3,12 @@ import { useNavigate } from "react-router";
 import { useAppSelector } from "../../store/redux/coreRedux";
 import type { Customer } from "../../features/costumers/domain/business/entities/Customer";
 import CustomerOrchestrator from "../../features/costumers/domain/infraestructure/CustomerOrchestrator";
-import { BaseDialog } from "../atoms/BaseDialog";
+import { BaseDialog } from "./BaseDialog";
 import {
   Card,
   CardActionArea,
   CardContent,
+  Divider,
   Grid,
   LinearProgress,
   Stack,
@@ -15,6 +16,10 @@ import {
   Typography,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
+import BadgeIcon from "@mui/icons-material/Badge";
+import PhoneIcon from "@mui/icons-material/Phone";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import NotesIcon from "@mui/icons-material/Notes";
 
 type CustomerListProps = {
   navigateTo: (customerDocument: string, customerId?: string) => string;
@@ -128,59 +133,119 @@ type CustomerCardProps = {
 };
 
 export const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
+
+  const applicant = customer.applicant;
+
   return (
     <Card
       elevation={2}
       sx={{
         borderRadius: 2,
-        minWidth: 260,
+        minWidth: 280,
       }}
     >
       <CardActionArea onClick={onClick}>
         <CardContent>
+
+          {/* HEADER */}
           <Stack
             direction="row"
             justifyContent="space-between"
             alignItems="center"
           >
-            {/* Nombre + documento */}
-            <Stack>
-              <Typography variant="subtitle1" fontWeight={600} noWrap>
-                {customer.applicant.fullName}
-              </Typography>
 
-              <Typography variant="subtitle2" fontWeight={400} noWrap>
-                {"documento: " + customer.applicant.idNumber}
-              </Typography>
-            </Stack>
+            <Typography variant="subtitle1" fontWeight={600} noWrap>
+              {applicant.fullName}
+            </Typography>
 
-            {/* Calificación */}
             <Stack
               direction="row"
               alignItems="center"
               spacing={0.5}
-              sx={{
-                color: getCalificationColor(customer.calification),
-              }}
+              sx={{ color: getCalificationColor(customer.calification) }}
             >
               <StarIcon sx={{ fontSize: 18 }} />
               <Typography variant="caption" fontWeight={600}>
-                {customer.calification??"3"}
+                {customer.calification ?? "3"}
               </Typography>
             </Stack>
+
           </Stack>
+
+          <Divider sx={{ my: 1.5 }} />
+
+          {/* INFORMACION */}
+          <Stack spacing={0.8}>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <BadgeIcon sx={{ fontSize: 16 }} />
+              <Typography variant="body2" noWrap>
+                Documento: {applicant.idNumber}
+              </Typography>
+            </Stack>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <LocationOnIcon sx={{ fontSize: 16 }} />
+              <Typography variant="body2" noWrap>
+                {applicant.address.address}
+              </Typography>
+            </Stack>
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ ml: 3 }}
+            >
+              Barrio: {applicant.address.neighborhood}
+            </Typography>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <PhoneIcon sx={{ fontSize: 16 }} />
+              <Typography variant="body2">
+                {applicant.phone}
+              </Typography>
+            </Stack>
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ ml: 3 }}
+            >
+              numero de creditos: {customer.debtCounter + customer.renovationsCounter}
+            </Typography>
+            {customer.observations && (
+              <Stack direction="row" spacing={1} alignItems="flex-start">
+                <NotesIcon sx={{ fontSize: 16, mt: "2px" }} />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden"
+                  }}
+                >
+                  {customer.observations}
+                </Typography>
+              </Stack>
+            )}
+
+          </Stack>
+
         </CardContent>
       </CardActionArea>
     </Card>
   );
 };
 
-const getCalificationColor = (calification: string) => {
-   if(calification===undefined) return "warning.main"; 
+const getCalificationColor = (calification?: string) => {
+
+  if (!calification) return "warning.main";
+
   const value = Number(calification);
 
-  if (value >= 4) return "success.main"; // verde
-  if (value === 3) return "warning.main"; // amarillo
- 
-  return "error.main"; // rojo
+  if (value >= 4) return "success.main";
+  if (value === 3) return "warning.main";
+
+  return "error.main";
 };

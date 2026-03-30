@@ -79,6 +79,8 @@ export class CreateDebtUseCase {
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
       id: crypto.randomUUID(),
+      routeId: input.debt.routeId,
+      renewedToDebtId: input.debt.renewedToDebtId,
       collectorId: input.debt.collectorId,
       type: input.debt.type,
       idVisit: input.debt.idVisit,

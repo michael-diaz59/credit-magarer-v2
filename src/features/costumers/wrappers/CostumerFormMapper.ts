@@ -98,8 +98,10 @@ export class CostumerFormMapper {
     }
 
     return {
+      whyWasDisable: form.whyWasDisabled ?? "",
       id: form.id ?? crypto.randomUUID(),
       debtCounter: form.debtCounter ?? 0,
+      state: form.state ?? "default",
       renovationsCounter: form.renovationsCounter ?? 0,
       listId: form.listId ?? "",
       observations: form.observations ?? "",
@@ -127,6 +129,8 @@ export class CostumerFormMapper {
       observations: costumer.observations,
       id: costumer.id,
       listId: costumer.listId,
+      state: costumer.state,
+      whyWasDisabled: costumer.whyWasDisable,
       calification: costumer.calification,
       photoHouseUrl: costumer.photoHouseUrl,
       identificacionUrl: costumer.identificacionUrl,

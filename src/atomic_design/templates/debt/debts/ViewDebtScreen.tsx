@@ -50,7 +50,8 @@ export const ViewDebtScreen = () => {
 
       console.log(debitId);
       const debtToUpdate: Debt = {
-        ...data, // 👈 resto de campos del formulario
+        ...form, // 👈 Conservamos los campos originales completos (como routeId)
+        ...data, // 👈 Sobrescribimos con los campos del formulario
         id: debitId, // 👈 el ID viene de la URL
       };
       console.log(debtToUpdate.id);

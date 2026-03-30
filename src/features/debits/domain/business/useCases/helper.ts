@@ -11,10 +11,6 @@ function addDays(date: Date, days: number) {
   return d;
 }
 
-function getTermDays(term: DebtTerms): number {
-  return diasDelMesPorTermino[term];
-}
-
 type RoundResult = {
   rounded: number;
   difference: number;
@@ -145,12 +141,13 @@ export function simulateInstallments(
 }
 
 export function calculateDebtFinancials(debt: Debt, months?: number) {
+  console.log("months:",months)
   if (months) {
     const duration_in_days = debt.diasMes * months;
     console.log(
       `se calculo que el credito tendra una duracion de ${duration_in_days} dias`,
     );
-    const installmentCount = duration_in_days / getTermDays(debt.debtTerms);
+    const installmentCount = duration_in_days / diasPorTermino[debt.debtTerms];
     console.log(`se calculo que el credito tendra ${installmentCount} cuotas`);
 
     debt.installmentCount = installmentCount;

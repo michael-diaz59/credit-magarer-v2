@@ -8,6 +8,16 @@ export interface Customer {
   /**numero de deudas del costumer */
   debtCounter: number
 
+
+  /** 
+   * activo: cliente al que se le podria dar creditos
+   * inactivo: clientes baneados de prestamos
+   */
+  state: CustomerState
+
+  /**motivo de inhabilitacion */
+  whyWasDisable: string
+
   /**numero de renovaciones del costumer */
   renovationsCounter: number
 
@@ -35,6 +45,14 @@ export const calificationValues = ["1", "2", "3", "4", "5"] as const;
 
 export type Calification =
   typeof calificationValues[number];
+
+
+
+export const customerState = ["activo", "inactivo", "default"] as const;
+
+export type CustomerState =
+  typeof customerState[number];
+
 
 
 

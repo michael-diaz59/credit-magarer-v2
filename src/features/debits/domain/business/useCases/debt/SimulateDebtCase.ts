@@ -22,7 +22,17 @@ export interface SimulateDebtOutput {
   cuotasCompletas: number
   pago_ultima_cuota: number
   pago_cuota_reound: number;
+}
 
+export function createEmptySimulateDebtOutput(): SimulateDebtOutput {
+  return {
+    valueOfInstallments: 0,
+    totalAmount: 0,
+    totalInstallments: 0,
+    cuotasCompletas: 0,
+    pago_ultima_cuota: 0,
+    pago_cuota_reound: 0,
+  }
 }
 
 

@@ -5,14 +5,14 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import GavelIcon from "@mui/icons-material/Gavel";
 import PeopleIcon from "@mui/icons-material/People";
-import { getAuth, signOut } from "firebase/auth";
+
 import { CustomSx } from "../../sub_atomic_particles/Custom_sx";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 
 const Dashboard: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const auth = getAuth();
+
 
   const buttons = [
     {
@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
           sx={{ color: theme.palette.primary.contrastText }}
         />
       ),
-      path: "/accounting",
+      path: ScreenPaths.accountant.home,
     },
     {
       label: "Auditoría",
@@ -82,15 +82,6 @@ const Dashboard: React.FC = () => {
           <ButtonBase
             key={btn.label}
             onClick={() => {
-              if (btn.label === "Contabilidad") {
-                signOut(auth)
-                  .then(() => {
-                    // Sign-out successful.
-                  })
-                  .catch(() => {
-                    // An error happened.
-                  });
-              }
               navigate(btn.path);
             }}
             sx={{

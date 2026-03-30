@@ -9,35 +9,25 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../store/redux/coreRedux";
-import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
+import { createEmptyDebt, type Debt } from "../../../features/debits/domain/business/entities/Debt";
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { BaseDialog } from "../../atoms/BaseDialog";
-import { DebtForm, type DebtFormRef } from "./debtForm2";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "./debtForm2";
 import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";
-import { MoneyTypography } from "../../atoms/MoneyTypography";
-import type { SimulateDebtOutput } from "../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "./form/constsForm";
+import type { DialogState } from "../../sub_atomic_particles/DialogState";
+import { SimulateDebtResultCard } from "../../molecules/SimulateDebtResultCard";
 
-type DialogState = {
-  open: boolean;
-  success: boolean;
-  message: string;
-};
 
-type submitType = "crear" | "simular";
+
 
 export const CreateDebtScreen = () => {
   const formRef = useRef<DebtFormRef>(null);
 
   const [SimulateDebtValues, setSimulateDebtValues] =
-    useState<SimulateDebtOutput>({
-      cuotasCompletas: 0,
-      pago_cuota_reound: 0,
-      pago_ultima_cuota: 0,
-      totalAmount: 0,
-      totalInstallments: 0,
-      valueOfInstallments: 0,
-    });
+    useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
 
 
   const navigate = useNavigate();
@@ -48,61 +38,42 @@ export const CreateDebtScreen = () => {
     success: false,
     message: "",
   });
-  const handleSubmit = async (submitType: submitType) => {
+  const handleSubmit = async (submitType: DebtSubmitType) => {
     setSimulateDebtValues(
-      {
-        cuotasCompletas: 0,
-        pago_cuota_reound: 0,
-        pago_ultima_cuota: 0,
-        totalAmount: 0,
-        totalInstallments: 0,
-        valueOfInstallments: 0,
-      }
+      createEmptySimulateDebtOutput()
     )
-    const isValid = await formRef.current?.validate();
-    if (!isValid) return;
-
-    const formValues = formRef.current?.getValues();
+    let isValid: boolean = false;
+    const formValues: DebtFormValues | undefined = formRef.current?.getValues();
     if (!formValues) return;
 
-    const debt: Debt = {
-      id: "",
-      originalDebt: "",
-      dateLastPayment: "",
-      installmentsPaid: 0,
-      collectorId: formValues.collectorId,
-      costumerDocument: formValues.costumerDocument,
-      type: formValues.type,
-      totalAmount: formValues.totalAmount,
-      debtTerms: formValues.debtTerms,
-      interestRate: formValues.interestRate,
-      installmentCount: formValues.installmentCount,
-      startDate: formValues.startDate,
-      status: "tentativa",
-      clientId: "0",
-      costumerName: "",
-      createdAt: "",
-      diasMes: formValues.diasMes,
-      firstDueDate: "",
-      idVisit: "",
-      name: "",
-      nextPaymentDue: "",
-      overdueInstallmentsCount: 0,
-      totalPaid: 0,
-      totalPaymentForLate: 0,
-      capital: formValues.totalAmount,
-    };
+    if (!formRef.current) {
+      return;
+    }
+    if (submitType === "crear") {
+      isValid = await formRef.current?.validate();
+    } else {
+      const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
+        ? SIMULATION_FIELDS_INSTALLMENTS
+        : SIMULATION_FIELDS_MONTHS;
+      isValid = await formRef.current?.validateFields(fieldsToValidate);
+    }
+    if (!isValid) return;
+
+
+    const debtForVreate: Debt = mergeDebtWithForm(createEmptyDebt(), formValues);
 
     const months =
       formValues?.calculationMode === "months" ? formValues.months : undefined;
 
+    console.log("se toma por meses?:", formValues?.calculationMode === "months")
+
     switch (submitType) {
       case "crear": {
-        await handleCreateDebt(debt, months);
+        await handleCreateDebt(debtForVreate, months);
         break;
       }
       case "simular": {
-        await handleSimulateDebt(debt, months);
+        await handleSimulateDebt(debtForVreate, months);
         break;
       }
       default: {
@@ -148,6 +119,9 @@ export const CreateDebtScreen = () => {
   const handleSimulateDebt = async (data: Debt, months?: number) => {
     const orchestrator = new DebtOrchestrator();
 
+    console.log("data:", data)
+    console.log("months:", months)
+
     const result = await orchestrator.simulateDebt({
       debt: data,
       months: months,
@@ -190,13 +164,13 @@ export const CreateDebtScreen = () => {
         <CardContent>
           <Typography>crear deuda</Typography>
 
-          <DebtFormDataProvider>
-            {({ collectors, loading }) => {
+          <DebtFormDataProvider getRoutes={true}>
+            {({ routes, loading }) => {
               if (loading) return <div>Cargando...</div>;
 
               return (
                 <>
-                  <DebtForm ref={formRef} collectors={collectors} />
+                  <DebtForm ref={formRef} routes={routes} />
 
                   <Button onClick={() => handleSubmit("crear")}>
                     Crear deuda
@@ -214,28 +188,7 @@ export const CreateDebtScreen = () => {
         </CardContent>
       </Card>
       {SimulateDebtValues.totalAmount > 0 && (
-        <Card sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5" }}>
-          <Typography variant="h6">Resultado de la simulación</Typography>
-
-          <MoneyTypography
-            label="Total capital + interés:"
-            value={SimulateDebtValues.totalAmount}
-          />
-
-          <MoneyTypography label="Valor de cuotas:" value={SimulateDebtValues.valueOfInstallments} />
-
-          <MoneyTypography
-            label="Valor de cuotas redondeadas:"
-            value={SimulateDebtValues.pago_cuota_reound}
-          />
-
-          <Typography>el numero de cuotas sin aproximar es {SimulateDebtValues.totalInstallments}</Typography>
-          <Typography>el numero de cuotas al aproximar {SimulateDebtValues.totalInstallments - SimulateDebtValues.cuotasCompletas}</Typography>
-          <MoneyTypography
-            label="Valor de la ultima cuota:"
-            value={SimulateDebtValues.pago_ultima_cuota}
-          />
-        </Card>
+        <SimulateDebtResultCard data={SimulateDebtValues} />
       )}
     </Box>
   );

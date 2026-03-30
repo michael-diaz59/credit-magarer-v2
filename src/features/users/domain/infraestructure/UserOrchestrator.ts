@@ -15,6 +15,7 @@ import { UnassignCustomerFromRouteCase, type UnassignCustomerFromRouteInput } fr
 import { UpdateUserTotalAmountCase, type UpdateUserTotalAmountInput } from "../business/useCases/UpdateUserTotalAmountCase"
 import { UpdateUserRouteUseCase, type UpdateUserRouteInput } from "../business/useCases/UpdateUserRouteUseCase"
 import { GetUsersByRouteUseCase, type GetUsersByRouteInput, type GetUsersByRouteOutput } from "../business/useCases/GetUsersByRouteUseCase"
+import { UpdateUserUseCase, type UpdateUserInput } from "../business/useCases/UpdateUserUseCase"
 
 import type { UserGateway } from "./UserGateway"
 import type { UserState } from "./userState"
@@ -32,6 +33,7 @@ export default class UserOrchestrator {
   private updateUserTotalAmountCase: UpdateUserTotalAmountCase
   private updateUserRouteUseCase: UpdateUserRouteUseCase
   private getUsersByRouteUseCase: GetUsersByRouteUseCase
+  private updateUserCase: UpdateUserUseCase
 
   private userState: UserState
 
@@ -50,19 +52,18 @@ export default class UserOrchestrator {
     this.updateUserTotalAmountCase = new UpdateUserTotalAmountCase(repository)
     this.updateUserRouteUseCase = new UpdateUserRouteUseCase(repository)
     this.getUsersByRouteUseCase = new GetUsersByRouteUseCase(repository)
+    this.updateUserCase = new UpdateUserUseCase(repository)
 
     this.userState = new ReduxUser(dispatch)
   }
 
   async updateTotalAmount(input: UpdateUserTotalAmountInput): Promise<Result<void, setUserError>> {
     const result = await this.updateUserTotalAmountCase.execute(input)
-    if (result.ok) {
-      await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
-  /**devuelve usuarios con un rol en especifico, si no se indica u rol devuelve todos los usuarios*/
+  /**devuelve usuarios con un rol en especifico, si no se indica su rol devuelve todos los usuarios*/
   async getUsersByCompany(input: GetUserByCompanyInput): Promise<GetUserByCompanyOutput> {
     const result = this.getUserByCompanyCase.execute(input)
     return result
@@ -90,54 +91,44 @@ export default class UserOrchestrator {
     return ok<User | null>(user.value)
   }
 
-  // --- Route Management Methods ---
 
-  private async refreshUser(userId: string): Promise<void> {
-    await this.getUser({ id: userId })
-    // getUser updates state automatically
-  }
 
   async addRoute(input: AddRouteInput): Promise<Result<void, setUserError>> {
     const result = await this.addRouteCase.execute(input)
-    if (result.ok) {
-      await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
   async deleteRoute(input: DeleteRouteInput): Promise<Result<void, setUserError>> {
     const result = await this.deleteRouteCase.execute(input)
-    if (result.ok) {
-      await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
   async assignCustomerToRoute(input: AssignCustomerToRouteInput): Promise<Result<void, setUserError>> {
     const result = await this.assignCustomerToRouteCase.execute(input)
-    if (result.ok) {
-      await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
   async unassignCustomerFromRoute(input: UnassignCustomerFromRouteInput): Promise<Result<void, setUserError>> {
     const result = await this.unassignCustomerFromRouteCase.execute(input)
-    if (result.ok) {
-      await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
   async updateUserRoute(input: UpdateUserRouteInput): Promise<Result<void, setUserError>> {
     const result = await this.updateUserRouteUseCase.execute(input)
-    if (result.ok) {
-        await this.refreshUser(input.userId)
-    }
+
     return result
   }
 
   async getUsersByRoute(input: GetUsersByRouteInput): Promise<GetUsersByRouteOutput> {
     return this.getUsersByRouteUseCase.execute(input)
+  }
+
+  async updateUser(input: UpdateUserInput): Promise<Result<void, setUserError>> {
+    const result = await this.updateUserCase.execute(input)
+    return result
   }
 }

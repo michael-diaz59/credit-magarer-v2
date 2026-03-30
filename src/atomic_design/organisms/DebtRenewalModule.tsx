@@ -16,7 +16,7 @@ import { MoneyTypography } from "../atoms/MoneyTypography";
 import { BaseDialog } from "../atoms/BaseDialog";
 import { useNavigate } from "react-router-dom";
 import { ScreenPaths } from "../../core/helpers/name_routes";
-import { DebtForm, type DebtFormRef } from "../templates/debt/debtForm2";
+import { DebtForm, mapDebtToForm, type DebtFormRef } from "../templates/debt/debtForm2";
 import { DebtFormDataProvider } from "../templates/debt/debts/DebtFormDataProvider";
 import DebtOrchestrator from "../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../features/debits/domain/business/entities/Debt";
@@ -242,25 +242,14 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
                         <CardContent>
                             <Typography variant="h6" gutterBottom>Renovación de Deuda</Typography>
                             <DebtFormDataProvider>
-                                {({ collectors, loading: loadingCollectors }) => {
+                                {({ routes, loading: loadingCollectors }) => {
                                     if (loadingCollectors) return <CircularProgress />;
                                     return (
                                         <Stack spacing={3}>
                                             <DebtForm
                                                 ref={renewalFormRef}
-                                                collectors={collectors}
-                                                defaultValues={{
-                                                    collectorId: currentDebt.collectorId || "",
-                                                    costumerDocument: currentDebt.costumerDocument || "",
-                                                    totalAmount: currentDebt.capital || 0,
-                                                    interestRate: currentDebt.interestRate || 0,
-                                                    type: currentDebt.type || "credito",
-                                                    debtTerms: currentDebt.debtTerms || "diario",
-                                                    diasMes: currentDebt.diasMes || 24,
-                                                    installmentCount: currentDebt.installmentCount || 1,
-                                                    startDate: new Date().toISOString().slice(0, 10),
-                                                    calculationMode: "installments",
-                                                }}
+                                                routes={routes}
+                                                debValues={mapDebtToForm(currentDebt)}
                                             />
                                         </Stack>
                                     );

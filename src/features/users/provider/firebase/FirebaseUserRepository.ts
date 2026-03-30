@@ -86,6 +86,71 @@ export class FirebaseUserRepository implements UserGateway {
     }
   }
 
+  async getById2(
+    userId: string,
+    companyId: string
+  ): Promise<Result<User | null, getUserError>> {
+    try {
+
+      /* =========================
+         Usuario dentro de compañía
+      ========================= */
+      const refUserCompany = doc(
+        firestore,
+        "companies",
+        companyId,
+        "users",
+        userId
+      );
+
+      const snapshotUserCompany = await getDoc(refUserCompany);
+
+      const dataUserCompany = snapshotUserCompany.exists()
+        ? snapshotUserCompany.data()
+        : {};
+
+      /* =========================
+         collectorRoutes como Record
+      ========================= */
+      const collectorRoutes: Record<string, string[]> | undefined =
+        dataUserCompany.collectorRoutes &&
+          typeof dataUserCompany.collectorRoutes === "object"
+          ? dataUserCompany.collectorRoutes
+          : undefined;
+
+      /* =========================
+         Construcción final del usuario
+      ========================= */
+      const userCompany: User = {
+        totalAmount: dataUserCompany.totalAmount ?? 0,
+        id: userId,
+        companyId: companyId,
+        email: dataUserCompany.email,
+        name: dataUserCompany.name,
+        roles: dataUserCompany.roles,
+        collectorRoutes,
+        idRoutes: dataUserCompany.idRoutes || [],
+      };
+
+      console.log("usuario encontrado", userCompany);
+      return ok(userCompany);
+
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof FirebaseError) {
+        console.log("error al obtener usuario:", error.code);
+        switch (error.code) {
+          case "permission-denied":
+          case "unavailable":
+            return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
   async getById(
     userId: string
   ): Promise<Result<User | null, getUserError>> {
@@ -349,16 +414,48 @@ export class FirebaseUserRepository implements UserGateway {
         state: ok(users),
       };
     } catch (error) {
-       console.error("Error getting users by route", error);
-       if (error instanceof FirebaseError) {
-         switch (error.code) {
-           case "permission-denied":
-             return { state: fail({ code: "UNKNOWN_ERROR" }) };
-           case "unavailable":
-             return { state: fail({ code: "NETWORK_ERROR" }) };
-         }
-       }
-       return { state: fail({ code: "UNKNOWN_ERROR" }) };
+      console.error("Error getting users by route", error);
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "permission-denied":
+            return { state: fail({ code: "UNKNOWN_ERROR" }) };
+          case "unavailable":
+            return { state: fail({ code: "NETWORK_ERROR" }) };
+        }
+      }
+      return { state: fail({ code: "UNKNOWN_ERROR" }) };
+    }
+  }
+
+  async updateUser(companyId: string, user: User): Promise<Result<void, setUserError>> {
+    try {
+      const refUserCompany = doc(
+        firestore,
+        "companies",
+        companyId,
+        "users",
+        user.id
+      );
+
+      const { roles, id, companyId: _, ...userWithoutRoles } = user;
+
+      await setDoc(
+        refUserCompany,
+        userWithoutRoles,
+        { merge: true }
+      );
+
+      return ok(undefined);
+    } catch (error) {
+      console.error("Error updating user", error);
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "permission-denied":
+          case "unavailable":
+            return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+      return fail({ code: "UNKNOWN_ERROR" });
     }
   }
 }

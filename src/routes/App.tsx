@@ -7,6 +7,7 @@ import {
   ProtectedCollector,
   ProtectedFieldAdvisor,
   ProtectedOfficeAdvisor,
+  ProtectedAccountant,
 } from "../features/userAuthentication/route/ProtectedRouteProps.tsx";
 import LoginPage from "./login/LoginController.tsx";
 import Dashboard from "../atomic_design/templates/home/home.tsx";
@@ -46,6 +47,12 @@ import { CreateVisit } from "../atomic_design/templates/advisor/office/CreateVis
 import { DailyOperationsScreen } from "../atomic_design/templates/audit/DailyOperationsScreen.tsx";
 import { CollectionAttemptDetailScreen } from "../atomic_design/templates/audit/CollectionAttemptDetailScreen.tsx";
 import { BankAccountsAdministrationScreen } from "../atomic_design/templates/configuration/BankAccountsAdministrationScreen.tsx";
+import { AccountantDashboard } from "../atomic_design/templates/accountant/AccountantDashboard.tsx";
+import { AccountantDailyOperations } from "../atomic_design/templates/accountant/AccountantDailyOperations.tsx";
+import { AccountantCustomers } from "../atomic_design/templates/accountant/AccountantCustomers.tsx";
+import { AccountantDebtsForCustomer } from "../atomic_design/templates/accountant/AccountantDebtsForCustomer.tsx";
+import { AccountantDebtScreen } from "../atomic_design/templates/accountant/AccountantDebtScreen.tsx";
+import { PaymentInvoiceScreen } from "../atomic_design/templates/accountant/PaymentAccountant/PaymentInvoiceScreen.tsx";
 
 function NotFound() {
   return <h1>404</h1>;
@@ -105,7 +112,7 @@ export default function App() {
       >
         {/* home  de configuracion */}
         <Route index element={<ProfileScreen />} />
-        
+
         {/* Rutas de administracion de rutas */}
         <Route path="routes" element={<RouteAdministrationScreen />} />
         <Route path="routes/create" element={<CreateRouteScreen />} />
@@ -352,6 +359,62 @@ export default function App() {
           ":visitId",
         )}
         element={<FieldVisit />}
+      />
+
+      {/* Rutas de Contabilidad */}
+      <Route
+        path={ScreenPaths.accountant.home}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantDashboard />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.dailyOperations}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantDailyOperations />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.debits}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantCustomers />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.debitsCustomer(":docCostumer")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantDebtsForCustomer />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.payment(":paymentId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <PaymentInvoiceScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
       />
     </Routes>
   );

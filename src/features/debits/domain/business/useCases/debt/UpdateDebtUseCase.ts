@@ -250,6 +250,8 @@ export class UpdateDebtUseCase {
     // Podemos "mockear" el customer usando los datos que ya vienen en la deuda (costumerName, costumerDocument, etc.)
     const mockCustomer: Customer = {
       debtCounter: 0,
+      state: "default",
+      whyWasDisable: "",
       renovationsCounter: 0,
       listId: "",
       observations: "",

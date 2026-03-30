@@ -1,14 +1,14 @@
 import { Box, Fab, Typography } from "@mui/material";
 import { useLocation, useNavigate } from "react-router";
 import AddIcon from "@mui/icons-material/Add";
-import { CustomerList } from "../CustomerList";
+import { CustomerList } from "../../atoms/CustomerList";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 
 export const CustomersAudit = () => {
-    
-    const location = useLocation();
 
-     const navigate = useNavigate();
+  const location = useLocation();
+
+  const navigate = useNavigate();
 
   return (
     <Box p={3}>
@@ -17,29 +17,29 @@ export const CustomersAudit = () => {
       </Typography>
 
       <CustomerList
-        navigateTo={(customerId) =>{
-            return ScreenPaths.auditor.customer(customerId)
+        navigateTo={(customerId) => {
+          return ScreenPaths.auditor.customer(customerId)
         }
 
         }
       />
       {location.pathname === ScreenPaths.advisor.office.visit.visits && (
-              <Fab
-                color="primary"
-                aria-label="add"
-                sx={{
-                  position: "fixed",
-                  bottom: 24,
-                  right: 24,
-                  zIndex: 1000,
-                }}
-                onClick={() =>
-                  navigate(ScreenPaths.advisor.office.visit.CreateVisit)
-                }
-              >
-                <AddIcon />
-              </Fab>
-            )}
+        <Fab
+          color="primary"
+          aria-label="add"
+          sx={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+          }}
+          onClick={() =>
+            navigate(ScreenPaths.advisor.office.visit.CreateVisit)
+          }
+        >
+          <AddIcon />
+        </Fab>
+      )}
     </Box>
   );
 };

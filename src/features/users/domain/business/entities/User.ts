@@ -8,6 +8,9 @@ export interface User {
   /**representa el dinero que pueda llegar a tener recolectado en fisico un cobrador */
   totalAmount?: number
 
+  /**dinero que el cobrador debe por descuadre */
+  totalDebt?: number
+
   /**
    * Rutas de cobro del collector. Solo se usa para usuarios con rol COLLECTOR.
    * Key: nombre de la ruta (ej: "Cali Sur")

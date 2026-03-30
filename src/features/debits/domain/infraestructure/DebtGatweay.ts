@@ -12,7 +12,7 @@ import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from ".
 import type { GetByCollectorError, GetByCollectorInput, GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
 import type { GetByIdError, GetByIdInput, GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
 import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
-import type { DebtStatus } from "../business/entities/Debt";
+import type { Debt, DebtStatus } from "../business/entities/Debt";
 import type { Installment } from "../business/entities/Installment";
 
 
@@ -40,6 +40,11 @@ export interface DebtGateway {
     statuses: DebtStatus[];
     dateLimit?: string;
   }): Promise<Result<GetDebtsOutput, any>>;
+
+  getDebtsByRoute(input: {
+    companyId: string;
+    routeId: string;
+  }): Promise<Result<Debt[], any>>;
 }
 
 export interface InstallmentGateway {

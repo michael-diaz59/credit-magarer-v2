@@ -7,6 +7,7 @@ import {
     query,
     where,
     getDocs,
+    writeBatch,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { firestore, storage } from "../../../../store/firebase/firebase";
@@ -18,6 +19,9 @@ import type { GetPaymentInput, GetPaymentOutput, GetPaymentError } from "../../d
 import type { DeletePaymentError, DeletePaymentInput, DeletePaymentOutput } from "../../domain/business/useCases/payment/DeletePaymentCase";
 import type { Payment } from "../../domain/business/entities/Payment";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../../domain/business/useCases/payment/UpdatePaymentStatusUseCase";
+import type { UpdateMultiplePaymentsIsTightError } from "../../domain/business/useCases/payment/UpdateMultiplePaymentsIsTight";
+import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../domain/business/useCases/payment/GetPaymentsByStatusUseCase";
 
 /**corregir any y removeUndefined con variable no usada */
 export class FirebasePaymentRepository implements PaymentGateway {
@@ -169,6 +173,63 @@ export class FirebasePaymentRepository implements PaymentGateway {
             }
         }
     }
+
+    async getByStatus(input: GetPaymentsByStatusInput): Promise<GetPaymentsByStatusOutput> {
+        try {
+            const { companyId, status } = input
+            const paymentsRef = collection(firestore, `companies/${companyId}/payments`)
+            const q = query(paymentsRef, where("status", "==", status))
+            const snapshot = await getDocs(q)
+
+            const payments: Payment[] = snapshot.docs.map((doc) => {
+                const data = doc.data()
+                return {
+                    id: doc.id,
+                    ...data,
+                } as Payment
+            })
+
+            return {
+                state: ok(payments),
+            }
+
+        } catch (error) {
+            console.error(error)
+            return {
+                state: fail({ code: "UNKNOWN_ERROR" }),
+            }
+        }
+    }
+
+    async update(input: UpdatePaymentInput): Promise<Result<UpdatePaymentOutput, UpdatePaymentError>> {
+        const { companyId, payment } = input;
+        try {
+            console.log("update payment", payment)
+            const refDoc = doc(
+                firestore,
+                "companies",
+                companyId,
+                "payments",
+                payment.id
+            );
+
+            const cleanPayment = this.removeUndefined(payment);
+            await setDoc(refDoc, cleanPayment, { merge: true });
+
+            return ok({ payment: cleanPayment });
+
+        } catch (error) {
+            console.error("Error updating payment:", error);
+
+            if (error instanceof FirebaseError) {
+                if (error.code === "permission-denied") {
+                    return fail({ code: "NETWORK_ERROR" }); // Assuming we want minimal error tracking
+                }
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
     async getById(
         input: GetPaymentInput
     ): Promise<Result<GetPaymentOutput, GetPaymentError>> {
@@ -231,6 +292,28 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return ok(payments);
         } catch (error) {
             console.error("[FirebasePaymentRepository.getAllByDate]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+    async updateMultipleIsTight(companyId: string, paymentIds: string[]): Promise<Result<void, UpdateMultiplePaymentsIsTightError>> {
+        try {
+            const batch = writeBatch(firestore);
+            const refCollection = collection(firestore, "companies", companyId, "payments");
+
+            for (const id of paymentIds) {
+                const refDoc = doc(refCollection, id);
+                batch.update(refDoc, { isTight: true });
+            }
+
+            await batch.commit();
+            return ok(undefined);
+        } catch (error) {
+            console.error("Error updated payments isTight:", error);
+            if (error instanceof FirebaseError) {
+                if (error.code === "unavailable") {
+                    return fail({ code: "NETWORK_ERROR" });
+                }
+            }
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }

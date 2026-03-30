@@ -9,8 +9,8 @@ import type { GetCostumersErrors } from "../../../features/costumers/domain/busi
 import AddIcon from "@mui/icons-material/Add";
 import React from "react";
 import { BaseDialog } from "../../atoms/BaseDialog";
-import {ScreenPaths } from "../../../core/helpers/name_routes";
-import { CustomerCard } from "../CustomerList";
+import { ScreenPaths } from "../../../core/helpers/name_routes";
+import { CustomerCard } from "../../atoms/CustomerList";
 
 export const ClientListPage = () => {
   const [customers, setCostumers] = useState<Customer[]>([]);
@@ -22,10 +22,10 @@ export const ClientListPage = () => {
     (state) => state.user.user?.companyId || "indefinida"
   );
   const costumerOrchestrator = useMemo(() => new CustomerOrchestrator(), []);
-    const filteredCustomer = useMemo(() => {
-      if (!customers.length) return [];
-  
-      const normalizedSearch = searchCustomer.toLowerCase().trim();
+  const filteredCustomer = useMemo(() => {
+    if (!customers.length) return [];
+
+    const normalizedSearch = searchCustomer.toLowerCase().trim();
 
     if (!normalizedSearch) return customers;
 
@@ -37,7 +37,7 @@ export const ClientListPage = () => {
         name.includes(normalizedSearch) || document.includes(normalizedSearch)
       );
     });
-    }, [customers, searchCustomer]);
+  }, [customers, searchCustomer]);
 
   const navigate = useNavigate();
 
@@ -89,19 +89,19 @@ export const ClientListPage = () => {
 
   return (
     <Box p={3}>
-          <BaseDialog
-              open={baseDIlogOpen}
-              body={baseDIlogText}
-              butonText="aceptar"
-              onClick={() => {
-                setBaseDIlogOpen(false);
-                setBaseDIlogText("");
-                 navigate(ScreenPaths.advisor.home);
-              }}   ></BaseDialog>
+      <BaseDialog
+        open={baseDIlogOpen}
+        body={baseDIlogText}
+        butonText="aceptar"
+        onClick={() => {
+          setBaseDIlogOpen(false);
+          setBaseDIlogText("");
+          navigate(ScreenPaths.advisor.home);
+        }}   ></BaseDialog>
       <Typography variant="h4" fontWeight={600} mb={3}>
         clientes
       </Typography>
-         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
         <TextField
           label="Buscar por nombre o cedula"
           value={searchCustomer}

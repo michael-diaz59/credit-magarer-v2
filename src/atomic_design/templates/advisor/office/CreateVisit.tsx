@@ -1,42 +1,171 @@
-import { useMemo, useState } from "react";
-import { VisitForm } from "../../visit/VisitForm";
+import { useMemo, useRef, useState } from "react";
+import { VisitForm, type VisitFormRef } from "../../visit/VisitForm";
 import {
   pathOfficeVisits,
   ScreenPaths,
 } from "../../../../core/helpers/name_routes";
-import { useLocation, useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import type Visit from "../../../../features/visits/domain/business/entities/Visit";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
-import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
+import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import { BaseDialog } from "../../../atoms/BaseDialog";
-import { Box, Card, CardContent, CircularProgress } from "@mui/material";
+import { Box, Button, Card, CardContent, CircularProgress, FormControlLabel, Switch } from "@mui/material";
+import { VisitFormDataProvider } from "../../visit/VisitFormDataProvider";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
+import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
+import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
+import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
+import type { DialogState } from "../../../sub_atomic_particles/DialogState";
+import { debtInCreateVisit } from "../../../sub_atomic_particles/debFormConsts";
+import { visitConfig } from "../../../sub_atomic_particles/visitConfig";
 
 export const CreateVisit = () => {
-  const { documentCostumer = "" } = useParams<{
-    documentCostumer?: string | "";
-  }>();
+
+  const [includeDebt, setIncludeDebt] = useState(false);
+  const [SimulateDebtValues, setSimulateDebtValues] =
+    useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
+
+  const [dialog, setDialog] = useState<DialogState>({
+    open: false,
+    success: false,
+    message: "",
+  });
+
+
+  const visitFromRef = useRef<VisitFormRef>(null);
+  const debtFormRef = useRef<DebtFormRef>(null);
+
+  const [debt, setDebt] = useState<Debt | null>(null);
+
+
   const location = useLocation();
   const companyId = useAppSelector((state) => state.user.user?.companyId || "");
   const userId = useAppSelector((state) => state.user.user?.id || "undefined");
   const visitOrchestrator = useMemo(() => new VisitOrchestrator(), []);
-  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  const [bodyDialogOpen, setBodyDialogOpen] = useState("");
+
 
   const isOfficeVisit = location.pathname.includes(pathOfficeVisits);
 
   const [loading, setLoading] = useState(false);
 
-  //crear visita
-  const handleAction = async (data: Visit, debt?: Omit<Debt, "id">) => {
-    if (!companyId) return;
+  // deuda
+  const handleSubmitDebt = async (submitType: DebtSubmitType): Promise<boolean> => {
+    setSimulateDebtValues(createEmptySimulateDebtOutput())
+    let isValid: boolean = false;
+    const formValues: DebtFormValues | undefined = debtFormRef.current?.getValues();
+    if (!formValues) return false;
 
-    if (!data.userAssigned) {
-      setBodyDialogOpen("debes seleccionar un asesor para crear una visita");
-      setErrorDialogOpen(true);
+    if (!debtFormRef.current) {
+      return false;
+    }
+    if (submitType === "crear") {
+      isValid = await debtFormRef.current?.validate();
+
+    }
+    if (submitType === "simular") {
+      const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
+        ? SIMULATION_FIELDS_INSTALLMENTS
+        : SIMULATION_FIELDS_MONTHS;
+      isValid = await debtFormRef.current?.validateFields(fieldsToValidate);
+    }
+    if (submitType === "actualizar") {
+      isValid = await debtFormRef.current?.validate();
+    }
+
+    if (!isValid) return false;
+
+
+    const debtForVreate: Debt = mergeDebtWithForm(createEmptyDebt(), formValues);
+
+    setDebt(debtForVreate);
+
+    const months =
+      formValues?.calculationMode === "months" ? formValues.months : undefined;
+
+    console.log("se toma por meses?:", formValues?.calculationMode === "months")
+
+    switch (submitType) {
+      case "simular": {
+        await handleSimulateDebt(debtForVreate, months);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+    return isValid;
+  };
+
+  const handleSimulateDebt = async (data: Debt, months?: number) => {
+    const orchestrator = new DebtOrchestrator();
+
+    console.log("data:", data)
+    console.log("months:", months)
+
+    const result = await orchestrator.simulateDebt({
+      debt: data,
+      months: months,
+    });
+
+    if (result.ok) {
+      setSimulateDebtValues(result.value)
+    } else {
+      console.log(result.error);
+
+      setDialog({
+        open: true,
+        success: false,
+        message:
+          result.error.code === "el monton total debe ser mayor a 1000"
+            ? "El monto debe ser mayor a 1000"
+            : "Ocurrió un error al simular la deuda.",
+      });
+    }
+  };
+
+  //crear visita
+  const handleCreateVisit = async () => {
+
+    const data = visitFromRef.current?.getValues();
+
+    if (!companyId || !data) {
+      setDialog({
+        open: true,
+        success: false,
+        message: "error interno en el formulario",
+      });
       return;
+    }
+
+    const isValid = await visitFromRef.current?.validateFields(["customerDocument", "userAssigned"])
+    if (!isValid) {
+      return;
+    }
+
+    //validar formulario
+    if (includeDebt) {
+      const isValid = await handleSubmitDebt("crear")
+      if (!isValid) {
+        setDialog({
+          open: true,
+          success: false,
+          message: "formulario de deuda incorrecto",
+        });
+        return
+      } else {
+        setDebt((prev) =>
+          prev
+            ? { ...prev, costumerDocument: data.customerDocument }
+            : prev
+        );
+      }
+    } else {
+      setDebt(null);
     }
 
     setLoading(true);
@@ -44,12 +173,15 @@ export const CreateVisit = () => {
     /** 🔥 OBJETO FINAL (FUENTE DE LA VERDAD) */
     const visitToSave: Visit = {
       ...data,
-      id: data.id || crypto.randomUUID(),
+      id: data.id || "frontID",
       state: data.state,
       createdAt: data.createdAt || new Date().toISOString().slice(0, 10),
     };
 
+
+
     let result;
+
     if (debt) {
       result = await visitOrchestrator.createVisitWithDebt({
         idCompany: companyId,
@@ -68,20 +200,28 @@ export const CreateVisit = () => {
     setLoading(false);
 
     if (result.ok) {
-      setBodyDialogOpen(debt ? "visita y deuda creadas correctamente" : "visita creada correctamente");
+      setDialog({
+        open: true,
+        success: true,
+        message: debt ? "visita y deuda creadas correctamente" : "visita creada correctamente",
+      });
+      return;
     } else {
       if (result.error.code === "USER_NOT_FOUND") {
-        setBodyDialogOpen(
-          "no se encontro un cliente con el documento indicado",
-        );
-        setErrorDialogOpen(true);
+        setDialog({
+          open: true,
+          success: false,
+          message: "no se encontro un cliente con el documento indicado",
+        });
         setLoading(false);
         return;
       }
-      setBodyDialogOpen("no se pudo guardar la visita");
+      setDialog({
+        open: true,
+        success: false,
+        message: "no se pudo guardar la visita",
+      });
     }
-
-    setErrorDialogOpen(true);
   };
   if (loading) {
     return (
@@ -96,33 +236,74 @@ export const CreateVisit = () => {
       <Box maxWidth={700} mx="auto" mt={4}>
         <Card>
           <CardContent>
-            {" "}
-            <VisitForm
-              disabled={!isOfficeVisit}
-              actionLabel={"crear"}
-              documentCostumer={documentCostumer}
-              onSubmit={async (visit, debt) => {
-                handleAction(visit, debt);
+
+            <VisitFormDataProvider getUsers={true}>
+              {({ users, loading }) => {
+
+                if (loading) return <div>Cargando...</div>;
+
+                return (
+                  <>
+                    <VisitForm ref={visitFromRef} advisors={users} config={visitConfig} />
+                    <Button onClick={() => handleCreateVisit()}>
+                      crear visita
+                    </Button>
+                  </>
+                )
               }}
+            </VisitFormDataProvider>
+          </CardContent>
+
+          <Box sx={{ mt: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={!!includeDebt}
+                  onChange={(e) => setIncludeDebt(e.target.checked)}
+                />
+              }
+              label="Deuda"
             />
-          </CardContent>{" "}
+          </Box>
+
+
+          {includeDebt &&
+            <CardContent>
+              <DebtFormDataProvider>
+                {({ routes, loading }) => {
+                  if (loading) return <div>Cargando...</div>;
+                  return (
+                    <>
+                      <DebtForm ref={debtFormRef} routes={routes} config={debtInCreateVisit} />
+
+                      <Button onClick={() => handleSubmitDebt("simular")}>
+                        simular deuda
+                      </Button>
+                    </>
+                  )
+                }}
+              </DebtFormDataProvider>
+
+              {SimulateDebtValues.totalAmount > 0 && (
+                <SimulateDebtResultCard data={SimulateDebtValues} />
+              )}
+
+            </CardContent>
+          }
         </Card>
       </Box>
 
       <BaseDialog
-        open={errorDialogOpen}
-        body={bodyDialogOpen}
+        open={dialog.open}
+        body={dialog.message}
+        title={dialog.success ? "Visita creada" : "Error"}
         butonText="Aceptar"
         onClick={() => {
-          if (
-            bodyDialogOpen ===
-            "no se encontro un cliente con el documento indicado" ||
-            bodyDialogOpen ===
-            "debes seleccionar un asesor para crear una visita"
+          if (!dialog.success
           ) {
-            setErrorDialogOpen(false);
+            setDialog((prev) => ({ ...prev, open: false }));
           } else {
-            setErrorDialogOpen(false);
+            setDialog((prev) => ({ ...prev, open: false }));
             if (isOfficeVisit) {
               navigate(ScreenPaths.advisor.office.visit.visits);
             } else {

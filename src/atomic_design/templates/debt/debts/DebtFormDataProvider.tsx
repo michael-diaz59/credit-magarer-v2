@@ -1,49 +1,53 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../../../store/redux/coreRedux";
-import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
-import type { User } from "../../../../features/users/domain/business/entities/User";
+import type { Route } from "../../../../features/routes/domain/business/entities/Route";
+import { RouteOrchestrator } from "../../../../features/routes/domain/infraestructure/RouteOrchestrator";
 
 type Props = {
+  getRoutes?: boolean;
   children: (data: {
-    collectors: User[];
+    routes: Route[];
     loading: boolean;
   }) => React.ReactNode;
 };
 
-export const DebtFormDataProvider = ({ children }: Props) => {
+export const DebtFormDataProvider = ({ children, getRoutes = true }: Props) => {
   const dispatch = useAppDispatch();
   const companyId = useAppSelector(
     (state) => state.user.user?.companyId ?? ""
   );
 
-  const [collectors, setCollectors] = useState<User[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!companyId) return;
+    if (!getRoutes) {
+      setLoading(false);
+      return;
+    };
 
     const loadCollectors = async () => {
       setLoading(true);
 
-      const orchestrator = new UserOrchestrator(dispatch);
+      const orchestrator = new RouteOrchestrator();
 
-      const result = await orchestrator.getUsersByCompany({
-        id: companyId,
-        rol: "COLLECTOR",
+      const result = await orchestrator.getRoutesUseCase.execute({
+        companyId,
       });
 
-      if (result.state.ok) {
-        setCollectors(result.state.value);
+      if (result.ok) {
+        setRoutes(result.value);
       }
 
       setLoading(false);
     };
 
     loadCollectors().catch((error) => {
-      console.error("Error cargando cobradores", error);
+      console.error("Error cargando rutas", error);
       setLoading(false);
     });
   }, [dispatch, companyId]);
 
-  return <>{children({ collectors, loading })}</>;
+  return <>{children({ routes, loading })}</>;
 };

@@ -71,6 +71,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 return {
                     id: doc.id,
                     diasMes: data.diasMes as number,
+                    routeId: data.routeId as string,
                     name: data.name as string,
                     customerId: data.customerId as string,
                     customerName: data.customerName as string,
@@ -265,6 +266,7 @@ export class FirebaseDebtRepository implements DebtGateway {
             diasMes: data.diasMes ?? 0,
             name: data.name ?? "",
             collectorId: data.collectorId ?? "",
+            routeId: data.routeId ?? "",
             clientId: data.clientId ?? "",
 
             nextPaymentDue: data.startDate instanceof Timestamp
@@ -381,6 +383,7 @@ export class FirebaseDebtRepository implements DebtGateway {
             // 🔹 TODOS los campos persistibles (sin id)
             const updateData: Partial<Debt> = {
                 collectorId: debt.collectorId,
+                routeId: debt.routeId,
                 debtTerms: debt.debtTerms,
                 name: debt.name,
                 type: debt.type,
@@ -448,6 +451,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 id: snapshot.id,
                 collectorId: data.collectorId ?? "",
                 type: data.type ?? "credito",
+                routeId: data.routeId ?? "",
                 idVisit: data.idVisit ?? "",
                 debtTerms: data.debtTerms ?? "diario",
                 name: data.name ?? "",
@@ -580,6 +584,27 @@ export class FirebaseDebtRepository implements DebtGateway {
             return ok({ state: ok(debts) });
         } catch (error) {
             console.error("[getDebtsByCollectorAndStatus]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
+    async getDebtsByRoute(input: {
+        companyId: string;
+        routeId: string;
+    }): Promise<Result<Debt[], any>> {
+        try {
+            const { companyId, routeId } = input;
+            const ref = collection(firestore, "companies", companyId, "debts");
+            const q = query(ref, where("routeId", "==", routeId));
+            const snapshot = await getDocs(q);
+
+            const debts: Debt[] = snapshot.docs.map((doc) =>
+                this.mapFirestoreDebt(doc as QueryDocumentSnapshot<DocumentData>)
+            );
+
+            return ok(debts);
+        } catch (error) {
+            console.error("[getDebtsByRoute]", error);
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }

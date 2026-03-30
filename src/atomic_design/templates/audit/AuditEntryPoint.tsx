@@ -1,6 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
-import { CustomerList } from "../CustomerList";
+import { CustomerList } from "../../atoms/CustomerList";
 
 export const AuditEntryPoint = () => {
 
@@ -9,10 +9,10 @@ export const AuditEntryPoint = () => {
       <Typography variant="h4" fontWeight={600} mb={3}>
         clientes
       </Typography>
-        
+
       <CustomerList
-        navigateTo={(customerDocument) =>{
-            return ScreenPaths.auditor.debitsCustomer(customerDocument)
+        navigateTo={(customerDocument) => {
+          return ScreenPaths.auditor.debitsCustomer(customerDocument)
         }
 
         }

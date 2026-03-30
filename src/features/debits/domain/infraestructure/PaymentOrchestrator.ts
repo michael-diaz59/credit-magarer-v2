@@ -12,6 +12,11 @@ import { GetPaymentByIdCase, type GetPaymentError, type GetPaymentInput, type Ge
 import { RegisterPaymentUseCase, type RegisterPaymentInput, type RegisterPaymentOutput, type RegisterPaymentError } from "../business/useCases/payment/RegisterPaymentUseCase";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
+import { GetPaymentsByStatusUseCase, type GetPaymentsByStatusInput, type GetPaymentsByStatusOutput } from "../business/useCases/payment/GetPaymentsByStatusUseCase";
+import { UpdatePaymentStatusUseCase, type UpdatePaymentError } from "../business/useCases/payment/UpdatePaymentStatusUseCase";
+import { FirebaseRouteRepository } from "../../../routes/provider/firebase/FirebaseRouteRepository";
+import { UpdatePaymentUseCase, type UpdatePaymentInput as UpdatePaymentFullInput, type UpdatePaymentOutput as UpdatePaymentFullOutput, type UpdatePaymentError as UpdatePaymentFullError } from "../business/useCases/payment/UpdatePaymentUseCase";
+import { UpdateMultiplePaymentsIsTightUseCase, type UpdateMultiplePaymentsIsTightError, type UpdateMultiplePaymentsIsTightInput, type UpdateMultiplePaymentsIsTightOutput } from "../business/useCases/payment/UpdateMultiplePaymentsIsTight";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -21,6 +26,10 @@ export default class PaymentOrchestrator {
     private readonly uploadProofCase: UploadProofCase;
     private readonly getByInstallmentCase: GetPaymentsByInstallmentCase;
     private readonly registerPaymentCase: RegisterPaymentUseCase;
+    private readonly getPaymentsByStatusCase: GetPaymentsByStatusUseCase;
+    private readonly updatePaymentStatusCase: UpdatePaymentStatusUseCase;
+    private readonly updatePaymentUseCase: UpdatePaymentUseCase;
+    private readonly updateMultiplePaymentsIsTightUseCase: UpdateMultiplePaymentsIsTightUseCase;
 
     constructor() {
         this.paymentGateway = new FirebasePaymentRepository();
@@ -33,6 +42,12 @@ export default class PaymentOrchestrator {
         const installmentGateway = new FirebaseInstallmentRepository();
         const debtGateway = new FirebaseDebtRepository();
         this.registerPaymentCase = new RegisterPaymentUseCase(this.paymentGateway, installmentGateway, debtGateway);
+        
+        const routeGateway = new FirebaseRouteRepository();
+        this.getPaymentsByStatusCase = new GetPaymentsByStatusUseCase(this.paymentGateway);
+        this.updatePaymentStatusCase = new UpdatePaymentStatusUseCase(this.paymentGateway, routeGateway);
+        this.updatePaymentUseCase = new UpdatePaymentUseCase(this.paymentGateway);
+        this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway);
     }
 
     async registerPayment(input: RegisterPaymentInput): Promise<Result<RegisterPaymentOutput, RegisterPaymentError>> {
@@ -67,5 +82,21 @@ export default class PaymentOrchestrator {
 
     async getByDate(companyId: string, date: string): Promise<Result<Payment[], any>> {
         return this.paymentGateway.getAllByDate(companyId, date);
+    }
+
+    async getByStatus(input: GetPaymentsByStatusInput): Promise<GetPaymentsByStatusOutput> {
+        return this.getPaymentsByStatusCase.execute(input);
+    }
+
+    async updatePaymentsStatus(input: { companyId: string, payments: Payment[], newStatus: Payment["status"] }): Promise<Result<{ updatedCount: number }, UpdatePaymentError>> {
+        return this.updatePaymentStatusCase.execute(input);
+    }
+
+    async updatePayment(input: UpdatePaymentFullInput): Promise<Result<UpdatePaymentFullOutput, UpdatePaymentFullError>> {
+        return this.updatePaymentUseCase.execute(input);
+    }
+
+    async updateMultipleIsTight(input: UpdateMultiplePaymentsIsTightInput): Promise<Result<UpdateMultiplePaymentsIsTightOutput, UpdateMultiplePaymentsIsTightError>> {
+        return this.updateMultiplePaymentsIsTightUseCase.execute(input);
     }
 }

@@ -8,15 +8,24 @@ import {
   Stack,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
+import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
-import { DebtForm, type DebtFormAction } from "../DebtForm";
 import { RenewalComparisonForm } from "../RenewalComparisonForm";
+import { useRef } from "react";
+import { DebtForm, mergeDebtWithForm, mapDebtToForm, type DebtFormRef, type DebtFormValues } from "../debtForm2";
+import { DebtFormDataProvider } from "./DebtFormDataProvider";
+import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../form/constsForm";
+import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
 
 export const AuditDebtScreen = () => {
+  const debtFormRef = useRef<DebtFormRef>(null);
+  const [debt, setDebt] = useState<Debt | null>(null);
+
+
   const user = useAppSelector((state) => state.user.user);
   const companyId = user?.companyId || "undefined";
   const { debitId } = useParams<{ debitId: string }>();
@@ -31,18 +40,96 @@ export const AuditDebtScreen = () => {
     body: "",
   });
 
-  const handleUpdateDebt = async (_: DebtFormAction, data: Omit<Debt, "id">) => {
-    if (!data || !debitId) return;
+  const [simulateDebtValues, setSimulateDebtValues] = useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
+
+  const handleSubmitDebt = async (submitType: DebtSubmitType) => {
+    setSimulateDebtValues(createEmptySimulateDebtOutput())
+    let isValid: boolean = false;
+    const formValues: DebtFormValues | undefined = debtFormRef.current?.getValues();
+    if (!formValues) return;
+
+    if (!debtFormRef.current) {
+      return;
+    }
+    if (submitType === "crear") {
+      isValid = await debtFormRef.current?.validate();
+    } else {
+      const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
+        ? SIMULATION_FIELDS_INSTALLMENTS
+        : SIMULATION_FIELDS_MONTHS;
+      isValid = await debtFormRef.current?.validateFields(fieldsToValidate);
+    }
+    if (!isValid) return;
+
+    const debt: Debt = mergeDebtWithForm(createEmptyDebt(), formValues);
+
+    const months =
+      formValues?.calculationMode === "months" ? formValues.months : undefined;
+
+    console.log("se toma por meses?:", formValues?.calculationMode === "months")
+
+    switch (submitType) {
+
+      case "actualizar": {
+        await handleUpdateDebt();
+        break;
+      }
+      case "simular": {
+        await handleSimulateDebt(debt, months);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  };
+
+  const handleSimulateDebt = async (data: Debt, months?: number) => {
+    const orchestrator = new DebtOrchestrator();
+
+    console.log("data:", data)
+    console.log("months:", months)
+
+    const result = await orchestrator.simulateDebt({
+      debt: data,
+      months: months,
+    });
+
+    if (result.ok) {
+      setSimulateDebtValues(result.value)
+    } else {
+      console.log(result.error);
+
+      setDialogOpen(true);
+      setDialogConfig({
+        title: "Error al simular la deuda",
+        body: "Ocurrió un error al simular la deuda.",
+        buttonText: "Entendido",
+      });
+
+    }
+  };
+
+  const handleUpdateDebt = async () => {
+    if (!debt?.id) return;
 
     setLoading(true);
-    setDialogOpen(false);
+
+    if (!debtFormRef.current) {
+      return;
+    }
+
+    console.log("debt:", debt)
+    console.log("debtFormRef.current?.getValues():", debtFormRef.current?.getValues())
+
+    const debtToUpdate: Debt = mergeDebtWithForm(debt, debtFormRef.current?.getValues());
+
+    console.log("debtToUpdate:", debtToUpdate)
 
     try {
       const orchestrator = new DebtOrchestrator();
-      const debtToUpdate: Debt = {
-        ...data,
-        id: debitId,
-      };
+
+      debtToUpdate.id = debt.id;
 
       const update = await orchestrator.updateDebtUse({
         isNewCollector: true,
@@ -77,8 +164,8 @@ export const AuditDebtScreen = () => {
     }
   };
 
-  const [form, setForm] = useState<Omit<Debt, "id"> | null>(null);
-  const [originalDebt, setOriginalDebt] = useState<Omit<Debt, "id"> | null>(null);
+  const [form, setForm] = useState<Debt | null>(null);
+  const [originalDebt, setOriginalDebt] = useState<Debt | null>(null);
 
   useEffect(() => {
     const loadDebt = async () => {
@@ -92,6 +179,7 @@ export const AuditDebtScreen = () => {
 
       if (result.state.ok && result.state.value) {
         const currentDebt = result.state.value;
+        setDebt(currentDebt);
         setForm(currentDebt);
 
         if (currentDebt.status === "preAprobada" && currentDebt.originalDebt) {
@@ -133,20 +221,33 @@ export const AuditDebtScreen = () => {
 
             {originalDebt && debitId && form.status === "preAprobada" ? (
               <RenewalComparisonForm
-                debtId={debitId}
                 originalDebt={originalDebt}
                 proposedDebt={form}
                 mode="audit"
                 onSubmit={handleUpdateDebt}
               />
             ) : (
-              <DebtForm
-                defaultValues={form}
-                debtId={debitId}
-                mode="audit"
-                allowedActions={["update"]}
-                onSubmit={handleUpdateDebt}
-              />
+              <DebtFormDataProvider getRoutes={true}>
+                {({ routes, loading }) => {
+                  if (loading) return <div>Cargando...</div>;
+
+                  return (
+                    <>
+                      <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} />
+
+                      <Button onClick={() => handleSubmitDebt("actualizar")}>
+                        Actualizar deuda
+                      </Button>
+                      <Button onClick={() => handleSubmitDebt("simular")}>
+                        simular deuda
+                      </Button>
+                    </>
+                  );
+                }}
+              </DebtFormDataProvider>
+            )}
+            {simulateDebtValues.totalAmount > 0 && (
+              <SimulateDebtResultCard data={simulateDebtValues} />
             )}
 
             <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>

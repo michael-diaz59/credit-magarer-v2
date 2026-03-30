@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, increment } from "firebase/firestore";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { firestore } from "../../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
@@ -7,14 +7,14 @@ import type { Route } from "../../domain/business/entities/Route";
 import type { RouteError } from "../../domain/business/entities/routeErrors";
 
 export class FirebaseRouteRepository implements RouteGateway {
-  
+
   async createRoute(input: CreateRouteGatewayInput): Promise<Result<void, RouteError>> {
     try {
       const companyId = input.route.companyId;
       // Si el id viene vacío o undefined, le asignamos uno autogenerado
       const refRoutesColl = collection(firestore, "companies", companyId, "routes");
       const refRoute = input.route.id ? doc(refRoutesColl, input.route.id) : doc(refRoutesColl);
-      
+
       await setDoc(refRoute, {
         id: refRoute.id,
         name: input.route.name,
@@ -22,6 +22,8 @@ export class FirebaseRouteRepository implements RouteGateway {
         companyId: companyId,
         startDisabled: input.route.startDisabled ?? null,
         endDisabled: input.route.endDisabled ?? null,
+        cobradorId: input.route.cobradorId ?? null,
+        totalCollected: input.route.totalCash ?? 0,
       }, { merge: true });
 
       return ok(undefined);
@@ -53,6 +55,8 @@ export class FirebaseRouteRepository implements RouteGateway {
           companyId: data.companyId,
           startDisabled: data.startDisabled ?? undefined,
           endDisabled: data.endDisabled ?? undefined,
+          cobradorId: data.cobradorId ?? undefined,
+          totalCash: data.totalCollected ?? 0,
         } as Route;
       });
 
@@ -73,12 +77,13 @@ export class FirebaseRouteRepository implements RouteGateway {
     try {
       const companyId = input.route.companyId;
       const refRoute = doc(firestore, "companies", companyId, "routes", input.route.id);
-      
+
       await setDoc(refRoute, {
         name: input.route.name,
         description: input.route.description,
         startDisabled: input.route.startDisabled ?? null,
         endDisabled: input.route.endDisabled ?? null,
+        cobradorId: input.route.cobradorId ?? null,
       }, { merge: true });
 
       return ok(undefined);
@@ -92,6 +97,25 @@ export class FirebaseRouteRepository implements RouteGateway {
         }
       }
       return fail({ code: "UNKNOWN_ERROR", message: "Error desconocido al actualizar la ruta" });
+    }
+  }
+
+  async updateBalance(input: { companyId: string, routeId: string, amount: number }): Promise<Result<void, any>> {
+    try {
+      const { companyId, routeId, amount } = input;
+      const refRoute = doc(firestore, "companies", companyId, "routes", routeId);
+
+      await setDoc(refRoute, {
+        totalCollected: increment(amount),
+        id: routeId,
+        name: routeId === "default" ? "Registros sin ruta" : (routeId), // Temporary name if creating
+        companyId: companyId
+      }, { merge: true });
+
+      return ok(undefined);
+    } catch (error) {
+      console.error("[updateBalance]", error);
+      return fail({ code: "UNKNOWN_ERROR" });
     }
   }
 }

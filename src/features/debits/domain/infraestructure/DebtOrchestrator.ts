@@ -12,6 +12,7 @@ import { UpdateDebtUseCase, type UpdateDebitInput, type UpdateDebitOutput } from
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
 import { UpdateInstallmentByDebtCase, type UpdateInstallmentByDebtInput, type UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import { GetDebtsValidByCollectorUseCase, type GetDebtsValidByCollectorInput, type GetDebtsValidByCollectorOutput } from "../business/useCases/debt/GetDebtsValidByCollectorUseCase";
+import { GetDebtsByRouteUseCase, type GetDebtsByRouteInput, type GetDebtsByRouteOutput } from "../business/useCases/debt/GetDebtsByRouteUseCase";
 import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
 
 export default class DebtOrchestrator {
@@ -25,6 +26,7 @@ export default class DebtOrchestrator {
     private debtGateway: DebtGateway
     private simulateDebtCase: SimulateDebtCase
     private getDebtsValidByCollectorUseCase: GetDebtsValidByCollectorUseCase
+    private getDebtsByRouteUseCase: GetDebtsByRouteUseCase
 
     private getInstallmentsByDebtCase: GetInstallmentsByDebtCase
     private updateInstallmentByDebtCase: UpdateInstallmentByDebtCase
@@ -46,6 +48,7 @@ export default class DebtOrchestrator {
         this.getInstallmentsByDebtCase = new GetInstallmentsByDebtCase(this.installmentGateway)
         this.updateInstallmentByDebtCase = new UpdateInstallmentByDebtCase(this.installmentGateway)
         this.getDebtsValidByCollectorUseCase = new GetDebtsValidByCollectorUseCase(this.debtGateway)
+        this.getDebtsByRouteUseCase = new GetDebtsByRouteUseCase(this.debtGateway)
     }
 
     async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
@@ -92,6 +95,10 @@ export default class DebtOrchestrator {
 
     async getDebtsValidByCollector(input: GetDebtsValidByCollectorInput): Promise<Result<GetDebtsValidByCollectorOutput, any>> {
         return this.getDebtsValidByCollectorUseCase.execute(input)
+    }
+
+    async getDebtsByRoute(input: GetDebtsByRouteInput): GetDebtsByRouteOutput {
+        return this.getDebtsByRouteUseCase.execute(input)
     }
 
 

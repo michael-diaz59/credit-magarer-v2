@@ -86,7 +86,9 @@ const pathAuditorCostumer = pathAuditorCostumers
 
 const pathAccountant = "/accountant"
 const pathAccountDebits = pathAccountant + "/debits"
-const pathAccountCreateDebits = pathAccountDebits
+const pathAccountPayment = pathAccountant + "/payment"
+const pathAccountDebitsCustomer = pathAccountant + "/debits/forCustomers"
+const pathAccountDailyOperations = pathAccountant + "/daily-operations"
 
 
 
@@ -165,8 +167,12 @@ export const ScreenPaths = {
 
   },
   accountant: {
-    home: pathAccountDebits,
-    editDebit: (id: string) => `${pathAccountCreateDebits}/${id}`,
+    home: pathAccountant,
+    debits: pathAccountDebits,
+    debitsCustomer: (docCostumer: string) => `${pathAccountDebitsCustomer}/${docCostumer}`,
+    debitsC: pathAccountDebitsCustomer,
+    dailyOperations: pathAccountDailyOperations,
+    payment: (id: string) => `${pathAccountPayment}/${id}`,
   }
 
 } as const;

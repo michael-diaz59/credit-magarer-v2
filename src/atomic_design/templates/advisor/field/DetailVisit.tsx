@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Card,
@@ -7,38 +7,41 @@ import {
   TextField,
   Button,
   CircularProgress,
-  MenuItem,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Typography,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import type Visit from "../../../../features/visits/domain/business/entities/Visit";
 import {
-  useAppDispatch,
   useAppSelector,
 } from "../../../../store/redux/coreRedux";
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import VisitOrchestrator from "../../../../features/visits/domain/infraestructure/VisitOrchestrator";
-import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
-import type { User } from "../../../../features/users/domain/business/entities/User";
 import { textFieldSX } from "../../../atoms/textFieldSX";
 import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
+import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import type { SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
+import type { DialogState } from "../../../sub_atomic_particles/DialogState";
+import { MoneyTypography } from "../../../atoms/MoneyTypography";
 
 export const FieldVisit = () => {
-    const { visitId } = useParams<{ visitId?: string }>();
+  const { visitId } = useParams<{ visitId?: string }>();
+
+  const [dialog, setDialog] = useState<DialogState>({
+    open: false,
+    success: false,
+    message: "",
+  });
+
+  const formRef = useRef<DebtFormRef>(null);
 
   const [loading, setLoading] = useState(false);
   const [visit, setVisit] = useState<Visit | null>(null);
   const [debt, setDebt] = useState<Debt | null>(null);
   const [debtForm, setDebtForm] = useState<Partial<Debt>>({});
-  const [collectors, setCollectors] = useState<User[]>([]);
-  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
   const [isTentative, setIsTentative] = useState(true);
 
   const companyId = useAppSelector((state) => state.user.user?.companyId);
@@ -46,12 +49,19 @@ export const FieldVisit = () => {
 
   const visitOrchestrator = useMemo(() => new VisitOrchestrator(), []);
   const debtOrchestrator = useMemo(() => new DebtOrchestrator(), []);
-  const dispatch = useAppDispatch();
-   const navigate = useNavigate();
-  const userOrchestrator = useMemo(
-    () => new UserOrchestrator(dispatch),
-    [dispatch]
-  );
+
+
+  const [SimulateDebtValues, setSimulateDebtValues] =
+    useState<SimulateDebtOutput>({
+      cuotasCompletas: 0,
+      pago_cuota_reound: 0,
+      pago_ultima_cuota: 0,
+      totalAmount: 0,
+      totalInstallments: 0,
+      valueOfInstallments: 0,
+    });
+  const navigate = useNavigate();
+
 
   /* ---------------- Cargar visita + deuda ---------------- */
   useEffect(() => {
@@ -67,8 +77,11 @@ export const FieldVisit = () => {
       });
 
       if (!visitResult.state.ok || !visitResult.state.value) {
-        setErrorDialogOpen(true);
-        setLoading(false);
+        setDialog({
+          open: true,
+          success: false,
+          message: ('La visita no pudo ser cargada correctamente '),
+        });
         return;
       }
 
@@ -92,27 +105,9 @@ export const FieldVisit = () => {
     loadData();
   }, [visitId, companyId, userId, visitOrchestrator, debtOrchestrator]);
 
-  /* ---------------- Cargar cobradores ---------------- */
-  useEffect(() => {
-    const loadCollectors = async () => {
-      const result = await userOrchestrator.getUsersByCompany({
-        id: companyId ?? "",
-        rol: "COLLECTOR",
-      });
 
-      if (result.state.ok) {
-        setCollectors(result.state.value);
-      }
-    };
 
-    loadCollectors();
-  }, [companyId, userOrchestrator]);
-
-  const handleDebtChange = <K extends keyof Debt>(field: K, value: Debt[K]) => {
-    setDebtForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleUpdateDebt = async (preAprove: boolean) => {
+  const handleUpdateDebt = async (preAprove: boolean, formDataOriginal: Debt) => {
     if (!debt?.id) return;
 
     setLoading(true);
@@ -120,6 +115,7 @@ export const FieldVisit = () => {
     const updatedDebt: Debt = {
       ...debt,
       ...debtForm,
+      ...formDataOriginal,
       ...(preAprove && { status: "preAprobada" }),
     };
 
@@ -130,22 +126,110 @@ export const FieldVisit = () => {
     });
 
     if (!result.state.ok) {
-      setErrorDialogOpen(true);
-    } else {
+      setDialog({
+        open: true,
+        success: false,
+        message: ('La deuda no pudo ser actualizada correctamente '),
+      });
+    } else
       setDebt(updatedDebt);
-      setDebtForm(updatedDebt);
-      setIsTentative(updatedDebt.status === "tentativa");
+    setDebtForm(updatedDebt);
+    setIsTentative(updatedDebt.status === "tentativa");
 
-      setSuccessMessage(
-        preAprove
-          ? "La deuda fue preaprobada correctamente."
-          : "La deuda fue actualizada correctamente."
-      );
+    setDialog({
+      open: true,
+      success: true,
+      message: (preAprove
+        ? "La deuda fue preaprobada correctamente."
+        : "La deuda fue actualizada correctamente."),
+    });
+    setLoading(false);
+  }
 
-      setSuccessDialogOpen(true);
+
+
+
+
+  const handleSubmit = async (submitType: DebtSubmitType) => {
+    setSimulateDebtValues(
+      {
+        cuotasCompletas: 0,
+        pago_cuota_reound: 0,
+        pago_ultima_cuota: 0,
+        totalAmount: 0,
+        totalInstallments: 0,
+        valueOfInstallments: 0,
+      }
+    )
+    let isValid: boolean = false;
+    const formValues: DebtFormValues | undefined = formRef.current?.getValues();
+    if (!formValues) return;
+
+    if (!formRef.current) {
+      return;
     }
 
-    setLoading(false);
+    const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
+      ? SIMULATION_FIELDS_INSTALLMENTS
+      : SIMULATION_FIELDS_MONTHS;
+    isValid = await formRef.current?.validateFields(fieldsToValidate);
+
+    if (!isValid) return;
+
+
+
+    if (!debt) return;
+    const mergedDebt: Debt = mergeDebtWithForm(debt, formValues);
+
+    const months =
+      formValues?.calculationMode === "months" ? formValues.months : undefined;
+
+    console.log("se toma por meses?:", formValues?.calculationMode === "months")
+
+    switch (submitType) {
+      case "actualizar": {
+        await handleUpdateDebt(false, mergedDebt);
+        break;
+      }
+      case "preAprobar": {
+        await handleUpdateDebt(true, mergedDebt);
+        break;
+      }
+      case "simular": {
+        await handleSimulateDebt(mergedDebt, months);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  };
+
+  const handleSimulateDebt = async (data: Debt, months?: number) => {
+    const orchestrator = new DebtOrchestrator();
+
+    console.log("data:", data)
+    console.log("months:", months)
+
+    const result = await orchestrator.simulateDebt({
+      debt: data,
+      months: months,
+    });
+
+    if (result.ok) {
+      setSimulateDebtValues(result.value)
+    } else {
+      console.log(result.error);
+
+      setDialog({
+        open: true,
+        success: false,
+        message:
+          result.error.code === "el monton total debe ser mayor a 1000"
+            ? "El monto debe ser mayor a 1000"
+            : "Ocurrió un error al simular la deuda.",
+      });
+    }
   };
 
   if (loading) {
@@ -194,169 +278,89 @@ export const FieldVisit = () => {
                 sx={textFieldSX}
               />
               <Button
-              onClick={()=>{
-                navigate(ScreenPaths.advisor.field.visit.customer2(visit.customerId))
-              }}
+                onClick={() => {
+                  navigate(ScreenPaths.advisor.field.visit.customer2(visit.customerId))
+                }}
               >
                 ver detalles del cliente
               </Button>
 
               {debt && (
-                <Accordion expanded sx={{ bgcolor: "action.hover", mt: 2 }}>
-                  <AccordionSummary expandIcon={<span>▼</span>}>
-                    <Typography fontWeight="bold">
-                      Detalles de la Deuda
-                    </Typography>
-                    {!isTentative && (
-                      <Typography ml={2} color="error">
-                        No se puede editar la deuda porque no está en estado
-                        tentativa.
-                      </Typography>
-                    )}
-                  </AccordionSummary>
 
-                  <AccordionDetails>
-                    <Stack spacing={2}>
-                      <TextField
-                        select
-                        disabled={!isTentative}
-                        label="Cobrador asignado"
-                        value={debtForm.collectorId || ""}
-                        onChange={(e) =>
-                          handleDebtChange("collectorId", e.target.value)
-                        }
-                        sx={textFieldSX}
-                        fullWidth
-                      >
-                        <MenuItem value="">
-                          <em>Seleccione un cobrador</em>
-                        </MenuItem>
-                        {collectors.map((c) => (
-                          <MenuItem key={c.id} value={c.id}>
-                            {c.name}
-                          </MenuItem>
-                        ))}
-                      </TextField>
+                <><Card>
+                  <CardContent>
+                    <DebtFormDataProvider getRoutes={isTentative}>
+                      {({ routes, loading }) => {
+                        if (loading) return <div>Cargando...</div>;
+                        return (
+                          <>
+                            <DebtForm ref={formRef} routes={routes} />
 
-                      <TextField
-                        select
-                        disabled={!isTentative}
-                        label="Tipo"
-                        value={debtForm.type || "credito"}
-                        onChange={(e) =>
-                          handleDebtChange(
-                            "type",
-                            e.target.value as Debt["type"]
-                          )
-                        }
-                        fullWidth
-                        sx={textFieldSX}
-                      >
-                        <MenuItem value="credito">Crédito</MenuItem>
-                        <MenuItem value="prenda">Prenda</MenuItem>
-                      </TextField>
+                            <Button onClick={() => handleSubmit("simular")}>
+                              simular deuda
+                            </Button>
 
-                      <TextField
-                        label="Monto total"
-                        type="number"
-                        disabled={!isTentative}
-                        value={debtForm.totalAmount || 0}
-                        onChange={(e) =>
-                          handleDebtChange(
-                            "totalAmount",
-                            Number(e.target.value)
-                          )
-                        }
-                        fullWidth
-                        sx={textFieldSX}
-                      />
+                            <Button
+                              variant="contained"
+                              disabled={!isTentative}
+                              onClick={() => handleSubmit("actualizar")}
+                            >
+                              Guardar cambios de deuda
+                            </Button>
 
-                      <TextField
-                        select
-                        disabled={!isTentative}
-                        label="Periodicidad"
-                        value={debtForm.debtTerms || "diario"}
-                        onChange={(e) =>
-                          handleDebtChange(
-                            "debtTerms",
-                            e.target.value as Debt["debtTerms"]
-                          )
-                        }
-                        fullWidth
-                        sx={textFieldSX}
-                      >
-                        <MenuItem value="diario">Diario</MenuItem>
-                        <MenuItem value="semanal">Semanal</MenuItem>
-                        <MenuItem value="quincenal">Quincenal</MenuItem>
-                        <MenuItem value="mensual">Mensual</MenuItem>
-                      </TextField>
+                            <Button
+                              variant="contained"
+                              disabled={!isTentative}
+                              onClick={() => handleSubmit("preAprobar")}
+                            >
+                              PreAprobar deuda
+                            </Button>
+                          </>
+                        );
+                      }}
 
-                      <TextField
-                        label="Número de cuotas"
-                        type="number"
-                        disabled={!isTentative}
-                        value={debtForm.installmentCount || 1}
-                        onChange={(e) =>
-                          handleDebtChange(
-                            "installmentCount",
-                            Number(e.target.value)
-                          )
-                        }
-                        fullWidth
-                        sx={textFieldSX}
-                      />
 
-                      <TextField
-                        label="Tasa de interés %"
-                        type="number"
-                        disabled={!isTentative}
-                        value={debtForm.interestRate || 0}
-                        onChange={(e) =>
-                          handleDebtChange(
-                            "interestRate",
-                            Number(e.target.value)
-                          )
-                        }
-                        fullWidth
-                        sx={textFieldSX}
-                      />
+                    </DebtFormDataProvider>
+                  </CardContent>
+                </Card>
 
-                      <Button
-                        variant="contained"
-                        disabled={!isTentative}
-                        onClick={() => handleUpdateDebt(false)}
-                      >
-                        Guardar cambios de deuda
-                      </Button>
 
-                      <Button
-                        variant="contained"
-                        disabled={!isTentative}
-                        onClick={() => handleUpdateDebt(true)}
-                      >
-                        PreAprobar deuda
-                      </Button>
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
+                </>
               )}
             </Stack>
           </CardContent>
         </Card>
+        {SimulateDebtValues.totalAmount > 0 && (
+          <Card sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5" }}>
+            <Typography variant="h6">Resultado de la simulación</Typography>
+
+            <MoneyTypography
+              label="Total capital + interés:"
+              value={SimulateDebtValues.totalAmount}
+            />
+
+            <MoneyTypography label="Valor de cuotas:" value={SimulateDebtValues.valueOfInstallments} />
+
+            <MoneyTypography
+              label="Valor de cuotas redondeadas:"
+              value={SimulateDebtValues.pago_cuota_reound}
+            />
+
+            <Typography>el numero de cuotas sin aproximar es {SimulateDebtValues.totalInstallments}</Typography>
+            <Typography>el numero de cuotas al aproximar {SimulateDebtValues.totalInstallments - SimulateDebtValues.cuotasCompletas}</Typography>
+            <MoneyTypography
+              label="Valor de la ultima cuota:"
+              value={SimulateDebtValues.pago_ultima_cuota}
+            />
+          </Card>
+        )}
       </Box>
 
       <BaseDialog
-        open={errorDialogOpen}
-        body="Ocurrió un error al procesar la solicitud."
+        open={dialog.open}
+        body={dialog.message}
         butonText="Aceptar"
-        onClick={() => setErrorDialogOpen(false)}
-      />
-
-      <BaseDialog
-        open={successDialogOpen}
-        body={successMessage}
-        butonText="Aceptar"
-        onClick={() => setSuccessDialogOpen(false)}
+        onClick={() => setDialog({ open: false, success: false, message: "" })}
       />
     </>
   );

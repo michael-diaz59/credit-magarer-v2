@@ -1,326 +1,76 @@
-import { Button, MenuItem, Stack, TextField, Grid, Typography, Box } from "@mui/material";
+import { Button } from "@mui/material";
 import {
-    debtStatusList,
-    type Debt,
-    type DebtType,
+    type Debt
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
-import { Controller, useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
-import UserOrchestrator from "../../../features/users/domain/infraestructure/UserOrchestrator";
-import { useAppDispatch, useAppSelector } from "../../../store/redux/coreRedux";
-import type { User } from "../../../features/users/domain/business/entities/User";
-import { useNavigate } from "react-router-dom";
-import { ScreenPaths } from "../../../core/helpers/name_routes";
-import { textFieldSX } from "../../atoms/textFieldSX";
+import { DebtForm, mapDebtToForm, type DebtFormConfig, type DebtFormRef } from "./debtForm2";
+import { useRef } from "react";
+import { debtComparisonConfig } from "../../sub_atomic_particles/debFormConsts";
+import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";
 
 export type DebtFormAction = "create" | "update" | "preApprove";
 
 export type RenewalComparisonFormProps = {
-    debtId: string;
-    originalDebt: Omit<Debt, "id">;
-    proposedDebt: Omit<Debt, "id">;
+    originalDebt: Debt;
+    proposedDebt: Debt;
     mode: DebtFormMode;
-    onSubmit: (action: DebtFormAction, data: Omit<Debt, "id">) => void;
+    onSubmit: (action: DebtFormAction, data: Debt) => void;
 };
 
 
-
-const debtTypes: DebtType[] = ["credito", "prenda"];
-
+/**pantalla para comparar la deuda original con la propuesta */
 export const RenewalComparisonForm = ({
-    debtId,
     originalDebt,
     proposedDebt,
-    mode,
     onSubmit,
 }: RenewalComparisonFormProps) => {
-    const navigate = useNavigate();
-    const readOnly = mode === "view";
-    const canEditStatus = mode === "audit" || mode === "admin";
+    const debtConfig: DebtFormConfig = debtComparisonConfig
 
-    const dispatch = useAppDispatch();
-    const companyId = useAppSelector((state) => state.user.user?.companyId ?? "");
+    const formRef = useRef<DebtFormRef>(null);
 
-    const [collectors, setCollectors] = useState<User[]>([]);
+    const handleApprove = async () => {
+        const valid = await formRef.current?.validate();
+        if (!valid) return;
 
-    const {
-        register,
-        handleSubmit,
-        control,
-        formState: { errors },
-    } = useForm<Omit<Debt, "id">>({
-        defaultValues: originalDebt,
-    });
+        const values = formRef.current?.getValues();
 
-    useEffect(() => {
-        if (!companyId) return;
-
-        const loadCollectors = async (): Promise<void> => {
-            const orchestrator = new UserOrchestrator(dispatch);
-            const result = await orchestrator.getUsersByCompany({
-                id: companyId,
-                rol: "COLLECTOR",
-            });
-
-            if (result.state.ok) {
-                setCollectors(result.state.value);
-            }
-        };
-
-        loadCollectors().catch((error: unknown) => {
-            console.error("Error cargando cobradores", error);
+        onSubmit("update", {
+            ...proposedDebt,
+            ...values,
+            status: "activa",
         });
-    }, [dispatch, companyId]);
-
-    const ComparisonValue = ({ value }: { value: any }) => (
-        <Typography variant="caption" sx={{ color: "error.main", mt: -1, ml: 1, fontWeight: "bold" }}>
-            Propuesta: {value?.toString() || "N/A"}
-        </Typography>
-    );
+    };
 
     return (
-        <form
-            onSubmit={handleSubmit((data) => {
-                onSubmit("update", {
-                    ...proposedDebt,
-                    ...data,
-                    status: "activa",
-                });
-            })}
-        >
-            <Grid container spacing={2}>
-                {/* SECCION 1 */}
-                <Grid>
-                    <Stack spacing={3}>
-                        {/* STATUS */}
-                        {canEditStatus && (
-                            <Box>
-                                <Controller
-                                    name="status"
-                                    control={control}
-                                    rules={{ required: "El estado es obligatorio" }}
-                                    render={({ field }) => (
-                                        <TextField
-                                            {...field}
-                                            sx={textFieldSX}
-                                            select
-                                            label="Estado"
-                                            fullWidth
-                                            error={!!errors.status}
-                                            helperText={errors.status?.message}
-                                        >
-                                            {debtStatusList.map((status) => (
-                                                <MenuItem key={status} value={status}>
-                                                    {status}
-                                                </MenuItem>
-                                            ))}
-                                        </TextField>
-                                    )}
-                                />
-                                <ComparisonValue value={proposedDebt.status} />
-                            </Box>
-                        )}
+        <>
+            <DebtFormDataProvider getRoutes={true}>
+                {({ routes, loading }) => {
+                    if (loading) return <div>Cargando...</div>;
 
-                        {/* COBRADOR */}
-                        <Box>
-                            <Controller
-                                name="collectorId"
-                                control={control}
-                                rules={{ required: "Debe asignar un cobrador" }}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        value={collectors.some((c) => c.id === field.value) ? field.value : ""}
-                                        select
-                                        sx={textFieldSX}
-                                        label="Cobrador asignado"
-                                        fullWidth
-                                        error={!!errors.collectorId}
-                                        helperText={errors.collectorId?.message}
-                                    >
-                                        {collectors.map((collector) => (
-                                            <MenuItem key={collector.id} value={collector.id}>
-                                                {collector.name}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                )}
+                    return (
+                        <>
+                            <DebtForm
+                                ref={formRef}
+                                routes={routes}
+                                debValues={mapDebtToForm(originalDebt)}
+                                renewalProposal={mapDebtToForm(proposedDebt)}
+                                config={debtConfig}
                             />
-                            <ComparisonValue
-                                value={collectors.find(c => c.id === proposedDebt.collectorId)?.name || proposedDebt.collectorId}
-                            />
-                        </Box>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleApprove}
+                            >
+                                Aprobar Renovación
+                            </Button>
+                        </>
+                    )
 
-                        {/* CÉDULA */}
-                        <Box>
-                            <TextField
-                                label="Cédula del cliente"
-                                fullWidth
-                                sx={textFieldSX}
-                                disabled
-                                error={!!errors.costumerDocument}
-                                helperText={errors.costumerDocument?.message}
-                                {...register("costumerDocument")}
-                            />
-                            <ComparisonValue value={proposedDebt.costumerDocument} />
-                        </Box>
-                    </Stack>
-                </Grid>
+                }}
 
-                {/* SECCION 2 */}
-                <Grid>
-                    <Stack spacing={3}>
-                        {/* TIPO */}
-                        <Box>
-                            <Controller
-                                name="type"
-                                control={control}
-                                rules={{ required: "El tipo es obligatorio" }}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        select
-                                        label="Tipo"
-                                        fullWidth
-                                        sx={textFieldSX}
-                                        disabled={mode === "view"}
-                                        error={!!errors.type}
-                                        helperText={errors.type?.message}
-                                    >
-                                        {debtTypes.map((type) => (
-                                            <MenuItem key={type} value={type}>
-                                                {type}
-                                            </MenuItem>
-                                        ))}
-                                    </TextField>
-                                )}
-                            />
-                            <ComparisonValue value={proposedDebt.type} />
-                        </Box>
+            </DebtFormDataProvider>
 
-                        {/* MONTO */}
-                        <Box>
-                            <TextField
-                                label="Monto capital"
-                                type="number"
-                                fullWidth
-                                disabled={mode === "view"}
-                                sx={textFieldSX}
-                                error={!!errors.totalAmount}
-                                helperText={errors.totalAmount?.message}
-                                {...register("totalAmount", {
-                                    valueAsNumber: true,
-                                    required: "Monto obligatorio",
-                                })}
-                            />
-                            <ComparisonValue value={proposedDebt.totalAmount} />
-                        </Box>
 
-                        <Box>
-                            <Controller
-                                name="debtTerms"
-                                control={control}
-                                rules={{ required: "Periodicidad obligatoria" }}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        select
-                                        label="Periodicidad"
-                                        fullWidth
-                                        sx={textFieldSX}
-                                        disabled={mode === "view"}
-                                        error={!!errors.debtTerms}
-                                        helperText={errors.debtTerms?.message}
-                                    >
-                                        <MenuItem value="diario">Diario</MenuItem>
-                                        <MenuItem value="semanal">Semanal</MenuItem>
-                                        <MenuItem value="quincenal">Quincenal</MenuItem>
-                                        <MenuItem value="mensual">Mensual</MenuItem>
-                                    </TextField>
-                                )}
-                            />
-                            <ComparisonValue value={proposedDebt.debtTerms} />
-                        </Box>
-                    </Stack>
-                </Grid>
-
-                {/* SECCION 3 */}
-                <Grid>
-                    <Stack spacing={3}>
-                        {/* Tasa de inters */}
-                        <Box>
-                            <TextField
-                                label="Tasa de interes %"
-                                type="number"
-                                fullWidth
-                                sx={textFieldSX}
-                                disabled={mode === "view"}
-                                error={!!errors.interestRate}
-                                helperText={errors.interestRate?.message}
-                                {...register("interestRate", {
-                                    valueAsNumber: true,
-                                    required: "Tasa obligatoria",
-                                })}
-                            />
-                            <ComparisonValue value={proposedDebt.interestRate} />
-                        </Box>
-
-                        {/*numero de cuotas*/}
-                        <Box>
-                            <TextField
-                                label="Número de cuotas"
-                                type="number"
-                                sx={textFieldSX}
-                                fullWidth
-                                disabled={mode === "view"}
-                                error={!!errors.installmentCount}
-                                helperText={errors.installmentCount?.message}
-                                {...register("installmentCount", {
-                                    valueAsNumber: true,
-                                    required: "Cuotas obligatorias",
-                                })}
-                            />
-                            <ComparisonValue value={proposedDebt.installmentCount} />
-                        </Box>
-
-                        {/* FECHA */}
-                        <Box>
-                            <TextField
-                                label="Fecha de inicio"
-                                type="date"
-                                sx={textFieldSX}
-                                fullWidth
-                                InputLabelProps={{ shrink: true }}
-                                error={!!errors.startDate}
-                                helperText={errors.startDate?.message}
-                                {...register("startDate", {
-                                    required: "Fecha obligatoria",
-                                })}
-                            />
-                            <ComparisonValue value={proposedDebt.startDate} />
-                        </Box>
-                    </Stack>
-                </Grid>
-            </Grid>
-
-            {/* ACTION BUTTONS */}
-            <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
-                {!readOnly && (
-                    <Button type="submit" variant="contained" color="primary">
-                        Aprobar Renovación
-                    </Button>
-                )}
-                {debtId && (
-                    <Button
-                        variant="outlined"
-                        color="info"
-                        onClick={() => navigate(ScreenPaths.auditor.installments(debtId))}
-                    >
-                        Ver todas las cuotas
-                    </Button>
-                )}
-            </Stack>
-        </form>
+        </>
     );
 };

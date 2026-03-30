@@ -18,4 +18,5 @@ export interface RouteGateway {
   createRoute(input: CreateRouteGatewayInput): Promise<Result<void, RouteError>>;
   getRoutesByCompany(input: GetRoutesGatewayInput): Promise<Result<Route[], RouteError>>;
   updateRoute(input: UpdateRouteGatewayInput): Promise<Result<void, RouteError>>;
+  updateBalance(input: { companyId: string, routeId: string, amount: number }): Promise<Result<void, any>>;
 }

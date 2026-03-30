@@ -35,6 +35,9 @@ export const debtStatusList: DebtStatus[] = [
   "anulado",
 ];
 
+/** 
+ * la especificaciones de los dias de un termino y dias del mes de un termino se especifican en el archivo diasPorTermino.ts
+ */
 export type DebtTerms = "diario" | "semanal" | "quincenal" | "mensual";
 
 /**con  installmentsPaid podemos saber cual es la siguiente cuota que debe ser cobrada*/
@@ -42,6 +45,9 @@ export interface Debt {
   id: string;
 
   collectorId: string;
+
+  /*id de la ruta a la que etsa enlazada la deuda* */
+  routeId: string
 
   type: DebtType;
 
@@ -123,4 +129,44 @@ export interface Debt {
 
   /** id de la nueva deuda que se creo como renovacion de esta */
   renewedToDebtId?: string;
+}
+
+export function createEmptyDebt(): Debt {
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    id: "",
+    collectorId: "",
+    routeId: "",
+    type: "credito",
+    idVisit: "",
+    debtTerms: "diario",
+    name: "",
+    diasMes: 30,
+    status: "tentativa",
+
+    capital: 0,
+    totalAmount: 0,
+    totalPaid: 0,
+    totalPaymentForLate: 0,
+    interestRate: 0,
+
+    startDate: today,
+    createdAt: today,
+    firstDueDate: "",
+
+    installmentCount: 1,
+
+    nextPaymentDue: "",
+    dateLastPayment: "",
+    installmentsPaid: 0,
+    overdueInstallmentsCount: 0,
+
+    clientId: "",
+    costumerName: "",
+    costumerDocument: "",
+
+    originalDebt: "",
+    renewedToDebtId: "",
+  };
 }

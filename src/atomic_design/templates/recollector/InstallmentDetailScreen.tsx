@@ -213,6 +213,7 @@ export const InstallmentDetailScreen = () => {
     bankAccountId?: string,
   ): Payment => {
     return {
+      idRoute: debt?.routeId || "",
       id: paymentId || "",
       idProofOfPayment: proofUrl || "",
       collectorObservation: "",

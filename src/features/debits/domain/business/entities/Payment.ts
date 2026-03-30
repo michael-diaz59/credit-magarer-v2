@@ -25,6 +25,12 @@ export interface Payment {
   idProofOfPayment: string
   id: string;
 
+  /**es el id a la ruta a la que pertenece el pago */
+  idRoute: string;
+
+  /**indica si el pago esta cuadrado*/
+  isTight: boolean;
+
   /**observaciones del cobrador */
   collectorObservation: string
 
@@ -35,7 +41,7 @@ export interface Payment {
   installmentId: string;
   /**nombre del cliente */
   costumerName: string;
-  /**nombre del cliente */
+  /**nombre del cobrador */
   collectorName: string;
 
   collectorId: string;
