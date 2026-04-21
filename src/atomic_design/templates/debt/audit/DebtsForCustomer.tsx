@@ -44,12 +44,14 @@ export const DebtsForCustomer = () => {
         });
 
         if (result.state.ok) {
-          const sortedDebts = [...result.state.value].sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          );
+          const sorted = [...result.state.value].sort((a, b) => {
+            // Si b.createdAt es nulo, lo mandamos al final
+            if (!b.createdAt) return -1;
+            if (!a.createdAt) return 1;
+            return b.createdAt.localeCompare(a.createdAt);
+          });
 
-          setDebts(sortedDebts);
+          setDebts(sorted);
         } else {
           setError("No se pudieron cargar las deudas del cliente");
         }
@@ -93,7 +95,7 @@ export const DebtsForCustomer = () => {
           {isMobile && (
             <Grid container spacing={2}>
               {debts.map((debt: Debt) => (
-                <Grid >
+                <Grid key={debt.id}>
                   <DebtCard
                     debt={debt}
                     onClick={(d) =>

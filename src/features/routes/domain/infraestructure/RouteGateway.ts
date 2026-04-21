@@ -1,5 +1,5 @@
 import type { Result } from "../../../../core/helpers/ResultC";
-import type { Route } from "../business/entities/Route";
+import type { Route, CashBalances, DepositBalances } from "../business/entities/Route";
 import type { RouteError } from "../business/entities/routeErrors";
 
 export interface CreateRouteGatewayInput {
@@ -19,4 +19,10 @@ export interface RouteGateway {
   getRoutesByCompany(input: GetRoutesGatewayInput): Promise<Result<Route[], RouteError>>;
   updateRoute(input: UpdateRouteGatewayInput): Promise<Result<void, RouteError>>;
   updateBalance(input: { companyId: string, routeId: string, amount: number }): Promise<Result<void, any>>;
+  updateSpecificBalances(input: {
+    companyId: string,
+    routeId: string,
+    cashEntries: CashBalances[],
+    depositEntries: DepositBalances[]
+  }): Promise<Result<void, any>>;
 }

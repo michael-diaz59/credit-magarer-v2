@@ -17,6 +17,7 @@ import { UpdatePaymentStatusUseCase, type UpdatePaymentError } from "../business
 import { FirebaseRouteRepository } from "../../../routes/provider/firebase/FirebaseRouteRepository";
 import { UpdatePaymentUseCase, type UpdatePaymentInput as UpdatePaymentFullInput, type UpdatePaymentOutput as UpdatePaymentFullOutput, type UpdatePaymentError as UpdatePaymentFullError } from "../business/useCases/payment/UpdatePaymentUseCase";
 import { UpdateMultiplePaymentsIsTightUseCase, type UpdateMultiplePaymentsIsTightError, type UpdateMultiplePaymentsIsTightInput, type UpdateMultiplePaymentsIsTightOutput } from "../business/useCases/payment/UpdateMultiplePaymentsIsTight";
+import { GetSumPaymentsUseCase, type GetSumPaymentsInput, type GetSumPaymentsOutput, type GetSumPaymentsError } from "../business/useCases/payment/GetSumPaymentsUseCase";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -30,6 +31,7 @@ export default class PaymentOrchestrator {
     private readonly updatePaymentStatusCase: UpdatePaymentStatusUseCase;
     private readonly updatePaymentUseCase: UpdatePaymentUseCase;
     private readonly updateMultiplePaymentsIsTightUseCase: UpdateMultiplePaymentsIsTightUseCase;
+    private readonly getSumPaymentsUseCase: GetSumPaymentsUseCase;
 
     constructor() {
         this.paymentGateway = new FirebasePaymentRepository();
@@ -42,18 +44,20 @@ export default class PaymentOrchestrator {
         const installmentGateway = new FirebaseInstallmentRepository();
         const debtGateway = new FirebaseDebtRepository();
         this.registerPaymentCase = new RegisterPaymentUseCase(this.paymentGateway, installmentGateway, debtGateway);
-        
+
         const routeGateway = new FirebaseRouteRepository();
         this.getPaymentsByStatusCase = new GetPaymentsByStatusUseCase(this.paymentGateway);
         this.updatePaymentStatusCase = new UpdatePaymentStatusUseCase(this.paymentGateway, routeGateway);
         this.updatePaymentUseCase = new UpdatePaymentUseCase(this.paymentGateway);
-        this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway);
+        this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway, routeGateway);
+        this.getSumPaymentsUseCase = new GetSumPaymentsUseCase(this.paymentGateway);
     }
 
     async registerPayment(input: RegisterPaymentInput): Promise<Result<RegisterPaymentOutput, RegisterPaymentError>> {
         return this.registerPaymentCase.execute(input);
     }
 
+    //no usado
     async createPayment(input: CreatePaymentInput): Promise<Result<CreatePaymentOutput, CreatePaymentError>> {
         return this.createPaymentCase.execute(input);
     }
@@ -98,5 +102,9 @@ export default class PaymentOrchestrator {
 
     async updateMultipleIsTight(input: UpdateMultiplePaymentsIsTightInput): Promise<Result<UpdateMultiplePaymentsIsTightOutput, UpdateMultiplePaymentsIsTightError>> {
         return this.updateMultiplePaymentsIsTightUseCase.execute(input);
+    }
+
+    async getSumPayments(input: GetSumPaymentsInput): Promise<Result<GetSumPaymentsOutput, GetSumPaymentsError>> {
+        return this.getSumPaymentsUseCase.execute(input);
     }
 }

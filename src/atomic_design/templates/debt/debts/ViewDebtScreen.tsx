@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Box,
   Card,
@@ -15,8 +15,11 @@ import DebtOrchestrator from "../../../../features/debits/domain/infraestructure
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
-import { DebtForm } from "../DebtForm";
 
+import { DebtForm, mapDebtToForm, mergeDebtWithForm, type DebtFormRef } from "../debtForm2";
+import { DebtFormDataProvider } from "./DebtFormDataProvider";
+
+/**pantalla deuda del asesor de oficina */
 export const ViewDebtScreen = () => {
   const companyId = useAppSelector(
     (state) => state.user.user?.companyId || "undefined",
@@ -33,14 +36,36 @@ export const ViewDebtScreen = () => {
     body: "",
   });
 
-  const handlePreAbroves = async (data: Omit<Debt, "id">) => {
+  const formRef = useRef<DebtFormRef>(null);
 
-    data.status="preAprobada"
+  const handleSubmit = async (action: "update" | "preApprove") => {
+    const isValid = await formRef.current?.validate();
+    if (!isValid) return;
+
+    const formValues = formRef.current?.getValues();
+    if (!formValues) return;
+
+    if (!form) return;
+
+    // merge updated form fields into existing debt object
+    // Casting form to Debt since form does contain the other fields, we just need the id.
+    const originalDebt = { ...form, id: debitId } as Debt;
+    const updatedDebtInfo = mergeDebtWithForm(originalDebt, formValues);
+
+    if (action === "update") {
+      handleUpdateDebt(updatedDebtInfo);
+    } else if (action === "preApprove") {
+      handlePreAbroves(updatedDebtInfo);
+    }
+  };
+
+  const handlePreAbroves = async (data: Debt) => {
+    data.status = "preAprobada"
     handleUpdateDebt(data)
   };
 
-  const handleUpdateDebt = async (data: Omit<Debt, "id">) => {
-    if (!data || !debitId) return;
+  const handleUpdateDebt = async (debtToUpdate: Debt) => {
+    if (!debtToUpdate || !debitId) return;
 
     setLoading(true); // 1️⃣ mostrar loading
     setDialogOpen(false); // aseguramos que esté cerrado
@@ -49,11 +74,6 @@ export const ViewDebtScreen = () => {
       const orchestrator = new DebtOrchestrator();
 
       console.log(debitId);
-      const debtToUpdate: Debt = {
-        ...form, // 👈 Conservamos los campos originales completos (como routeId)
-        ...data, // 👈 Sobrescribimos con los campos del formulario
-        id: debitId, // 👈 el ID viene de la URL
-      };
       console.log(debtToUpdate.id);
 
       const update = await orchestrator.updateDebtUse({
@@ -63,7 +83,7 @@ export const ViewDebtScreen = () => {
       });
 
       if (update.state.ok) {
-        if(data.status!=="tentativa"){
+        if (debtToUpdate.status !== "tentativa") {
           setMode("view")
         }
         setDialogConfig({
@@ -125,7 +145,7 @@ export const ViewDebtScreen = () => {
     };
 
     loadDebt();
-  }, [debitId]);
+  }, [debitId, companyId]);
 
   if (!form) return null;
 
@@ -142,7 +162,7 @@ export const ViewDebtScreen = () => {
         />
       </>
       <Box position="relative">
-        <Card  sx={{ width: "100%" }}>
+        <Card sx={{ width: "100%" }}>
           <CardContent>
             <Typography variant="h6" mb={2}>
               Detalle de la deuda
@@ -150,23 +170,54 @@ export const ViewDebtScreen = () => {
             {mode === "view" && (
               <Alert severity="warning" variant="outlined" sx={{ mb: 3 }}>
                 Esta deuda no se puede editar porque no se encuentra en estado
-              <strong> tentativo </strong>.
+                <strong> tentativo </strong>.
               </Alert>
             )}
-            <DebtForm
-              mode={mode}
-              defaultValues={form}
-              allowedActions={["update", "preApprove"]}
-              onSubmit={(action, data) => {
-                if (action === "update") handleUpdateDebt(data);
-                if (action === "preApprove") handlePreAbroves(data);
+
+            <DebtFormDataProvider getRoutes={true}>
+              {({ routes, loading: formLoading }) => {
+                if (formLoading) return <div>Cargando...</div>;
+
+                return (
+                  <>
+                    <DebtForm 
+                      ref={formRef} 
+                      routes={routes} 
+                      debValues={mapDebtToForm(form as Debt)} 
+                      config={{
+                        editableFields: mode === "edit" ? undefined : []
+                      }}
+                    />
+
+                    <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
+                      {mode === "edit" && (
+                        <>
+                          <Button 
+                            variant="outlined" 
+                            color="primary" 
+                            onClick={() => handleSubmit("update")}
+                            disabled={loading}
+                          >
+                            Actualizar
+                          </Button>
+                          <Button 
+                            variant="contained" 
+                            color="primary" 
+                            onClick={() => handleSubmit("preApprove")}
+                            disabled={loading}
+                          >
+                            Pre Aprobada
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={() => navigate(-1)} disabled={loading}>
+                        Volver
+                      </Button>
+                    </Stack>
+                  </>
+                );
               }}
-            />
-            <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
-              <Button onClick={() => navigate(-1)} disabled={loading}>
-                Volver
-              </Button>
-            </Stack>
+            </DebtFormDataProvider>
           </CardContent>
         </Card>
       </Box>

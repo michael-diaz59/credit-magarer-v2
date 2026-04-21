@@ -8,15 +8,13 @@ import { useRef } from "react";
 import { debtComparisonConfig } from "../../sub_atomic_particles/debFormConsts";
 import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";
 
-export type DebtFormAction = "create" | "update" | "preApprove";
 
 export type RenewalComparisonFormProps = {
     originalDebt: Debt;
     proposedDebt: Debt;
     mode: DebtFormMode;
-    onSubmit: (action: DebtFormAction, data: Debt) => void;
+    onSubmit: (data: Debt) => void;
 };
-
 
 /**pantalla para comparar la deuda original con la propuesta */
 export const RenewalComparisonForm = ({
@@ -34,7 +32,7 @@ export const RenewalComparisonForm = ({
 
         const values = formRef.current?.getValues();
 
-        onSubmit("update", {
+        onSubmit({
             ...proposedDebt,
             ...values,
             status: "activa",

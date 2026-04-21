@@ -78,6 +78,14 @@ export default class UserOrchestrator {
     return ok<void>(undefined)
   }
 
+  async getUserById(getUserInput: GetUserInput): Promise<Result<User | null, getUserError>> {
+    const user: Result<User | null, getUserError> = await this.getUserUseCase.execute(getUserInput)
+    if (!user.ok) {
+      return fail(user.error)
+    }
+    return ok<User | null>(user.value)
+  }
+
   async getUser(getUserInput: GetUserInput): Promise<Result<User | null, getUserError>> {
     const user: Result<User | null, getUserError> = await this.getUserUseCase.execute(getUserInput)
     if (!user.ok) {

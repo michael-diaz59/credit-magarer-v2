@@ -87,6 +87,9 @@ export interface Installment {
   /**dinero extra que se debe pagar por atraso en el pago */
   latepayment: number;
 
+  /**dinero total pagado por interes de mora de esta cuota */
+  paidLatePayment: number;
+
   /**fecha de pago de la cuota*/
   dueDate: string;
 
@@ -104,9 +107,6 @@ export interface Installment {
 
   /**registro de pagos, es la lista de id de payments */
   payments?: string[]
-
-  /**dinero total pagado por interes de mora de esta cuota */
-  paidLatePayment: number;
 
   /** indica si la cuota fue aplazada */
   aplazado?: boolean;
@@ -130,7 +130,34 @@ export interface Installment {
   locationAttemptedPayment?: GeoLocation;
 }
 
+export const defaultInstallmentAddress: InstallmentAddress = {
+  address: "",
+  neighborhood: "",
+  stratum: 0,
+  city: "",
+};
 
-
-
-
+export const defaultInstallment: Omit<Installment, "id"> = {
+  debtId: "",
+  companyId: "",
+  interestRate: 0,
+  lateInterestRate: 0,
+  collectorId: "",
+  costumerId: "",
+  costumerDocument: "",
+  costumerName: "",
+  costumerNumber: "",
+  costumerAddres: defaultInstallmentAddress,
+  installmentTotalNumber: 0,
+  installmentNumber: 0,
+  amount: 0,
+  paidAmount: 0,
+  latepayment: 0,
+  dueDate: "",
+  lateDueDate: "",
+  status: "pendiente",
+  createdAt: "",
+  payments: [],
+  paidLatePayment: 0,
+  aplazado: false,
+};

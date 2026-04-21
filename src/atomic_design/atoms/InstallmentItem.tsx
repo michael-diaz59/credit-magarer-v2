@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
 import { ScreenPaths } from "../../core/helpers/name_routes";
 import { isInstallmentLate } from "../sub_atomic_particles/installmentStatus";
+import { formatISOToInputDate } from "../../core/helpers/dates/dateConvert";
 
 type Props = {
   installment: Installment;
@@ -66,7 +67,7 @@ export const InstallmentItem = ({ installment }: Props) => {
       </Stack>
 
       <Typography variant="body2" color="text.secondary">
-        Vence: {installment.dueDate}
+        Vence: {formatISOToInputDate(installment.dueDate)}
       </Typography>
 
       {installment.lateDueDate && (
@@ -89,7 +90,7 @@ export const InstallmentItem = ({ installment }: Props) => {
 
       {installment.paidAt && (
         <Typography variant="body2" color="text.secondary">
-          Pagada el: {installment.paidAt}
+          Pagada el: {formatISOToInputDate(installment.paidAt)}
         </Typography>
       )}
     </Box>

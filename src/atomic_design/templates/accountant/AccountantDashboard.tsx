@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Box, Typography, ButtonBase, useTheme } from "@mui/material";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import PaymentsIcon from "@mui/icons-material/Payments";
 import { CustomSx } from "../../sub_atomic_particles/Custom_sx";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 
@@ -22,7 +23,37 @@ export const AccountantDashboard: React.FC = () => {
       path: ScreenPaths.accountant.dailyOperations,
     },
     {
-      label: "Deudas",
+      label: "Confirmar entrega de crédito",
+      icon: (
+        <MonetizationOnIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.pendingDelivery,
+    },
+    {
+      label: "Pagos",
+      icon: (
+        <PaymentsIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.paymentsMenu,
+    },
+    {
+      label: "Financiamientos",
+      icon: (
+        <AccountBalanceIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.financialDebts,
+    },
+    {
+      label: "lista de creditos",
       icon: (
         <AccountBalanceIcon
           fontSize="large"
@@ -30,6 +61,46 @@ export const AccountantDashboard: React.FC = () => {
         />
       ),
       path: ScreenPaths.accountant.debits,
+    },
+    {
+      label: "Balances por Ruta",
+      icon: (
+        <AccountBalanceIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.routesBalance,
+    },
+    {
+      label: "Balance General",
+      icon: (
+        <AccountBalanceIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.balanceSheet,
+    },
+    {
+      label: "Resumen General",
+      icon: (
+        <AccountBalanceIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.generalSummary,
+    },
+    {
+      label: "Pronósticos",
+      icon: (
+        <PaymentsIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.accountant.forecasts,
     },
   ];
 

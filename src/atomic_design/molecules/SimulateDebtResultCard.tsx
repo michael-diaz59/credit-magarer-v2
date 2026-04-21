@@ -7,7 +7,7 @@ type Props = {
 };
 
 export function SimulateDebtResultCard({ data }: Props) {
-    if (!data || data.totalAmount <= 0) return null;
+    if (!data || data.capital <= 0) return null;
 
     return (
         <Card sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5" }}>

@@ -3,7 +3,7 @@ import type {
   DebtGateway,
   InstallmentGateway,
 } from "../../../infraestructure/DebtGatweay";
-import type { Debt } from "../../entities/Debt";
+import { type Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { GetInstallmentsByDebtCase } from "../installment/GetInstallmentsByDebtCase";
 import { UpdateInstallmentByDebtCase } from "../installment/UpdateInstallmentsByDebtCase";
@@ -13,7 +13,7 @@ import type { Customer } from "../../../../../costumers/domain/business/entities
 import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
 
 export type UpdateDebtError =
-  | { code: "no hay un cobrador" }
+  | { code: "no hay una ruta asignada" }
   | { code: "UNKNOWN_ERROR" }
   | { code: "WITHOUT_ACTIVE_STATE" }
   | { code: "ERROR_INSTALLMENTS" };
@@ -60,15 +60,11 @@ export class UpdateDebtUseCase {
   /** su funcion es actualizar un debt, si el debt tiene un nuevo collector actualiza el collector de sus installments que no esten pagos o cancelados*/
   async execute(input: UpdateDebitInput): Promise<UpdateDebitOutput> {
     if (input.debt.status === "activa") {
-      if (!input.debt.collectorId) {
-        return { state: fail({ code: "no hay un cobrador" }) };
+      if (!input.debt.routeId) {
+        return { state: fail({ code: "no hay una ruta asignada" }) };
       }
     }
 
-    // Asegurar que el capital esté presente si se actualiza a través de este caso de uso
-    if (!input.debt.capital) {
-      input.debt.capital = input.debt.totalAmount;
-    }
 
     // 1. Obtener la deuda actual para comparar
     const currentDebtResult = await this.getDebitByIdCase.execute({
@@ -81,6 +77,12 @@ export class UpdateDebtUseCase {
     }
 
     const currentDebt = currentDebtResult.state.value;
+
+    console.log("delivered", input.debt.delivered, "status", input.debt.status)
+    if (input.debt.delivered === false && input.debt.status === "preparacion") {
+      console.log("true_preparacion")
+      input.debt.deliveredStatus = "true_preparacion"
+    }
 
     // 2. Detectar cambios financieros
     const financialChanged =
@@ -114,19 +116,23 @@ export class UpdateDebtUseCase {
         }
       }
     }
+    //input.debt.delivered = isDebtStatusDelivered(input.debt.status)
+
+    console.log("input.debt", input.debt)
+
 
     const updateResult = await this.debtGateway.update(input);
 
-    // 3. Actualizar contadores del cliente si la deuda pasa a un estado "activo"
-    const preliminaryStates = ["tentativa", "preAprobada"];
-    const isNowActive = !preliminaryStates.includes(input.debt.status);
-    const wasPreliminary = preliminaryStates.includes(currentDebt.status);
+    // 3. Actualizar contadores del cliente si la deuda fue liquidada
+    const preliminaryStates = ["pagada"];
+    const isNowActive = preliminaryStates.includes(input.debt.status);
+    const wasPreliminary = !preliminaryStates.includes(currentDebt.status);
 
     if (updateResult.state.ok && wasPreliminary && isNowActive) {
       const customerResult = await this.costumerGateway.getCostumerById(input.companyId, input.debt.clientId);
       if (customerResult.ok && customerResult.value) {
         const customer = customerResult.value;
-        if (input.debt.originalDebt) {
+        if (input.debt.originalDebt && !currentDebt.originalDebt) {
           customer.renovationsCounter = (customer.renovationsCounter ?? 0) + 1;
 
           // 🆕 Marcar cuotas de la deuda original como renovadas al aprobar
@@ -138,13 +144,13 @@ export class UpdateDebtUseCase {
 
             if (originalInstallmentsResult.state.ok) {
               const toUpdate = originalInstallmentsResult.state.value.filter(
-                (inst) => inst.status !== "pagada" && inst.status !== "liquidada"
+                (inst) => inst.status !== "pagada" && inst.status !== "liquidada" && inst.status !== "cancelada"
               );
 
               if (toUpdate.length > 0) {
                 const updatedInstallments = toUpdate.map((inst) => ({
                   ...inst,
-                  status: "renovada" as const,
+                  status: "pagada" as const,
                   paidAmount: inst.amount,
                 }));
 
@@ -164,14 +170,39 @@ export class UpdateDebtUseCase {
 
             if (originalDebtResult.state.ok && originalDebtResult.state.value) {
               const originalDebtEntity = originalDebtResult.state.value;
+
+
+              /**valor del credito que queda por pagarse */
+              const remainingValue = originalDebtEntity.totalAmount - originalDebtEntity.totalPaid;
+              let updateNeeded = false;
+
+              //marca como ganancias a la deuda original
+              if (originalDebtEntity.earning === false) {
+                originalDebtEntity.earning = true;
+                updateNeeded = true;
+              }
+
               if (originalDebtEntity.renewedToDebtId !== input.debt.id) {
+                originalDebtEntity.renewedToDebtId = input.debt.id;
+                updateNeeded = true;
+              }
+
+              if (remainingValue > 0) {
+                originalDebtEntity.renewalPayment = remainingValue;
+                updateNeeded = true;
+                console.log("remainingValue", remainingValue)
+              }
+
+              if (originalDebtEntity.status !== "pagada") {
+                originalDebtEntity.status = "pagada";
+                updateNeeded = true;
+              }
+
+              if (updateNeeded) {
                 await this.debtGateway.update({
                   companyId: input.companyId,
                   isNewCollector: false,
-                  debt: {
-                    ...originalDebtEntity,
-                    renewedToDebtId: input.debt.id,
-                  },
+                  debt: originalDebtEntity,
                 });
               }
             }

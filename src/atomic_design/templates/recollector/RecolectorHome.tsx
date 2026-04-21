@@ -24,6 +24,7 @@ import {
 } from "../../organisms/ToCollectHomeBody";
 
 import { RouteManagementDialog } from "../../organisms/RouteManagementDialog";
+import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 
 /** indica si una fecha es menor a la actual */
 export function IsPastDate(dateStr: string): boolean {
@@ -48,6 +49,7 @@ export const RecolectorHome = () => {
   const collectorId = useAppSelector((state) => state.user.user?.id ?? "");
   const companyId = useAppSelector((state) => state.user.user?.companyId ?? "");
   const user = useAppSelector((state) => state.user.user);
+  const idRoutes = useAppSelector((state) => state.user.user?.idRoutes ?? "");
 
   const BOTTOM_BAR_HEIGHT = 56;
 
@@ -105,20 +107,21 @@ export const RecolectorHome = () => {
      CARGAR CUOTAS
      ======================= */
   useEffect(() => {
-    if (!collectorId || !companyId) return;
+    if (!collectorId || !companyId || !idRoutes) return;
 
     const fetchInstallments = async () => {
       try {
         setLoading(true);
         const orchestrator = new InstallmentsOrchestrator();
 
-        const result = await orchestrator.getNextByCollector({
+        const result = await orchestrator.getManagementInstallments({
           companyId,
-          collectorId,
+          routeId: idRoutes[0],
+          today: new Date().toISOString().split("T")[0],
         });
 
         if (result.ok) {
-          setItems(result.value.state);
+          setItems(result.value);
         }
       } catch (error) {
         console.error("Error cargando cuotas:", error);
@@ -302,3 +305,10 @@ export const RecolectorHome = () => {
     </Box>
   );
 };
+
+function getDebtByRoute(companyId: string, idRoutes: string[]) {
+  const orchestrator = new DebtOrchestrator();
+  orchestrator.getDebtsByRoute({ companyId: companyId, routeId: idRoutes[0] })
+
+
+}

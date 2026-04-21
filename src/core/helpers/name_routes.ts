@@ -89,8 +89,26 @@ const pathAccountDebits = pathAccountant + "/debits"
 const pathAccountPayment = pathAccountant + "/payment"
 const pathAccountDebitsCustomer = pathAccountant + "/debits/forCustomers"
 const pathAccountDailyOperations = pathAccountant + "/daily-operations"
-
-
+const pathAccountIncomes = pathAccountant + "/incomes"
+const pathAccountIncomeRegistration = pathAccountant + "/income-registration"
+const pathAccountFinancialDebtRegistration = pathAccountant + "/financial-debt-registration"
+const pathAccountFinancialDebts = pathAccountant + "/financials"
+const pathAccountFinancialDebtPayment = pathAccountant + "/financials/payment"
+const pathAccountRoster = pathAccountant + "/roster"
+const pathAccountGeneralSummary = pathAccountant + "/general-summary"
+const pathAccountProfitDetails = pathAccountant + "/profit-details"
+const pathAccountEquityDetails = pathAccountant + "/equity-details"
+const pathAccountTaxtPayments = pathAccountant + "/taxt-payments"
+const pathAccountTaxtPaymentRegistration = pathAccountant + "/taxt-payment-registration"
+const pathAccountAnotherPayments = pathAccountant + "/another-payments"
+const pathAccountAnotherPaymentRegistration = pathAccountant + "/another-payment-registration"
+const pathAccountPaymentsMenu = pathAccountant + "/payments-menu"
+const pathAccountBusinessExpenses = pathAccountant + "/business-expenses"
+const pathAccountFinancialDebtHistory = pathAccountant + "/financial-debt-history"
+const pathAccountFinancialPaymentDetail = pathAccountant + "/financial-payment-detail"
+const pathAccountPayrollHistory = pathAccountant + "/payroll-history"
+export const pathAccountPayrollPaymentDetail = pathAccountant + "/payroll-payment-detail"
+export const pathAccountForecasts = pathAccountant + "/forecasts"
 
 
 export const baseAppBar: RoutNav[] = [
@@ -173,6 +191,34 @@ export const ScreenPaths = {
     debitsC: pathAccountDebitsCustomer,
     dailyOperations: pathAccountDailyOperations,
     payment: (id: string) => `${pathAccountPayment}/${id}`,
+    routesBalance: pathAccountant + "/routes-balance",
+    balanceSheet: pathAccountant + "/balance-sheet",
+    pendingDelivery: pathAccountant + "/pending-delivery",
+    incomeRegistration: pathAccountIncomeRegistration,
+    incomeDetails: (id: string) => `${pathAccountIncomes}/${id}`,
+    incomes: pathAccountIncomes,
+    financialDebtRegistration: pathAccountFinancialDebtRegistration,
+    financialDebts: pathAccountFinancialDebts,
+    financialDebtEdit: (id: string) => `${pathAccountFinancialDebts}/edit/${id}`,
+    financialDebtPayment: (id: string) => `${pathAccountFinancialDebtPayment}/${id}`,
+    rosterUsers: pathAccountRoster,
+    rosterDetail: (userId: string) => `${pathAccountRoster}/detail/${userId}`,
+    generalSummary: pathAccountGeneralSummary,
+    profitDetails: pathAccountProfitDetails,
+    equityDetails: pathAccountEquityDetails,
+    taxtPayments: pathAccountTaxtPayments,
+    taxtPaymentRegistration: pathAccountTaxtPaymentRegistration,
+    taxtPaymentDetails: (id: string) => `${pathAccountTaxtPayments}/${id}`,
+    anotherPayments: pathAccountAnotherPayments,
+    anotherPaymentRegistration: pathAccountAnotherPaymentRegistration,
+    anotherPaymentDetails: (id: string) => `${pathAccountAnotherPayments}/${id}`,
+    paymentsMenu: pathAccountPaymentsMenu,
+    businessExpenses: pathAccountBusinessExpenses,
+    financialDebtHistory: (debtId: string) => `${pathAccountFinancialDebtHistory}/${debtId}`,
+    financialPaymentDetail: (paymentId: string) => `${pathAccountFinancialPaymentDetail}/${paymentId}`,
+    payrollHistory: (userId: string) => `${pathAccountPayrollHistory}/${userId}`,
+    payrollPaymentDetail: (payrollId: string) => `${pathAccountPayrollPaymentDetail}/${payrollId}`,
+    forecasts: pathAccountForecasts,
   }
 
 } as const;

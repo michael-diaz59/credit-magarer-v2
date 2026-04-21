@@ -13,6 +13,7 @@ import type {
   DebtStatus,
 } from "../../features/debits/domain/business/entities/Debt";
 import { getDebtVisualStatus } from "../sub_atomic_particles/debtVisualStatus";
+import { formatISOToInputDate } from "../../core/helpers/dates/dateConvert";
 
 const debtStatusConfig: Record<
   DebtStatus,
@@ -59,7 +60,7 @@ export const DebtCard = ({ debt, onClick }: Props) => {
         <Stack spacing={1.2}>
           {/* Fecha */}
           <Typography variant="caption" color="text.secondary">
-            Creado el {debt.createdAt}
+            Creado el {formatISOToInputDate(debt.createdAt)}
           </Typography>
 
           <Chip

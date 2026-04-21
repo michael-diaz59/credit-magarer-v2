@@ -48,11 +48,38 @@ import { DailyOperationsScreen } from "../atomic_design/templates/audit/DailyOpe
 import { CollectionAttemptDetailScreen } from "../atomic_design/templates/audit/CollectionAttemptDetailScreen.tsx";
 import { BankAccountsAdministrationScreen } from "../atomic_design/templates/configuration/BankAccountsAdministrationScreen.tsx";
 import { AccountantDashboard } from "../atomic_design/templates/accountant/AccountantDashboard.tsx";
-import { AccountantDailyOperations } from "../atomic_design/templates/accountant/AccountantDailyOperations.tsx";
-import { AccountantCustomers } from "../atomic_design/templates/accountant/AccountantCustomers.tsx";
-import { AccountantDebtsForCustomer } from "../atomic_design/templates/accountant/AccountantDebtsForCustomer.tsx";
-import { AccountantDebtScreen } from "../atomic_design/templates/accountant/AccountantDebtScreen.tsx";
+import { AccountantDailyOperations } from "../atomic_design/templates/accountant/movementAccountant.tsx";
+import { AccountantDebtsScreen } from "../atomic_design/templates/accountant/AccountantDebtsScreen.tsx";
+import { AccountantDebtsForCustomer } from "../atomic_design/templates/accountant/debt/AccountantDebtsForCustomer.tsx";
 import { PaymentInvoiceScreen } from "../atomic_design/templates/accountant/PaymentAccountant/PaymentInvoiceScreen.tsx";
+import { RoutesBalanceScreen } from "../atomic_design/templates/accountant/RoutesBalance/RoutesBalanceScreen.tsx";
+import { BalanceSheetScreen } from "../atomic_design/templates/accountant/BalanceSheet/BalanceSheetScreen.tsx";
+import { AccountantPendingDeliveryScreen } from "../atomic_design/templates/accountant/AccountantPendingDeliveryScreen.tsx";
+import { IncomeRegistrationScreen } from "../atomic_design/templates/accountant/incomes/IncomeRegistrationScreen.tsx";
+import { FinancialDebtRegistrationScreen } from "../atomic_design/templates/accountant/FinancialDebt/FinancialDebtRegistrationScreen.tsx";
+import { FinancialDebtsListScreen } from "../atomic_design/templates/accountant/FinancialDebt/FinancialDebtsListScreen.tsx";
+import { CreateFinancialPaymentScreen } from "../atomic_design/templates/accountant/FinancialDebt/CreateFinancialPaymentScreen.tsx";
+import { RosterUsersScreen } from "../atomic_design/templates/accountant/Roster/RosterUsersScreen.tsx";
+import { RosterDetailScreen } from "../atomic_design/templates/accountant/Roster/RosterDetailScreen.tsx";
+import { GeneralSummaryScreen } from "../atomic_design/templates/accountant/Summary/GeneralSummaryScreen.tsx";
+import { ProfitDetailsScreen } from "../atomic_design/templates/accountant/Summary/ProfitDetailsScreen.tsx";
+import { EquityDetailsScreen } from "../atomic_design/templates/accountant/Summary/EquityDetailsScreen.tsx";
+import { BusinessExpensesDetailsScreen } from "../atomic_design/templates/accountant/Summary/BusinessExpensesDetailsScreen.tsx";
+import { IncomeScreen } from "../atomic_design/templates/accountant/incomes/IncomeScreen.tsx";
+import { TaxtPaymentsScreen } from "../atomic_design/templates/accountant/Taxt/TaxtPaymentsScreen.tsx";
+import { RegisterTaxtPaymentScreen } from "../atomic_design/templates/accountant/Taxt/RegisterTaxtPaymentScreen.tsx";
+import { TaxtPaymentDetailsScreen } from "../atomic_design/templates/accountant/Taxt/TaxtPaymentDetailsScreen.tsx";
+import { AnotherPaymentsScreen } from "../atomic_design/templates/accountant/AnotherPayment/AnotherPaymentsScreen.tsx";
+import { RegisterAnotherPaymentScreen } from "../atomic_design/templates/accountant/AnotherPayment/RegisterAnotherPaymentScreen.tsx";
+import { AnotherPaymentDetailsScreen } from "../atomic_design/templates/accountant/AnotherPayment/AnotherPaymentDetailsScreen.tsx";
+import { AccountantPaymentsMenuScreen } from "../atomic_design/templates/accountant/AccountantPaymentsMenuScreen.tsx";
+import { FinancialDebtPaymentHistoryScreen } from "../atomic_design/templates/accountant/FinancialDebt/FinancialDebtPaymentHistoryScreen.tsx";
+import { FinancialPaymentDetailsScreen } from "../atomic_design/templates/accountant/FinancialDebt/FinancialPaymentDetailsScreen.tsx";
+import { PayrollHistoryScreen } from "../atomic_design/templates/accountant/Roster/PayrollHistoryScreen.tsx";
+import { PayrollPaymentDetailScreen } from "../atomic_design/templates/accountant/Roster/PayrollPaymentDetailScreen.tsx";
+import { ForecastScreen } from "../atomic_design/templates/accountant/Forecast/ForecastScreen.tsx";
+
+
 
 function NotFound() {
   return <h1>404</h1>;
@@ -331,6 +358,7 @@ export default function App() {
           </ProtectedAuth>
         }
       >
+
         {/* index envia a la misma ruta que ClientListPage */}
         <Route index element={<VisitListPage />} />
         <Route
@@ -389,7 +417,7 @@ export default function App() {
         element={
           <ProtectedAuth>
             <ProtectedAccountant>
-              <AccountantCustomers />
+              <AccountantDebtsScreen />
             </ProtectedAccountant>
           </ProtectedAuth>
         }
@@ -412,6 +440,281 @@ export default function App() {
           <ProtectedAuth>
             <ProtectedAccountant>
               <PaymentInvoiceScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.routesBalance}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <RoutesBalanceScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.pendingDelivery}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantPendingDeliveryScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.balanceSheet}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <BalanceSheetScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.incomeRegistration}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <IncomeRegistrationScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.incomes}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <IncomeScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+
+      <Route
+        path={ScreenPaths.accountant.financialDebtRegistration}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialDebtRegistrationScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialDebts}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialDebtsListScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialDebtEdit(":id")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialDebtRegistrationScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialDebtPayment(":id")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <CreateFinancialPaymentScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.rosterUsers}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <RosterUsersScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.rosterDetail(":userId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <RosterDetailScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.generalSummary}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <GeneralSummaryScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.profitDetails}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <ProfitDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.equityDetails}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <EquityDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.businessExpenses}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <BusinessExpensesDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.taxtPayments}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <TaxtPaymentsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.taxtPaymentRegistration}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <RegisterTaxtPaymentScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.taxtPaymentDetails(":id")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <TaxtPaymentDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.anotherPayments}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AnotherPaymentsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.anotherPaymentRegistration}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <RegisterAnotherPaymentScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.anotherPaymentDetails(":id")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AnotherPaymentDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.paymentsMenu}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <AccountantPaymentsMenuScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialDebtHistory(":debtId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialDebtPaymentHistoryScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialPaymentDetail(":paymentId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialPaymentDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.payrollHistory(":userId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <PayrollHistoryScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.payrollPaymentDetail(":payrollId")}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <PayrollPaymentDetailScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.forecasts}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <ForecastScreen />
             </ProtectedAccountant>
           </ProtectedAuth>
         }

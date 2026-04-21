@@ -1,12 +1,26 @@
 import type { DebtFormConfig, DebtFormValues } from "../templates/debt/debtForm2";
-
+import { CREATE_DEBT_FIELDS_INSTALLMENTS, CREATE_DEBT_FIELDS_MONTHS, SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS } from "../templates/debt/form/constsForm";
 
 const allDebtFormFields: (keyof DebtFormValues)[] = [
     "routeId",
-    "collectorId",
     "costumerDocument",
+    "status",
     "type",
-    "totalAmount",
+    "capital",
+    "debtTerms",
+    "interestRate",
+    "installmentCount",
+    "startDate",
+    "diasMes",
+    "calculationMode",
+    "months",
+];
+
+const allDebtFormFieldsWithoutType: (keyof DebtFormValues)[] = [
+    "routeId",
+    "costumerDocument",
+    "status",
+    "capital",
     "debtTerms",
     "interestRate",
     "installmentCount",
@@ -22,30 +36,56 @@ export const debtFormReadOnlyConfig: DebtFormConfig = {
     requiredFields: [],
 };
 
+export const auditDebtConfig: DebtFormConfig = {
+    visibleFields: allDebtFormFields,
+    editableFields: ["status", "routeId"],
+    requiredFields: ["routeId"],
+};
+
+export const renewalComparisonConfig: DebtFormConfig = {
+    visibleFields: allDebtFormFields,
+    editableFields: [
+        "routeId",
+        "status",
+        "type",
+        "capital",
+        "debtTerms",
+        "interestRate",
+        "installmentCount",
+        "startDate",
+        "diasMes",
+        "calculationMode",
+        "months",
+    ],
+    requiredFields: Array.from(new Set([
+        ...CREATE_DEBT_FIELDS_MONTHS,
+        ...CREATE_DEBT_FIELDS_INSTALLMENTS,
+        ...SIMULATION_FIELDS_INSTALLMENTS,
+        ...SIMULATION_FIELDS_MONTHS
+    ]))
+};
+
 export const debtComparisonConfig: DebtFormConfig = {
     visibleFields: [
-        "collectorId",
         "costumerDocument",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
         "startDate",
     ],
     editableFields: [
-        "collectorId",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
         "startDate",
     ],
     requiredFields: [
-        "collectorId",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
@@ -56,9 +96,8 @@ export const debtComparisonConfig: DebtFormConfig = {
 export const debtInCreateVisit: DebtFormConfig = {
     visibleFields: [
         "routeId",
-        "collectorId",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
@@ -69,9 +108,8 @@ export const debtInCreateVisit: DebtFormConfig = {
     ],
     editableFields: [
         "routeId",
-        "collectorId",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
@@ -82,9 +120,8 @@ export const debtInCreateVisit: DebtFormConfig = {
     ],
     requiredFields: [
         "routeId",
-        "collectorId",
         "type",
-        "totalAmount",
+        "capital",
         "debtTerms",
         "interestRate",
         "installmentCount",
@@ -94,3 +131,32 @@ export const debtInCreateVisit: DebtFormConfig = {
         "months",
     ],
 };
+
+export const confirmPaymentConfig: DebtFormConfig = {
+    visibleFields: allDebtFormFields,
+    editableFields: [
+    ],
+    requiredFields: [
+        "routeId",
+        "type",
+        "capital",
+        "debtTerms",
+        "interestRate",
+        "installmentCount",
+        "startDate",
+        "calculationMode",
+    ],
+};
+
+export const CREATE_DEBT_CONFIG: DebtFormConfig = {
+    visibleFields: allDebtFormFieldsWithoutType,
+    editableFields: allDebtFormFieldsWithoutType,
+    requiredFields: Array.from(new Set([
+        ...CREATE_DEBT_FIELDS_MONTHS,
+        ...CREATE_DEBT_FIELDS_INSTALLMENTS,
+        ...SIMULATION_FIELDS_INSTALLMENTS,
+        ...SIMULATION_FIELDS_MONTHS
+    ]))
+};
+
+

@@ -2,7 +2,7 @@
 import { fail, type Result } from "../../../../../../core/helpers/ResultC";
 import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
 import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
-import type { Debt } from "../../entities/Debt";
+import { createBasicDebt, type Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { generateInstallments2 } from "../helper";
 
@@ -11,7 +11,7 @@ export type CreateDebtError =
   | { code: "UNKNOWN_ERROR" }
   | { code: "STATE_INVALID" }
   | { code: "CUSTOMER_NOT_FOUND" }
-  | { code: "el monton total debe ser mayor a 1000" }
+  | { code: "el capital debe ser mayor a 1000" }
 
 export interface CreateDebtUInput {
   debt: Omit<Debt, "id">;
@@ -54,9 +54,8 @@ export class CreateDebtUseCase {
       return fail({ code: "STATE_INVALID" });
     }
 
-    console.log(input.debt.totalAmount)
-    if (input.debt.totalAmount < 1000) {
-      return fail({ code: "el monton total debe ser mayor a 1000" });
+    if (input.debt.capital < 1000) {
+      return fail({ code: "el capital debe ser mayor a 1000" });
     }
 
     /** 2️⃣ Buscar cliente */
@@ -67,7 +66,7 @@ export class CreateDebtUseCase {
       });
 
     if (!costumerResult.state.ok) {
-      return fail({ code: "UNKNOWN_ERROR" });
+      return fail({ code: "CUSTOMER_NOT_FOUND" });
     }
 
     if (!costumerResult.state.value) {
@@ -78,7 +77,9 @@ export class CreateDebtUseCase {
 
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
-      id: crypto.randomUUID(),
+      ...createBasicDebt(),
+      deliveredStatus: input.debt.deliveredStatus,
+      delivered: input.debt.delivered,
       routeId: input.debt.routeId,
       renewedToDebtId: input.debt.renewedToDebtId,
       collectorId: input.debt.collectorId,
@@ -103,9 +104,11 @@ export class CreateDebtUseCase {
       dateLastPayment: "",
       installmentsPaid: 0,
       overdueInstallmentsCount: 0,
-      capital: input.debt.totalAmount,
+      capital: input.debt.capital,
       originalDebt: input.debt.originalDebt ?? undefined,
     };
+
+    console.log("debt", debt)
 
     /** 4️⃣ Generar cuotas */
     const { installments, firstDueDate, nextPaymentDue } = generateInstallments2(
@@ -113,13 +116,25 @@ export class CreateDebtUseCase {
       costumer.applicant.address,
       input.companyId,
       input.months,
-
     );
+
+    //sumamos el total de las cuotas para obtener el total del credito a pagar
+    for (const installment of installments) {
+      console.log("installment.amount", installment.amount)
+      debt.totalAmount += installment.amount;
+      console.log("debt.totalAmount", debt.totalAmount)
+    }
+
+
+
 
     debt.nextPaymentDue = nextPaymentDue;
     debt.overdueInstallmentsCount = 0;
 
     debt.firstDueDate = firstDueDate;
+
+    console.log("debt", debt)
+
 
     /** 5️⃣ Persistir TODO */
     const result = await this.debtGateway.createWithInstallments({

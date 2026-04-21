@@ -9,13 +9,10 @@ export type PaymentStatus =
   | 'conflicto'
   | 'confirmado'
   | 'cancelada';
-;
-
-
 
 export type PaymentMethod =
   | 'efectivo'
-  | 'consignacion'
+  | 'consignacion';
 
 
 /**representa los pagos que hacen los clientes a los cobradores*/
@@ -23,6 +20,7 @@ export interface Payment {
   //el comprobante se guarda en storage
   /**es el id al documento de comprobante de pago */
   idProofOfPayment: string
+
   id: string;
 
   /**es el id a la ruta a la que pertenece el pago */

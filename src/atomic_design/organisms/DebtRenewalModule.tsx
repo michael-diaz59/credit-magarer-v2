@@ -19,8 +19,9 @@ import { ScreenPaths } from "../../core/helpers/name_routes";
 import { DebtForm, mapDebtToForm, type DebtFormRef } from "../templates/debt/debtForm2";
 import { DebtFormDataProvider } from "../templates/debt/debts/DebtFormDataProvider";
 import DebtOrchestrator from "../../features/debits/domain/infraestructure/DebtOrchestrator";
-import type { Debt } from "../../features/debits/domain/business/entities/Debt";
-import type { SimulateDebtOutput } from "../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { createEmptyDebt, type Debt } from "../../features/debits/domain/business/entities/Debt";
+import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
+import { SimulateDebtResultCard } from "../molecules/SimulateDebtResultCard";
 
 interface DebtRenewalModuleProps {
     companyId: string;
@@ -50,7 +51,9 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
     const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
     const [simulating, setSimulating] = useState(false);
     const [renewing, setRenewing] = useState(false);
-    const [simulateResult, setSimulateResult] = useState<SimulateDebtOutput | null>(null);
+
+    const [SimulateDebtValues, setSimulateDebtValues] =
+        useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
 
     // Result Dialog State
     const [resultDialogOpen, setResultDialogOpen] = useState(false);
@@ -82,6 +85,9 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
     };
 
     const handleSimulateRenewal = async () => {
+        setSimulateDebtValues(
+            createEmptySimulateDebtOutput()
+        )
         const isValid = await renewalFormRef.current?.validate();
         if (!isValid) return;
 
@@ -93,27 +99,20 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
             const orchestrator = new DebtOrchestrator();
             const result = await orchestrator.simulateDebt({
                 debt: {
+                    ...createEmptyDebt(),
                     ...values,
-                    id: "",
                     status: context === "auditor" ? "activa" : "preAprobada",
                     clientId: currentDebt.clientId,
                     costumerName: currentDebt.costumerName,
                     createdAt: new Date().toISOString().slice(0, 10),
-                    firstDueDate: "",
-                    idVisit: "",
-                    name: "",
-                    nextPaymentDue: "",
-                    overdueInstallmentsCount: 0,
-                    capital: values.totalAmount,
+                    capital: values.capital,
                     originalDebt: null,
-                    dateLastPayment: "",
-                    installmentsPaid: 0,
                 } as unknown as Debt,
                 months: values.calculationMode === "months" ? values.months : undefined,
             });
 
             if (result.ok) {
-                setSimulateResult(result.value);
+                setSimulateDebtValues(result.value)
             } else {
                 setResultMessage("Error al simular la renovación.");
                 setResultDialogOpen(true);
@@ -135,25 +134,23 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
         try {
             setRenewing(true);
             const orchestrator = new DebtOrchestrator();
+            const initialDebt: Debt = {
+                ...createEmptyDebt(),
+                ...values,
+                status: context === "auditor" ? "activa" : "preAprobada",
+                clientId: currentDebt.clientId,
+                costumerName: currentDebt.costumerName,
+                createdAt: new Date().toISOString().slice(0, 10),
+                capital: values.capital,
+                originalDebt: currentDebt.id,
+            } as unknown as Debt
+
+
+
+
             const result = await orchestrator.createDebt({
                 companyId,
-                debt: {
-                    ...values,
-                    id: "",
-                    status: context === "auditor" ? "activa" : "preAprobada",
-                    clientId: currentDebt.clientId,
-                    costumerName: currentDebt.costumerName,
-                    createdAt: new Date().toISOString().slice(0, 10),
-                    firstDueDate: "",
-                    idVisit: "",
-                    name: "",
-                    nextPaymentDue: "",
-                    overdueInstallmentsCount: 0,
-                    capital: values.totalAmount,
-                    originalDebt: currentDebt.id,
-                    dateLastPayment: "",
-                    installmentsPaid: 0,
-                } as unknown as Debt,
+                debt: initialDebt,
                 months: values.calculationMode === "months" ? values.months : undefined,
             });
 
@@ -258,29 +255,8 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
                         </CardContent>
                     </Card>
 
-                    {simulateResult && (
-                        <Card sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5" }}>
-                            <Typography variant="h6">Resultado de la simulación</Typography>
-
-                            <MoneyTypography
-                                label="Total capital + interés:"
-                                value={simulateResult.totalAmount}
-                            />
-
-                            <MoneyTypography label="Valor de cuotas:" value={simulateResult.valueOfInstallments} />
-
-                            <MoneyTypography
-                                label="Valor de cuotas redondeadas:"
-                                value={simulateResult.pago_cuota_reound}
-                            />
-
-                            <Typography>el numero de cuotas sin aproximar es {simulateResult.totalInstallments}</Typography>
-                            <Typography>el numero de cuotas al aproximar {simulateResult.totalInstallments - simulateResult.cuotasCompletas}</Typography>
-                            <MoneyTypography
-                                label="Valor de la ultima cuota:"
-                                value={simulateResult.pago_ultima_cuota}
-                            />
-                        </Card>
+                    {SimulateDebtValues.capital > 0 && (
+                        <SimulateDebtResultCard data={SimulateDebtValues} />
                     )}
                 </DialogContent>
                 <DialogActions>
@@ -293,7 +269,7 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
                     <Button
                         onClick={handleConfirmRenewal}
                         variant="contained"
-                        disabled={renewing || !simulateResult}
+                        disabled={renewing || !SimulateDebtValues}
                     >
                         {renewing ? <CircularProgress size={24} /> : "Confirmar Renovación"}
                     </Button>

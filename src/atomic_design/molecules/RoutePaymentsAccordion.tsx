@@ -43,7 +43,10 @@ export const RoutePaymentsAccordion = ({
                     </Typography>
 
                     <Typography color="primary" fontWeight="bold">
-                        {FormatNumberToMoney(route.totalCash || 0)}
+                        {FormatNumberToMoney(
+                            (route.totalCash2 || []).reduce((acc, c) => acc + c.amount, 0) +
+                            (route.totalDeposit || []).reduce((acc, d) => acc + d.amount, 0)
+                        )}
                     </Typography>
                 </Box>
             </AccordionSummary>

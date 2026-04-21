@@ -7,15 +7,21 @@ export const PaymentInvoiceScreen = () => {
         payment,
         saveAccountantObservation,
         applyDescuadre,
+        changePaymentRoute,
+        routes,
         isLoading,
+        companyId,
     } = usePaymentInvoice();
 
     return (
         <PaymentInvoiceView
             payment={payment}
+            routes={routes}
             isLoading={isLoading}
             onSaveObservation={saveAccountantObservation}
             onDescuadre={applyDescuadre}
+            onChangeRoute={changePaymentRoute}
+            companyId={companyId}
         />
     );
 };

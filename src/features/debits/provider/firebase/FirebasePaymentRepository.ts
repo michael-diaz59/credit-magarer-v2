@@ -8,6 +8,8 @@ import {
     where,
     getDocs,
     writeBatch,
+    getAggregateFromServer,
+    sum
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { firestore, storage } from "../../../../store/firebase/firebase";
@@ -22,16 +24,42 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../../domain/business/useCases/payment/UpdatePaymentStatusUseCase";
 import type { UpdateMultiplePaymentsIsTightError } from "../../domain/business/useCases/payment/UpdateMultiplePaymentsIsTight";
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../domain/business/useCases/payment/GetPaymentsByStatusUseCase";
+import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
+import type { DocumentData } from "firebase/firestore";
+import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 /**corregir any y removeUndefined con variable no usada */
 export class FirebasePaymentRepository implements PaymentGateway {
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    removeUndefined<T extends Record<string, any>>(obj: T): T {
-        return Object.fromEntries(
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            Object.entries(obj).filter(([_, value]) => value !== undefined)
-        ) as T;
+
+    private paymentToFirestore(payment: Omit<Payment, "id">): DocumentData {
+
+        const result: any = payment;
+
+        if (payment.paidAt !== undefined) result.paidAt = encodeDate(payment.paidAt);
+
+        return removeUndefined(result);
+    }
+
+    private documentToPayment(id: string, data: DocumentData): Payment {
+        return {
+            id: id,
+            idRoute: data.idRoute ?? "",
+            isTight: data.isTight ?? false,
+            collectorObservation: data.collectorObservation ?? "",
+            accountantObservation: data.accountantObservation ?? "",
+            installmentId: data.installmentId ?? "",
+            costumerName: data.costumerName ?? "",
+            collectorName: data.collectorName ?? "",
+            collectorId: data.collectorId ?? "",
+            amount: data.amount ?? 0,
+            method: data.method ?? "efectivo",
+            status: data.status ?? "conflicto",
+            paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
+            location: data.location,
+            bankAccountId: data.bankAccountId,
+            idProofOfPayment: data.idProofOfPayment ?? "",
+        };
     }
 
 
@@ -81,23 +109,11 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 companyId,
                 "payments"
             );
+            const refDoc = doc(refCollection);
 
-            // Use existing ID if provided, otherwise generate new one
-            const refDoc = payment.id
-                ? doc(refCollection, payment.id)
-                : doc(refCollection);
+            await setDoc(refDoc, this.paymentToFirestore(payment));
 
-            const paymentWithId: Payment = {
-                ...payment,
-                id: refDoc.id,
-            };
-
-            // 🔥 LIMPIAR undefined (clave)
-            const cleanPayment = this.removeUndefined(paymentWithId);
-
-            await setDoc(refDoc, cleanPayment);
-
-            return ok({ payment: cleanPayment });
+            return ok({ payment: this.documentToPayment(refDoc.id, this.paymentToFirestore(payment)) });
 
         } catch (error) {
             console.error("Error creating payment:", error);
@@ -155,11 +171,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
             const snapshot = await getDocs(q)
 
             const payments: Payment[] = snapshot.docs.map((doc) => {
-                const data = doc.data()
-                return {
-                    id: doc.id,
-                    ...data,
-                } as Payment
+                return this.documentToPayment(doc.id, doc.data());
             })
 
             return {
@@ -182,11 +194,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
             const snapshot = await getDocs(q)
 
             const payments: Payment[] = snapshot.docs.map((doc) => {
-                const data = doc.data()
-                return {
-                    id: doc.id,
-                    ...data,
-                } as Payment
+                return this.documentToPayment(doc.id, doc.data());
             })
 
             return {
@@ -213,10 +221,10 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 payment.id
             );
 
-            const cleanPayment = this.removeUndefined(payment);
-            await setDoc(refDoc, cleanPayment, { merge: true });
+            const dataToUpdate = this.paymentToFirestore(payment);
+            await setDoc(refDoc, dataToUpdate, { merge: true });
 
-            return ok({ payment: cleanPayment });
+            return ok({ payment: this.documentToPayment(payment.id, dataToUpdate) });
 
         } catch (error) {
             console.error("Error updating payment:", error);
@@ -250,8 +258,8 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 return ok({ payment: null });
             }
 
-            const payment = snapshot.data() as Payment;
-            return ok({ payment });
+            const paymentData = this.documentToPayment(snapshot.id, snapshot.data());
+            return ok({ payment: paymentData });
 
         } catch (error) {
             console.error("Error getting payment:", error);
@@ -282,10 +290,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
 
             const snapshot = await getDocs(q);
 
-            const payments: Payment[] = snapshot.docs.map(doc => ({
-                ...doc.data(),
-                id: doc.id
-            } as Payment));
+            const payments: Payment[] = snapshot.docs.map(doc => this.documentToPayment(doc.id, doc.data()));
 
             console.log("[FirebasePaymentRepository.getAllByDate]", payments);
 
@@ -315,6 +320,19 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 }
             }
             return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
+    async getSumPayments(companyId: string): Promise<Result<number, any>> {
+        try {
+            const paymentsRef = collection(firestore, "companies", companyId, "payments");
+            const snapshot = await getAggregateFromServer(paymentsRef, {
+                total: sum("amount")
+            });
+            return ok(snapshot.data().total || 0);
+        } catch (error) {
+            console.error("[getSumPayments]", error);
+            return fail(error);
         }
     }
 }

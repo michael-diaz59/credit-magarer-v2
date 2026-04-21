@@ -158,6 +158,7 @@ export class FirebaseUserRepository implements UserGateway {
       /* =========================
          Usuario global
       ========================= */
+
       const refGlobalUser = doc(firestore, "users", userId);
       const snapshotGlobalUser = await getDoc(refGlobalUser);
 

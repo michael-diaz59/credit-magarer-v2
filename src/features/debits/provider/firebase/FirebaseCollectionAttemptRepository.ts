@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, query, where, getDocs, getDoc } from "firebase/firestore";
+import { collection, doc, setDoc, query, where, getDocs, getDoc, type DocumentData } from "firebase/firestore";
 import { firestore } from "../../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
 import type { CollectionAttempt } from "../../domain/business/entities/CollectionAttempt";
@@ -7,8 +7,38 @@ import type {
     CreateCollectionAttemptInput
 } from "../../domain/infraestructure/CollectionAttemptGateway";
 import { FirebaseError } from "firebase/app";
+import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseCollectionAttemptRepository implements CollectionAttemptGateway {
+
+
+
+    private toFirestore(attempt: Partial<CollectionAttempt>): DocumentData {
+        const { id: _id, ...data } = attempt;
+        const result: any = { ...data };
+
+        if (data.date !== undefined) result.date = encodeDate(data.date);
+
+        return removeUndefined(result);
+    }
+
+    private fromFirestore(id: string, data: DocumentData): CollectionAttempt {
+        return {
+            id,
+            installmentId: data.installmentId ?? "",
+            collectorId: data.collectorId ?? "",
+            debtId: data.debtId ?? "",
+            customerId: data.customerId ?? "",
+            companyId: data.companyId ?? "",
+            auditorDescription: data.auditorDescription,
+            colletorDescription: data.colletorDescription ?? "",
+            date: data.date ? decodeDate(data.date) : "",
+            location: data.location,
+            name: data.name ?? "",
+        };
+    }
+
     async create(input: CreateCollectionAttemptInput): Promise<Result<null, any>> {
         const { companyId, attempt } = input;
 
@@ -22,12 +52,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
 
             const docRef = doc(colRef);
 
-            const { id, ...data } = attempt;
-
-            await setDoc(docRef, {
-                ...data,
-                id: docRef.id
-            });
+            await setDoc(docRef, this.toFirestore(attempt));
 
             return ok(null);
         } catch (error) {
@@ -61,10 +86,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
 
             const snapshot = await getDocs(q);
 
-            const attempts = snapshot.docs.map(doc => ({
-                ...doc.data(),
-                id: doc.id
-            } as CollectionAttempt));
+            const attempts = snapshot.docs.map(doc => this.fromFirestore(doc.id, doc.data()));
 
             return ok(attempts);
         } catch (error) {
@@ -82,10 +104,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
                 return fail({ code: "ATTEMPT_NOT_FOUND" });
             }
 
-            return ok({
-                ...snapshot.data(),
-                id: snapshot.id
-            } as CollectionAttempt);
+            return ok(this.fromFirestore(snapshot.id, snapshot.data()));
         } catch (error) {
             console.error("[FirebaseCollectionAttemptRepository.getById]", error);
             return fail({ code: "UNKNOWN_ERROR" });

@@ -16,9 +16,10 @@ import { BaseDialog } from "../../atoms/BaseDialog";
 import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "./debtForm2";
 import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
-import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "./form/constsForm";
+import { CREATE_DEBT_FIELDS_INSTALLMENTS, CREATE_DEBT_FIELDS_MONTHS, SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "./form/constsForm";
 import type { DialogState } from "../../sub_atomic_particles/DialogState";
 import { SimulateDebtResultCard } from "../../molecules/SimulateDebtResultCard";
+import { CREATE_DEBT_CONFIG } from "../../sub_atomic_particles/debFormConsts";
 
 
 
@@ -39,18 +40,25 @@ export const CreateDebtScreen = () => {
     message: "",
   });
   const handleSubmit = async (submitType: DebtSubmitType) => {
+
     setSimulateDebtValues(
       createEmptySimulateDebtOutput()
     )
     let isValid: boolean = false;
     const formValues: DebtFormValues | undefined = formRef.current?.getValues();
     if (!formValues) return;
+    console.log("capital", formValues.capital)
 
     if (!formRef.current) {
       return;
     }
     if (submitType === "crear") {
-      isValid = await formRef.current?.validate();
+      console.log("formValues.calculationMode", formValues.calculationMode)
+      const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
+        ? CREATE_DEBT_FIELDS_MONTHS
+        : CREATE_DEBT_FIELDS_INSTALLMENTS;
+      console.log("fieldsToValidate", fieldsToValidate)
+      isValid = await formRef.current?.validateFields(fieldsToValidate);
     } else {
       const fieldsToValidate: (keyof DebtFormValues)[] = formValues.calculationMode === "months"
         ? SIMULATION_FIELDS_INSTALLMENTS
@@ -66,6 +74,7 @@ export const CreateDebtScreen = () => {
       formValues?.calculationMode === "months" ? formValues.months : undefined;
 
     console.log("se toma por meses?:", formValues?.calculationMode === "months")
+    console.log("debtForVreate.capital", debtForVreate.capital)
 
     switch (submitType) {
       case "crear": {
@@ -136,8 +145,8 @@ export const CreateDebtScreen = () => {
         open: true,
         success: false,
         message:
-          result.error.code === "el monton total debe ser mayor a 1000"
-            ? "El monto debe ser mayor a 1000"
+          result.error.code === "el capital debe ser mayor a 1000"
+            ? "El capital debe ser mayor a 1000"
             : "Ocurrió un error al simular la deuda.",
       });
     }
@@ -170,7 +179,11 @@ export const CreateDebtScreen = () => {
 
               return (
                 <>
-                  <DebtForm ref={formRef} routes={routes} />
+                  <DebtForm
+                    ref={formRef}
+                    routes={routes}
+                    config={CREATE_DEBT_CONFIG}
+                  />
 
                   <Button onClick={() => handleSubmit("crear")}>
                     Crear deuda
@@ -187,7 +200,7 @@ export const CreateDebtScreen = () => {
           </Stack>
         </CardContent>
       </Card>
-      {SimulateDebtValues.totalAmount > 0 && (
+      {SimulateDebtValues.capital > 0 && (
         <SimulateDebtResultCard data={SimulateDebtValues} />
       )}
     </Box>

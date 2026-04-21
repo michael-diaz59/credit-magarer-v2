@@ -178,8 +178,8 @@ export const OfficeVisit = () => {
         open: true,
         success: false,
         message:
-          result.error.code === "el monton total debe ser mayor a 1000"
-            ? "El monto debe ser mayor a 1000"
+          result.error.code === "el capital debe ser mayor a 1000"
+            ? "El capital debe ser mayor a 1000"
             : "Ocurrió un error al simular la deuda.",
       });
     }
@@ -363,7 +363,7 @@ export const OfficeVisit = () => {
                       > PreAprobar deuda
                       </Button>
 
-                      {SimulateDebtValues.totalAmount > 0 && (
+                      {SimulateDebtValues.capital > 0 && (
                         <SimulateDebtResultCard data={SimulateDebtValues} />
                       )}
                     </>

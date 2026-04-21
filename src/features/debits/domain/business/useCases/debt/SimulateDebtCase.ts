@@ -6,7 +6,7 @@ export type SimulateDebtError =
   | { code: "NETWORK_ERROR" }
   | { code: "UNKNOWN_ERROR" }
   | { code: "STATE_INVALID" }
-  | { code: "el monton total debe ser mayor a 1000" }
+  | { code: "el capital debe ser mayor a 1000" }
 
 export interface SimulateDebtInput {
   debt: Omit<Debt, "id">;
@@ -18,6 +18,7 @@ export interface SimulateDebtInput {
 export interface SimulateDebtOutput {
   valueOfInstallments: number
   totalAmount: number
+  capital: number
   totalInstallments: number
   cuotasCompletas: number
   pago_ultima_cuota: number
@@ -28,6 +29,7 @@ export function createEmptySimulateDebtOutput(): SimulateDebtOutput {
   return {
     valueOfInstallments: 0,
     totalAmount: 0,
+    capital: 0,
     totalInstallments: 0,
     cuotasCompletas: 0,
     pago_ultima_cuota: 0,
@@ -46,9 +48,9 @@ export class SimulateDebtCase {
       return fail({ code: "STATE_INVALID" });
     }
 
-    console.log(input.debt.totalAmount)
-    if (input.debt.totalAmount < 1000) {
-      return fail({ code: "el monton total debe ser mayor a 1000" });
+    console.log(input.debt.capital)
+    if (input.debt.capital < 1000) {
+      return fail({ code: "el capital debe ser mayor a 1000" });
     }
 
 
@@ -56,12 +58,8 @@ export class SimulateDebtCase {
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
       ...input.debt,
-      id: crypto.randomUUID(),
-      clientId: "",
-      costumerName: "",
+      id: "",
       createdAt: new Date().toISOString().slice(0, 10),
-      firstDueDate: "", // se calcula abajo
-      capital: input.debt.totalAmount,
     };
 
     /** 4️⃣ Generar cuotas */
@@ -73,6 +71,7 @@ export class SimulateDebtCase {
     return ok({
       valueOfInstallments: pago_cuota,
       totalAmount: total_deuda_a_pagar,
+      capital: debt.capital,
       totalInstallments: debt.installmentCount,
       cuotasCompletas: cuotasCompletas,
       pago_ultima_cuota: pago_ultima_cuota,

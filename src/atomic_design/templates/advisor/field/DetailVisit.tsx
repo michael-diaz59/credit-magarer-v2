@@ -54,9 +54,10 @@ export const FieldVisit = () => {
   const [SimulateDebtValues, setSimulateDebtValues] =
     useState<SimulateDebtOutput>({
       cuotasCompletas: 0,
+      totalAmount: 0,
       pago_cuota_reound: 0,
       pago_ultima_cuota: 0,
-      totalAmount: 0,
+      capital: 0,
       totalInstallments: 0,
       valueOfInstallments: 0,
     });
@@ -154,9 +155,10 @@ export const FieldVisit = () => {
     setSimulateDebtValues(
       {
         cuotasCompletas: 0,
+        totalAmount: 0,
         pago_cuota_reound: 0,
         pago_ultima_cuota: 0,
-        totalAmount: 0,
+        capital: 0,
         totalInstallments: 0,
         valueOfInstallments: 0,
       }
@@ -225,8 +227,8 @@ export const FieldVisit = () => {
         open: true,
         success: false,
         message:
-          result.error.code === "el monton total debe ser mayor a 1000"
-            ? "El monto debe ser mayor a 1000"
+          result.error.code === "el capital debe ser mayor a 1000"
+            ? "El capital debe ser mayor a 1000"
             : "Ocurrió un error al simular la deuda.",
       });
     }
@@ -330,13 +332,13 @@ export const FieldVisit = () => {
             </Stack>
           </CardContent>
         </Card>
-        {SimulateDebtValues.totalAmount > 0 && (
+        {SimulateDebtValues.capital > 0 && (
           <Card sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5" }}>
             <Typography variant="h6">Resultado de la simulación</Typography>
 
             <MoneyTypography
               label="Total capital + interés:"
-              value={SimulateDebtValues.totalAmount}
+              value={SimulateDebtValues.capital}
             />
 
             <MoneyTypography label="Valor de cuotas:" value={SimulateDebtValues.valueOfInstallments} />

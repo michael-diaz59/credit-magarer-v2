@@ -31,6 +31,22 @@ export function roundUpToThousand(amount: number): RoundResult {
   };
 }
 
+export interface InstallmentGenerationInput {
+  debt: DomainServiceDebt;
+  costumerAddress: Installment["costumerAddres"];
+  companyId: string;
+  months?: number;
+}
+
+interface DomainServiceDebt {
+  debtTerms: DebtTerms;
+  diasMes: number;
+  interestRate: number;
+  capital: number;
+  installmentCount: number;
+  startDate: string;
+}
+
 export function generateInstallments2(
   debt: Debt,
   costumerAddress: Installment["costumerAddres"],
@@ -141,7 +157,7 @@ export function simulateInstallments(
 }
 
 export function calculateDebtFinancials(debt: Debt, months?: number) {
-  console.log("months:",months)
+  console.log("months:", months)
   if (months) {
     const duration_in_days = debt.diasMes * months;
     console.log(
@@ -153,7 +169,7 @@ export function calculateDebtFinancials(debt: Debt, months?: number) {
     debt.installmentCount = installmentCount;
   }
 
-  console.log(`la deuda tendra un monto capital de ${debt.totalAmount} `);
+  console.log(`la deuda tendra un monto capital de ${debt.capital} `);
 
   console.log(`esta deuda maneja los meses por ${debt.diasMes} dias`);
 
@@ -189,10 +205,10 @@ export function calculateDebtFinancials(debt: Debt, months?: number) {
   console.log(`la deuda tendra un interes global de  ${interes_global}%`);
 
   const total_deuda_a_pagar =
-    debt.totalAmount * (interes_global / 100) + debt.totalAmount;
+    debt.capital * (interes_global / 100) + debt.capital;
 
   console.log(
-    `la deuda tendra un monto total(capital+interes) de ${total_deuda_a_pagar} `,
+    `la deuda tendra un monto total(capital(${debt.capital})+interes(${interes_global}%)) de ${total_deuda_a_pagar} `,
   );
 
   const pago_cuota = total_deuda_a_pagar / debt.installmentCount;

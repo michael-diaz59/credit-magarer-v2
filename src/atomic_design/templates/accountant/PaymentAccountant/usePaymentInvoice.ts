@@ -4,6 +4,8 @@ import PaymentOrchestrator from "../../../../features/debits/domain/infraestruct
 import { useAppDispatch, useAppSelector } from "../../../../store/redux/coreRedux";
 import { useParams } from "react-router";
 import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
+import { routeOrchestrator } from "../../../../features/routes/domain/infraestructure/RouteOrchestrator";
+import type { Route } from "../../../../features/routes/domain/business/entities/Route";
 
 export const usePaymentInvoice = () => {
     const [payment, setPayment] = useState<Payment>({
@@ -23,6 +25,7 @@ export const usePaymentInvoice = () => {
         isTight: false,
         bankAccountId: "",
     });
+    const [routes, setRoutes] = useState<Route[]>([]);
 
     const dispatch = useAppDispatch();
     const companyId = useAppSelector((state: any) => state.user.user?.companyId) || "";
@@ -62,6 +65,17 @@ export const usePaymentInvoice = () => {
         fetchPayment();
     }, [companyId, paymentId]); // Dependencias para que si cambian, se recargue
 
+    useEffect(() => {
+        const fetchRoutes = async () => {
+            if (!companyId) return;
+            const result = await routeOrchestrator.getRoutesUseCase.execute({ companyId });
+            if (result.ok) {
+                setRoutes(result.value);
+            }
+        };
+        fetchRoutes();
+    }, [companyId]);
+
     const saveAccountantObservation = async (text: string) => {
         console.log("Guardar observación:", text);
         console.log("payment", payment)
@@ -91,11 +105,34 @@ export const usePaymentInvoice = () => {
         applyDescuadreInUser(amount, payment);
     };
 
+    const changePaymentRoute = async (routeId: string) => {
+        if (payment.isTight) {
+            alert("No se puede cambiar la ruta de un pago que ya ha sido cuadrado.");
+            return;
+        }
+
+        const result = await paymentOrchestrator.updatePayment({
+            companyId,
+            payment: { ...payment, idRoute: routeId },
+        });
+
+        if (result.ok && result.value.payment) {
+            setPayment(result.value.payment);
+            alert("Ruta actualizada correctamente");
+        } else {
+            console.error("Error al cambiar la ruta");
+            alert("Error al actualizar la ruta");
+        }
+    };
+
     return {
         payment,
         saveAccountantObservation,
         applyDescuadre,
+        changePaymentRoute,
+        routes,
         isLoading,
+        companyId,
     };
 
     async function applyDescuadreInUser(amount: number, payment: Payment) {

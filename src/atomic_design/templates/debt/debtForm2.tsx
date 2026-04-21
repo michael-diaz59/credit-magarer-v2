@@ -15,10 +15,11 @@ import {
 } from "@mui/material";
 import { diasDelMesPorTermino } from "../../../core/helpers/debts/diasPorTermino";
 import type { Route } from "../../../features/routes/domain/business/entities/Route";
-import type { Debt, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
+import type { Debt, DebtStatus, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
 import type { CalculationMode } from "./form/constsForm";
 import { mergeDefined } from "../../sub_atomic_particles/helpers";
 import { MoneyTypography } from "../../atoms/MoneyTypography";
+import { formatISOToInputDate } from "../../../core/helpers/dates/dateConvert";
 
 
 
@@ -28,11 +29,11 @@ import { MoneyTypography } from "../../atoms/MoneyTypography";
 export type DebtFormValues = {
   months?: number;
   routeId: string;
-  collectorId: string;
   calculationMode: CalculationMode;
   costumerDocument: string;
+  status: DebtStatus;
   type: DebtType;
-  totalAmount: number;
+  capital: number;
   debtTerms: DebtTerms;
   interestRate: number;
   installmentCount: number;
@@ -52,13 +53,13 @@ const debtFormDefaults = {
  * son los valores por defecto del formulario
  */
 const baseDefaults: DebtFormValues = {
-  collectorId: "",
   routeId: "",
+  status: "tentativa",
   calculationMode: debtFormDefaults.calculationMode,
   costumerDocument: "",
   months: undefined,
   type: "credito",
-  totalAmount: 0,
+  capital: 0,
   debtTerms: debtFormDefaults.debtTerms,
   interestRate: 0,
   installmentCount: 1,
@@ -167,7 +168,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       validateFields: async (fields) => {
         return await trigger(fields);
       },
-      getValues: () => getValues(),
+      getValues: () => normalizeDebtForm(getValues()),
     }));
 
     return (
@@ -280,41 +281,62 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
         <Grid>
           <Stack spacing={2}>
             {/* MONTO */}
-            {isVisible("totalAmount") &&
+            {isVisible("capital") &&
 
               <>
-                <Controller
-                  name="totalAmount"
+                <MoneyField<DebtFormValues>
+                  name="capital"
                   control={control}
-                  rules={{
-                    required: isRequired("totalAmount")
-                      ? "El monto es obligatorio"
-                      : false,
-                    min: { value: 1, message: "Debe ser mayor a 0" }
-                  }}
-                  render={({ field }) => (
+                  label="Monto capital"
+                  disabled={!isEditable("capital")}
+                  error={!!errors.capital}
+                  helperText={errors.capital?.message}
 
-                    <MoneyField<DebtFormValues>
-                      {...field}
-                      name="totalAmount"
-                      control={control}
-                      label="Monto capital"
-                      disabled={!isEditable("totalAmount")}
-                      error={!!errors.totalAmount}
-                      helperText={errors.totalAmount?.message}
-
-                    />
-                  )}
                 />
                 {renewalProposal && (
                   <MoneyTypography
                     label="Monto capital original"
-                    value={renewalProposal.totalAmount}
+                    value={renewalProposal.capital}
                   />
                 )}
               </>
 
             }
+
+            {/* ESTADO */}
+            {isVisible("status") && (
+              <Controller
+                name="status"
+                control={control}
+                rules={{
+                  required: isRequired("status")
+                    ? "El estado es obligatorio"
+                    : false,
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Estado de la deuda"
+                    fullWidth
+                    disabled={!isEditable("status")}
+                    error={!!errors.status}
+                    helperText={errors.status?.message}
+                    value={field.value || ""}
+                  >
+                    <MenuItem value="tentativa">Tentativa</MenuItem>
+                    <MenuItem value="preAprobada">Pre-Aprobada</MenuItem>
+                    <MenuItem value="preparacion">Preparación</MenuItem>
+                    <MenuItem value="activa">Activa</MenuItem>
+                    <MenuItem value="corregir">Corregir</MenuItem>
+                    <MenuItem value="pagada">Pagada</MenuItem>
+                    <MenuItem value="en_mora">En Mora</MenuItem>
+                    <MenuItem value="inactivo">Inactivo</MenuItem>
+                    <MenuItem value="anulado">Anulado</MenuItem>
+                  </TextField>
+                )}
+              />
+            )}
 
             {/* PERIODICIDAD */}
             {isVisible("debtTerms") && <>
@@ -352,10 +374,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 )}
               />
               {renewalProposal && (
-                <MoneyTypography
-                  label="Monto capital original"
-                  value={renewalProposal.totalAmount}
-                />
+                <Typography>
+                  Periodicidad original: {renewalProposal.debtTerms}
+                </Typography>
               )}
             </>
             }
@@ -388,10 +409,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 )}
               />
                 {renewalProposal && (
-                  <MoneyTypography
-                    label="Cantidad de días del mes original"
-                    value={renewalProposal.diasMes}
-                  />
+                  <Typography>
+                    Cantidad de días del mes original: {renewalProposal.diasMes}
+                  </Typography>
                 )}
               </>
             )}
@@ -425,10 +445,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 )}
               />
               {renewalProposal && (
-                <MoneyTypography
-                  label="Tasa de interes original"
-                  value={renewalProposal.interestRate}
-                />
+                <Typography>
+                  Tasa de interes original: {renewalProposal.interestRate}
+                </Typography>
               )}
             </>
             }
@@ -490,10 +509,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                   />)}
               />
                 {renewalProposal && (
-                  <MoneyTypography
-                    label="Cantidad de cuotas original"
-                    value={renewalProposal.installmentCount}
-                  />
+                  <Typography>
+                    Cantidad de cuotas original: {renewalProposal.installmentCount}
+                  </Typography>
                 )}
               </>
 
@@ -537,6 +555,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 render={({ field }) => (
                   <TextField
                     {...field}
+                    value={field.value ? formatISOToInputDate(field.value) : ""}
                     label="Fecha de inicio"
                     type="date"
                     fullWidth
@@ -544,13 +563,10 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     InputLabelProps={{ shrink: true }}
                     error={!!errors.startDate}
                     helperText={errors.startDate?.message}
-                    {...register("startDate", {
-                      required: "La fecha es obligatoria",
-                    })}
                   />)} />
               {renewalProposal && (
                 <Typography>
-                  Fecha de inicio original: {renewalProposal.startDate}
+                  Fecha de inicio original: {formatISOToInputDate(renewalProposal.startDate)}
                 </Typography>
               )}
             </>
@@ -562,14 +578,28 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
   },
 );
 
+function normalizeDebtForm(values: DebtFormValues): DebtFormValues {
+  if (values.calculationMode === "installments") {
+    return {
+      ...values,
+      months: 0,
+    };
+  } else {
+    return {
+      ...values,
+      installmentCount: 0,
+    };
+  }
+}
+
 export function mapDebtToForm(debt: Debt): DebtFormValues {
   return {
     calculationMode: "installments",
     routeId: debt.routeId,
-    collectorId: debt.collectorId,
+    status: debt.status,
     costumerDocument: debt.costumerDocument,
     type: debt.type,
-    totalAmount: debt.totalAmount,
+    capital: debt.capital,
     debtTerms: debt.debtTerms,
     interestRate: debt.interestRate,
     installmentCount: debt.installmentCount,
@@ -607,18 +637,18 @@ export function mergeDebtWithForm(
 
     // Campos que vienen del formulario
     routeId: formValues.routeId,
-    collectorId: formValues.collectorId,
+    status: formValues.status,
     costumerDocument: formValues.costumerDocument,
     type: formValues.type,
-    totalAmount: formValues.totalAmount,
+    capital: formValues.capital,
     debtTerms: formValues.debtTerms,
     interestRate: formValues.interestRate,
     installmentCount: formValues.installmentCount,
     startDate: formValues.startDate,
     diasMes: formValues.diasMes,
 
-    // Campos derivados
-    capital: formValues.totalAmount,
+    // la suma del capital mas intereses se hace en el caso de uso
+    totalAmount: 0,
   };
 }
 

@@ -1,9 +1,9 @@
-import { collection, doc, getDocs, query, setDoc, increment } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, increment, getDoc } from "firebase/firestore";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { firestore } from "../../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
 import type { RouteGateway, CreateRouteGatewayInput, GetRoutesGatewayInput, UpdateRouteGatewayInput } from "../../domain/infraestructure/RouteGateway";
-import type { Route } from "../../domain/business/entities/Route";
+import type { Route, CashBalances, DepositBalances } from "../../domain/business/entities/Route";
 import type { RouteError } from "../../domain/business/entities/routeErrors";
 
 export class FirebaseRouteRepository implements RouteGateway {
@@ -57,6 +57,8 @@ export class FirebaseRouteRepository implements RouteGateway {
           endDisabled: data.endDisabled ?? undefined,
           cobradorId: data.cobradorId ?? undefined,
           totalCash: data.totalCollected ?? 0,
+          totalCash2: data.totalCash2 ?? [],
+          totalDeposit: data.totalDeposit ?? [],
         } as Route;
       });
 
@@ -115,6 +117,66 @@ export class FirebaseRouteRepository implements RouteGateway {
       return ok(undefined);
     } catch (error) {
       console.error("[updateBalance]", error);
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
+  async updateSpecificBalances(input: {
+    companyId: string,
+    routeId: string,
+    cashEntries: CashBalances[],
+    depositEntries: DepositBalances[]
+  }): Promise<Result<void, any>> {
+    try {
+      const { companyId, routeId, cashEntries, depositEntries } = input;
+      const refRoute = doc(firestore, "companies", companyId, "routes", routeId);
+
+      // Leemos primero la ruta actual para actualizar los arrays
+      const snapshot = await getDoc(refRoute);
+      let currentCash2: CashBalances[] = [];
+      let currentDeposit: DepositBalances[] = [];
+      let currentTotalCollected = 0;
+
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        currentCash2 = data.totalCash2 ?? [];
+        currentDeposit = data.totalDeposit ?? [];
+        currentTotalCollected = data.totalCollected ?? 0;
+      }
+
+      // Actualizar saldos en efectivo
+      for (const entry of cashEntries) {
+        const existing = currentCash2.find(c => c.collectorId === entry.collectorId);
+        if (existing) {
+          existing.amount += entry.amount;
+        } else {
+          currentCash2.push({ ...entry });
+        }
+        currentTotalCollected += entry.amount;
+      }
+
+      // Actualizar depósitos
+      for (const entry of depositEntries) {
+        const existing = currentDeposit.find(d => d.bankAccountId === entry.bankAccountId);
+        if (existing) {
+          existing.amount += entry.amount;
+        } else {
+          currentDeposit.push({ ...entry });
+        }
+        currentTotalCollected += entry.amount;
+      }
+
+      await setDoc(refRoute, {
+        totalCash2: currentCash2,
+        totalDeposit: currentDeposit,
+        totalCollected: currentTotalCollected, // Mantenemos este por retrocompatibilidad
+        id: routeId,
+        companyId: companyId
+      }, { merge: true });
+
+      return ok(undefined);
+    } catch (error) {
+      console.error("[updateSpecificBalances]", error);
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }

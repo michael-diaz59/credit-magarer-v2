@@ -50,6 +50,7 @@ export class CreateVisitWithDebtUseCase {
             idVisit: visitId
         };
 
+
         const debtResult = await this.createDebtUseCase.execute({
             companyId: input.idCompany,
             debt: debtInput

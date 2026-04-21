@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { TypedUseSelectorHook } from "react-redux";
 import  authSlice  from "../../features/userAuthentication/slices/authSliceFirebase.ts";
 import userSlice from "../../features/users/slices/ReduxUserSlice.ts";
+import summaryReducer from "../summary/summarySlice.ts";
 
 //configuracion del core de reducer y anexion de los slices
 export const store = configureStore({
@@ -12,6 +13,7 @@ export const store = configureStore({
     theme: themeReducer,
      auth: authSlice,
      user: userSlice,
+     summary: summaryReducer,
   },
 });
 

@@ -13,6 +13,9 @@ import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetIns
 import { UpdateInstallmentByDebtCase, type UpdateInstallmentByDebtInput, type UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import { GetDebtsValidByCollectorUseCase, type GetDebtsValidByCollectorInput, type GetDebtsValidByCollectorOutput } from "../business/useCases/debt/GetDebtsValidByCollectorUseCase";
 import { GetDebtsByRouteUseCase, type GetDebtsByRouteInput, type GetDebtsByRouteOutput } from "../business/useCases/debt/GetDebtsByRouteUseCase";
+import { GetTotalDeliveredCapitalUseCase, type GetTotalDeliveredCapitalInput, type GetTotalDeliveredCapitalOutput, type GetTotalDeliveredCapitalError } from "../business/useCases/debt/GetTotalDeliveredCapitalUseCase";
+import { GetSumRenewalPaymentUseCase, type GetSumRenewalPaymentInput, type GetSumRenewalPaymentOutput, type GetSumRenewalPaymentError } from "../business/useCases/debt/GetSumRenewalPaymentUseCase";
+import { ConfirmDebtDeliveryUseCase, type ConfirmDebtDeliveryInput } from "../business/useCases/debt/ConfirmDebtDeliveryUseCase";
 import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
 
 export default class DebtOrchestrator {
@@ -27,6 +30,9 @@ export default class DebtOrchestrator {
     private simulateDebtCase: SimulateDebtCase
     private getDebtsValidByCollectorUseCase: GetDebtsValidByCollectorUseCase
     private getDebtsByRouteUseCase: GetDebtsByRouteUseCase
+    private getTotalDeliveredCapitalUseCase: GetTotalDeliveredCapitalUseCase
+    private getSumRenewalPaymentUseCase: GetSumRenewalPaymentUseCase
+    private confirmDebtDeliveryUseCase: ConfirmDebtDeliveryUseCase
 
     private getInstallmentsByDebtCase: GetInstallmentsByDebtCase
     private updateInstallmentByDebtCase: UpdateInstallmentByDebtCase
@@ -49,6 +55,9 @@ export default class DebtOrchestrator {
         this.updateInstallmentByDebtCase = new UpdateInstallmentByDebtCase(this.installmentGateway)
         this.getDebtsValidByCollectorUseCase = new GetDebtsValidByCollectorUseCase(this.debtGateway)
         this.getDebtsByRouteUseCase = new GetDebtsByRouteUseCase(this.debtGateway)
+        this.getTotalDeliveredCapitalUseCase = new GetTotalDeliveredCapitalUseCase(this.debtGateway)
+        this.getSumRenewalPaymentUseCase = new GetSumRenewalPaymentUseCase(this.debtGateway)
+        this.confirmDebtDeliveryUseCase = new ConfirmDebtDeliveryUseCase(this.debtGateway)
     }
 
     async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
@@ -101,5 +110,15 @@ export default class DebtOrchestrator {
         return this.getDebtsByRouteUseCase.execute(input)
     }
 
+    async getTotalDeliveredCapital(input: GetTotalDeliveredCapitalInput): Promise<Result<GetTotalDeliveredCapitalOutput, GetTotalDeliveredCapitalError>> {
+        return this.getTotalDeliveredCapitalUseCase.execute(input);
+    }
+    
+    async getSumRenewalPayment(input: GetSumRenewalPaymentInput): Promise<Result<GetSumRenewalPaymentOutput, GetSumRenewalPaymentError>> {
+        return this.getSumRenewalPaymentUseCase.execute(input);
+    }
 
+    async confirmDebtDelivery(input: ConfirmDebtDeliveryInput): Promise<Result<null, any>> {
+        return this.confirmDebtDeliveryUseCase.execute(input);
+    }
 }

@@ -61,4 +61,6 @@ export interface PaymentGateway {
     companyId: string,
     paymentIds: string[]
   ): Promise<Result<void, UpdateMultiplePaymentsIsTightError>>
+
+  getSumPayments(companyId: string): Promise<Result<number, any>>;
 }

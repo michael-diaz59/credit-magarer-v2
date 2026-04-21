@@ -213,6 +213,7 @@ export const InstallmentDetailScreen = () => {
     bankAccountId?: string,
   ): Payment => {
     return {
+      isTight: false,
       idRoute: debt?.routeId || "",
       id: paymentId || "",
       idProofOfPayment: proofUrl || "",

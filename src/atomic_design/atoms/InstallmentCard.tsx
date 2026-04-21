@@ -1,5 +1,6 @@
 import { Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
+import { formatISOToInputDate } from "../../core/helpers/dates/dateConvert";
 
 export const InstallmentCard = ({
   installment,
@@ -72,7 +73,7 @@ export const InstallmentCard = ({
 
           <Typography variant="body2">
             📅 Vence:{" "}
-            {new Date(installment.dueDate).toLocaleDateString()}
+            {formatISOToInputDate(installment.dueDate)}
           </Typography>
         </Stack>
       </CardContent>

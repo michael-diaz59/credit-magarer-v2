@@ -6,6 +6,7 @@ import {
   Typography,
   Button,
   Stack,
+  Divider,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/business/entities/Debt";
@@ -20,6 +21,8 @@ import { DebtFormDataProvider } from "./DebtFormDataProvider";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../form/constsForm";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
+import { auditDebtConfig } from "../../../sub_atomic_particles/debFormConsts";
+import { ScreenPaths } from "../../../../core/helpers/name_routes";
 
 export const AuditDebtScreen = () => {
   const debtFormRef = useRef<DebtFormRef>(null);
@@ -110,19 +113,24 @@ export const AuditDebtScreen = () => {
     }
   };
 
-  const handleUpdateDebt = async () => {
+  const handleUpdateDebt = async (updatedData?: Debt) => {
     if (!debt?.id) return;
 
     setLoading(true);
 
-    if (!debtFormRef.current) {
-      return;
+    let debtToUpdate: Debt;
+
+    // Si recibimos updatedData, es porque venimos del submit de RenewalComparisonForm
+    if (updatedData) {
+      debtToUpdate = updatedData;
+    } else {
+      // En caso contrario, venimos del proceso normal de edición de la deuda que usa el form local
+      if (!debtFormRef.current) {
+        setLoading(false);
+        return;
+      }
+      debtToUpdate = mergeDebtWithForm(debt, debtFormRef.current?.getValues());
     }
-
-    console.log("debt:", debt)
-    console.log("debtFormRef.current?.getValues():", debtFormRef.current?.getValues())
-
-    const debtToUpdate: Debt = mergeDebtWithForm(debt, debtFormRef.current?.getValues());
 
     console.log("debtToUpdate:", debtToUpdate)
 
@@ -179,6 +187,7 @@ export const AuditDebtScreen = () => {
 
       if (result.state.ok && result.state.value) {
         const currentDebt = result.state.value;
+        console.log("currentDebt:", currentDebt)
         setDebt(currentDebt);
         setForm(currentDebt);
 
@@ -190,8 +199,20 @@ export const AuditDebtScreen = () => {
 
           if (originalResult.state.ok && originalResult.state.value) {
             setOriginalDebt(originalResult.state.value);
+          } else {
+            setDialogConfig({
+              title: "Error al cargar la deuda",
+              body: "Ocurrió un error inesperado al cargar la deuda original, por favor recarga la pagina",
+              buttonText: "Cerrar",
+            });
           }
         }
+      } else {
+        setDialogConfig({
+          title: "Error al cargar la deuda",
+          body: "Ocurrió un error inesperado al cargar la deuda.",
+          buttonText: "Cerrar",
+        });
       }
     };
 
@@ -233,7 +254,15 @@ export const AuditDebtScreen = () => {
 
                   return (
                     <>
-                      <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} />
+                      <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} config={auditDebtConfig} />
+
+
+                      {debt?.totalAmount !== undefined && debt?.totalAmount !== null && (
+                        <Typography>
+                          Total de credito a pagar: {debt?.totalAmount}
+                        </Typography>
+                      )}
+                      <Divider />
 
                       <Button onClick={() => handleSubmitDebt("actualizar")}>
                         Actualizar deuda
@@ -246,7 +275,7 @@ export const AuditDebtScreen = () => {
                 }}
               </DebtFormDataProvider>
             )}
-            {simulateDebtValues.totalAmount > 0 && (
+            {simulateDebtValues.capital > 0 && (
               <SimulateDebtResultCard data={simulateDebtValues} />
             )}
 
@@ -256,6 +285,11 @@ export const AuditDebtScreen = () => {
               </Button>
             </Stack>
           </CardContent>
+        </Card>
+        <Card>
+          <Button onClick={() => navigate(ScreenPaths.auditor.installments(debt?.id ?? ""))}>
+            Ver cuotas
+          </Button>
         </Card>
       </Box>
     </Box>

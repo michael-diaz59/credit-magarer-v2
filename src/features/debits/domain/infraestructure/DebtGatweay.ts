@@ -14,6 +14,7 @@ import type { GetByIdError, GetByIdInput, GetByIdOutput } from "../business/useC
 import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
 import type { Debt, DebtStatus } from "../business/entities/Debt";
 import type { Installment } from "../business/entities/Installment";
+import type { GetManagementInstallmentsInput } from "../business/useCases/installment/GetManagementInstallmentsUseCase";
 
 
 export interface DebtGateway {
@@ -26,6 +27,8 @@ export interface DebtGateway {
   ): Promise<UpdateDebitOutput>;
 
   getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>>
+
+  confirmDebtsDelivery(input: { companyId: string, debtIds: string[] }): Promise<Result<null, any>>;
 
   getById(input: GetDebitByIdInput): Promise<GetDebitByIdOutput>;
 
@@ -45,6 +48,9 @@ export interface DebtGateway {
     companyId: string;
     routeId: string;
   }): Promise<Result<Debt[], any>>;
+
+  getSumOfDeliveredCapital(companyId: string): Promise<Result<number, any>>;
+  getSumOfRenewalPayment(companyId: string): Promise<Result<number, any>>;
 }
 
 export interface InstallmentGateway {
@@ -60,6 +66,11 @@ export interface InstallmentGateway {
 
   getByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput>;
   getById(input: GetByIdInput): Promise<Result<GetByIdOutput, GetByIdError>>
+  /**
+   * Obtiene una cuota por id de deuda y numero de cuota
+   * @param input 
+   * @returns 
+   */
   getByDebtAndNumber(input: {
     companyId: string;
     debtId: string;
@@ -67,6 +78,20 @@ export interface InstallmentGateway {
   }): Promise<Result<Installment | null, any>>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deleteBatch(companyId: string, installmentIds: string[]): Promise<Result<null, any>>;
+
+  getInstallmentsSummaryByDateRange(input: {
+    companyId: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<Result<{
+    totalAmount: number;
+    totalPaidAmount: number;
+    totalPaidLatePayment: number;
+    totalLatePayment: number;
+  }, any>>;
+
+  getPendingInstallmentsForCollector(input: GetManagementInstallmentsInput): Promise<Result<Installment[], any>>;
+
 }
 
 export interface CollectionAssignmentGateway {

@@ -23,6 +23,11 @@ export type DebtStatus =
   | "inactivo"
   | "anulado"
 
+export type delivered_status =
+  | "false_preparacion"
+  | "true_preparacion"
+  | "entregado"
+
 export const debtStatusList: DebtStatus[] = [
   "tentativa",
   "preAprobada",
@@ -64,13 +69,24 @@ export interface Debt {
 
   status: DebtStatus;
 
+  /**indica si el dinero de la deuda fue entregado al cliente */
+  delivered: boolean;
 
+  /**indica si la deuda esta lista para desembolsar al cliente */
+  deliveredStatus: delivered_status;
+
+
+  /**indica el valor de pago de la deuda que se hizo por renovacion */
+  renewalPayment: number;
 
   /** total del capital prestado sin intereses */
   capital: number;
 
   /**total del prestamo pedido con intereses */
   totalAmount: number;
+
+  /**indica si la deuda tiene ganancias */
+  earning: boolean;
 
 
   /**total pagado hasta el momento por base de cuotas */
@@ -81,6 +97,10 @@ export interface Debt {
 
   /**tasa de interes */
   interestRate: number;
+
+
+  /**representa las ganancias por papeleria */
+  papeleria: number;
 
   //fechas yyyy-mm-dd
 
@@ -137,8 +157,12 @@ export function createEmptyDebt(): Debt {
   return {
     id: "",
     collectorId: "",
+    deliveredStatus: "false_preparacion",
     routeId: "",
     type: "credito",
+    renewalPayment: 0,
+    earning: false,
+    delivered: false,
     idVisit: "",
     debtTerms: "diario",
     name: "",
@@ -150,6 +174,7 @@ export function createEmptyDebt(): Debt {
     totalPaid: 0,
     totalPaymentForLate: 0,
     interestRate: 0,
+    papeleria: 0,
 
     startDate: today,
     createdAt: today,
@@ -169,4 +194,63 @@ export function createEmptyDebt(): Debt {
     originalDebt: "",
     renewedToDebtId: "",
   };
+}
+
+// no actualizar sin tomar en cuenta los casos de uso que la llaman
+export function createBasicDebt(): Debt {
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    id: "",
+    collectorId: "",
+    deliveredStatus: "false_preparacion",
+    routeId: "",
+    earning: false,
+    type: "credito",
+    renewalPayment: 0,
+    delivered: false,
+    idVisit: "",
+    debtTerms: "diario",
+    name: "",
+    diasMes: 30,
+    status: "tentativa",
+
+    capital: 0,
+    totalAmount: 0,
+    totalPaid: 0,
+    totalPaymentForLate: 0,
+    interestRate: 0,
+    papeleria: 0,
+
+    startDate: today,
+    createdAt: today,
+    firstDueDate: "",
+
+    installmentCount: 1,
+
+    nextPaymentDue: "",
+    dateLastPayment: "",
+    installmentsPaid: 0,
+    overdueInstallmentsCount: 0,
+
+    clientId: "",
+    costumerName: "",
+    costumerDocument: "",
+
+    originalDebt: "",
+    renewedToDebtId: "",
+  };
+}
+
+
+/**indica si el dinero se entrego al cliente */
+export const debtStatusDelivered: DebtStatus[] = [
+  "activa",
+  "pagada",
+  "en_mora",
+  "inactivo",
+];
+
+export function isDebtStatusDelivered(status: DebtStatus) {
+  return debtStatusDelivered.includes(status);
 }

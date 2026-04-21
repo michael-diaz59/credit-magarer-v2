@@ -348,7 +348,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       observations: data.observations ?? "",
       debtCounter: data.debtCounter ?? 0,
       state: data.state ?? "default",
-      whyWasDisable: data.whyWasDisable ??"",
+      whyWasDisable: data.whyWasDisable ?? "",
       applicant: data.applicant ?? "",
       listId: data.listId,
       coSigner: data.coSigner ?? [],
