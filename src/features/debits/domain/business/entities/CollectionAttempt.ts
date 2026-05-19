@@ -4,6 +4,7 @@ export interface CollectionAttempt {
     id: string;
     installmentId: string;
     collectorId: string;
+    routeId: string;
     debtId: string;
     customerId: string;
     companyId: string;

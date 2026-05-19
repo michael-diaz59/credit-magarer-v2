@@ -6,8 +6,8 @@ import type { SaveCostumerError } from "../entities/utilities"
 
 export interface SaveCostumerInput {
     costumer: Customer,
-    updateFiles:boolean,
-    companyId:string,
+    updateFiles: boolean,
+    companyId: string,
     pendingDocs: PendingDocuments
 }
 
@@ -20,6 +20,7 @@ export class CreateCostumerCase {
     }
 
     async execute(saveCostumerInput: SaveCostumerInput): Promise<Result<null, SaveCostumerError>> {
+        saveCostumerInput.costumer.calification = "3"
         const saveResult = await this.costumerGateway.createCostumer(saveCostumerInput)
 
         if (!saveResult.ok) {

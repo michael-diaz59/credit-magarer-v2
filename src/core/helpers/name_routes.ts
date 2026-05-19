@@ -8,6 +8,8 @@ export type RoutNav = {
 //inicio
 export const pathHome = "/"
 
+export const pathUploadExcel = "/upload-excel"
+
 //log in
 export const pathLog = "/log"
 
@@ -98,6 +100,7 @@ const pathAccountRoster = pathAccountant + "/roster"
 const pathAccountGeneralSummary = pathAccountant + "/general-summary"
 const pathAccountProfitDetails = pathAccountant + "/profit-details"
 const pathAccountEquityDetails = pathAccountant + "/equity-details"
+const pathAccountGrossProfitDetails = pathAccountant + "/gross-profit-details"
 const pathAccountTaxtPayments = pathAccountant + "/taxt-payments"
 const pathAccountTaxtPaymentRegistration = pathAccountant + "/taxt-payment-registration"
 const pathAccountAnotherPayments = pathAccountant + "/another-payments"
@@ -121,6 +124,7 @@ export const nameRoutesMap = new Map([
 
 export const ScreenPaths = {
   home: pathHome,
+  uploadExcel: pathUploadExcel,
   log: {
     logIn: pathLogIn
   },
@@ -205,6 +209,7 @@ export const ScreenPaths = {
     rosterDetail: (userId: string) => `${pathAccountRoster}/detail/${userId}`,
     generalSummary: pathAccountGeneralSummary,
     profitDetails: pathAccountProfitDetails,
+    grossProfitDetails: pathAccountGrossProfitDetails,
     equityDetails: pathAccountEquityDetails,
     taxtPayments: pathAccountTaxtPayments,
     taxtPaymentRegistration: pathAccountTaxtPaymentRegistration,
@@ -219,6 +224,7 @@ export const ScreenPaths = {
     payrollHistory: (userId: string) => `${pathAccountPayrollHistory}/${userId}`,
     payrollPaymentDetail: (payrollId: string) => `${pathAccountPayrollPaymentDetail}/${payrollId}`,
     forecasts: pathAccountForecasts,
+    financialReports: pathAccountant + "/financial-reports",
   }
 
 } as const;

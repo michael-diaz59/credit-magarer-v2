@@ -45,14 +45,14 @@ export const AccountantPaymentsMenuScreen: React.FC = () => {
       path: ScreenPaths.accountant.taxtPayments,
     },
     {
-      label: "Inversiones",
+      label: "Financiamientos",
       icon: (
         <AccountBalanceIcon
           fontSize="large"
           sx={{ color: theme.palette.primary.contrastText }}
         />
       ),
-      path: ScreenPaths.accountant.incomes,
+      path: ScreenPaths.accountant.financialDebts,
     },
   ];
 

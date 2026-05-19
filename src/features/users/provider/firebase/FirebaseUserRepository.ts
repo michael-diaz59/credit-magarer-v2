@@ -187,10 +187,12 @@ export class FirebaseUserRepository implements UserGateway {
 
       const snapshotUserCompany = await getDoc(refUserCompany);
 
-      // Si no existe el doc en compañía, usamos fallback al global
-      const dataUserCompany = snapshotUserCompany.exists()
-        ? snapshotUserCompany.data()
-        : dataGlobalUser;
+      if (!snapshotUserCompany.exists()) {
+        console.log("usuario no encontrado en compañía");
+        return fail({ code: "USER_NOT_FOUND:IN_COMPANY" })
+      }
+
+      const dataUserCompany = snapshotUserCompany.data()
 
       /* =========================
          collectorRoutes como Record
@@ -210,7 +212,7 @@ export class FirebaseUserRepository implements UserGateway {
         companyId: globalUser.companyId,
         email: dataUserCompany.email ?? dataGlobalUser.email,
         name: dataUserCompany.name ?? dataGlobalUser.name,
-        roles: dataGlobalUser.roles,
+        roles: dataUserCompany.roles,
         collectorRoutes,
         idRoutes: dataUserCompany.idRoutes || [],
       };

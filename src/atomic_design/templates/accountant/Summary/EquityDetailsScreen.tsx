@@ -96,6 +96,23 @@ export const EquityDetailsScreen = () => {
                     </CardActionArea>
                 </Card>
 
+                {/* Aporte Social */}
+                <Card sx={{ boxShadow: 3, borderRadius: 3, bgcolor: theme.palette.success.light, color: theme.palette.success.contrastText }}>
+                    <CardActionArea
+                        onClick={() => navigate(ScreenPaths.accountant.incomes)}
+                        sx={{ p: 2, textAlign: "center" }}
+                    >
+                        <CardContent sx={{ textAlign: "center", py: 4 }}>
+                            <Typography variant="h6" fontWeight="medium" gutterBottom>
+                                financiamientos
+                            </Typography>
+                            <Typography variant="h3" fontWeight="bold">
+                                $ {FormatNumberToMoney(details.totalFinancialDebts)}
+                            </Typography>
+                        </CardContent>
+                    </CardActionArea>
+                </Card>
+
 
 
             </Box>

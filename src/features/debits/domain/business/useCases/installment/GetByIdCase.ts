@@ -5,10 +5,10 @@ import type { Installment } from "../../entities/Installment"
 export type GetByIdError =
   | { code: "UNKNOWN_ERROR" }
   | { code: "NETWORK_ERROR" }
-  | { code: "INSTALLMENT_WHITHOUSE_COLLECTOR" }
+  | { code: "INSTALLMENT_WHITHOUSE_ROUTE" }
 
 export interface GetByIdInput {
-  collectorId?: string
+  routeId?: string
   companyId: string
   installmentId: string
 }
@@ -36,8 +36,8 @@ export class GetByIdCase {
     const installment = result.value.state;
 
     // 🔐 VALIDACIÓN DE NEGOCIO (Solo si se proporciona collectorId)
-    if (input.collectorId && installment.collectorId !== input.collectorId) {
-      return fail({ code: "INSTALLMENT_WHITHOUSE_COLLECTOR" });
+    if (input.routeId && installment.routeId !== input.routeId) {
+      return fail({ code: "INSTALLMENT_WHITHOUSE_ROUTE" });
     }
 
     return ok({

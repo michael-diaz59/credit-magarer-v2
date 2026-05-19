@@ -11,9 +11,12 @@ export const documentToDebt = (doc: DocumentData, id?: string): Debt => {
 
     return {
         id: documentId,
-        earning: data.earning ?? false,
+        creditPaid: data.earning ?? false,
         papeleria: data.papeleria ?? 0,
-        collectorId: data.collectorId ?? "",
+        capitalPaid: data.capitalPaid ?? 0,
+        interestPaid: data.interestPaid ?? 0,
+        remainingToCompleteCredit: data.remainingToCompleteCredit ?? 0,
+        totalInterest: data.totalInterest ?? 0,
         routeId: data.routeId ?? "",
         type: data.type ?? "credito",
         idVisit: data.idVisit ?? "",
@@ -50,9 +53,8 @@ export const documentToDebt = (doc: DocumentData, id?: string): Debt => {
 export const DebtToDocumentData = (doc: Omit<Debt, "id">): DocumentData => {
     return {
         papeleria: doc.papeleria,
-        collectorId: doc.collectorId,
         routeId: doc.routeId,
-        earning: doc.earning,
+        earning: doc.creditPaid,
         type: doc.type,
         idVisit: doc.idVisit,
         debtTerms: doc.debtTerms,

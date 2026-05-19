@@ -20,7 +20,6 @@ import {
   emptyVehicle,
   emptyFamilyReference,
 } from "./formFactories";
-import { Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 
 import { VehicleForm } from "./VehicleForm";
 import { FamilyReferenceForm } from "./FamilyReferenceForm";
@@ -353,24 +352,6 @@ export const CostumerForm = () => {
               fullWidth
               disabled={!isOfficeVisit}
             />
-          )}
-        />
-
-        <Controller
-          name="calification"
-          control={control}
-          render={({ field, fieldState }) => (
-            <FormControl fullWidth sx={{ mt: 3 }} error={!!fieldState.error}>
-              <InputLabel>Calificación del cliente</InputLabel>
-
-              <Select {...field} label="Calificación del cliente">
-                <MenuItem value="1">⭐ Muy riesgoso</MenuItem>
-                <MenuItem value="2">⭐⭐ Riesgo alto</MenuItem>
-                <MenuItem value="3">⭐⭐⭐ Normal</MenuItem>
-                <MenuItem value="4">⭐⭐⭐⭐ Buen cliente</MenuItem>
-                <MenuItem value="5">⭐⭐⭐⭐⭐ Excelente</MenuItem>
-              </Select>
-            </FormControl>
           )}
         />
 

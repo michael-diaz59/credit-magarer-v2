@@ -112,10 +112,10 @@ const applicantschema = z.object({
 
 export const baseCostumerSchema = z.object({
   id: z.string().nullable().optional(),
-  state: z.enum(["default", "inactivo", "activo"]),
-  whyWasDisabled: z.string(),
+  state: z.enum(["default", "inactivo", "activo"]).nullable().optional(),
+  whyWasDisabled: z.string().nullable().optional(),
   observations: z.string().nullable().optional(),
-  calification: z.enum(calificationValues),
+  calification: z.enum(calificationValues).nullable().optional(),
   photoHouseUrl: z.string().optional(),
   identificacionUrl: z.string().optional(),
   laboralUrl: z.string().optional(),

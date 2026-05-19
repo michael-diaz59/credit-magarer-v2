@@ -8,104 +8,136 @@ import {
 import { firestore } from "../../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
 import type { SummaryGateway } from "../../domain/infraestructure/SummaryGateway";
-import type { EquityDetails, GeneralSummary, ProfitDetails } from "../../domain/business/entities/Summary";
-import type { GetExpensivesError, GetExpensivesOutput } from "../../domain/business/useCases/GetExpensivesCase";
+import type { EquityDetails, GeneralSummary, GrossProfitDetails, ProfitDetails } from "../../domain/business/entities/Summary";
+import type { GetExpensivesError, GetExpensivesInput, GetExpensivesOutput } from "../../domain/business/useCases/GetExpensivesCase";
 import type { GetFinancialAggregatesError, GetFinancialAggregatesInput, GetFinancialAggregatesOutput } from "../../domain/business/useCases/GetFinancialAggregatesByDateRangeUseCase";
 import { encodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { minZero } from "../../../../core/helpers/limits";
 
 export class FirebaseSummaryRepository implements SummaryGateway {
+
+    private async getTotalAmountFromCollection(companyId: string, collectionName: string): Promise<number> {
+        const ref = collection(firestore, "companies", companyId, collectionName);
+        const snap = await getAggregateFromServer(ref, {
+            total: sum("amount"),
+        });
+        return snap.data().total ?? 0;
+    }
+
+    private async getEarningDebtsAggregates(companyId: string) {
+        const debtsRef = collection(firestore, "companies", companyId, "debts");
+        const earningDebtsQuery = query(debtsRef, where("earning", "==", true));
+        const snap = await getAggregateFromServer(earningDebtsQuery, {
+            totalPaid: sum("totalPaid"),
+            totalRenewal: sum("renewalPayment"),
+            totalPaymentForLate: sum("paymentForLate"),
+            totalCapital: sum("capital"),
+        });
+        const data = snap.data();
+        return {
+            totalPaid: data.totalPaid ?? 0,
+            totalRenewal: data.totalRenewal ?? 0,
+            totalPaymentForLate: data.totalPaymentForLate ?? 0,
+            totalCapital: data.totalCapital ?? 0,
+        };
+    }
+
+    private async getDeliveredDebtsAggregates(companyId: string) {
+        const debtsRef = collection(firestore, "companies", companyId, "debts");
+        const deliveredDebtsQuery = query(debtsRef, where("delivered", "==", true));
+        const snap = await getAggregateFromServer(deliveredDebtsQuery, {
+            totalPapeleria: sum("papeleria"),
+            totalCapital: sum("capital"),
+        });
+        const data = snap.data();
+        return {
+            totalPapeleria: data.totalPapeleria ?? 0,
+            totalCapital: data.totalCapital ?? 0,
+        };
+    }
+
+    private async getInactiveDebtsAggregates(companyId: string) {
+        const debtsRef = collection(firestore, "companies", companyId, "debts");
+        const cancelledCreditsQuery = query(debtsRef, where("status", "==", "inactivo"));
+        const snap = await getAggregateFromServer(cancelledCreditsQuery, {
+            totalPaid: sum("totalPaid"),
+            totalCapital: sum("capital"),
+        });
+        const data = snap.data();
+        return {
+            totalPaid: data.totalPaid ?? 0,
+            totalCapital: data.totalCapital ?? 0,
+        };
+    }
 
     async getGeneralSummary(input: { companyId: string }): Promise<Result<GeneralSummary, { code: string }>> {
         try {
             const { companyId } = input;
-            console.log("companyId:", companyId)
+            console.log("companyId:", companyId);
 
             // --- 1. Aportes sociales (sum de amount en incomes) ---
-            const incomesRef = collection(firestore, "companies", companyId, "incomes");
-            const incomesSnap = await getAggregateFromServer(incomesRef, {
-                totalIncomes: sum("amount"),
-            });
-            const socialContribution = incomesSnap.data().totalIncomes ?? 0;
-            console.log("aportes sociales: ", socialContribution)
+            const socialContribution = await this.getTotalAmountFromCollection(companyId, "incomes");
+            console.log("aportes sociales: ", socialContribution);
 
             // --- 2. Gastos de nómina (sum de amount en payroll) ---
-            const payrollRef = collection(firestore, "companies", companyId, "payroll");
-            const payrollSnap = await getAggregateFromServer(payrollRef, {
-                totalPayroll: sum("amount"),
-            });
-            const businessExpenses = payrollSnap.data().totalPayroll ?? 0;
-            console.log("gastos de nomina: ", businessExpenses)
+            const businessExpenses = await this.getTotalAmountFromCollection(companyId, "payroll");
+            console.log("gastos de nomina: ", businessExpenses);
 
             // --- 3. Deuda adquirida (sum financialDebts.amount - sum financialsPayments.amount) ---
-            const financialDebtsRef = collection(firestore, "companies", companyId, "financialDebts");
-            const financialDebtsSnap = await getAggregateFromServer(financialDebtsRef, {
-                totalDebt: sum("amount"),
-            });
-            const totalFinancialDebts = financialDebtsSnap.data().totalDebt ?? 0;
-            console.log("deudas adquiridas: ", totalFinancialDebts)
+            const totalFinancialDebts = await this.getTotalAmountFromCollection(companyId, "financialDebts");
+            console.log("financiamiento: ", totalFinancialDebts);
 
-            const financialPaymentsRef = collection(firestore, "companies", companyId, "financialsPayments");
-            const financialPaymentsSnap = await getAggregateFromServer(financialPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            console.log("pagos de deudas: ", financialPaymentsSnap.data().totalPayments)
-            const totalFinancialPayments = financialPaymentsSnap.data().totalPayments ?? 0;
+            const totalFinancialPayments = await this.getTotalAmountFromCollection(companyId, "financialsPayments");
+            console.log("pagos de financiamientos: ", totalFinancialPayments);
+
             const acquiredDebt = totalFinancialDebts - totalFinancialPayments;
-            console.log("deuda por pagar: ", acquiredDebt)
+            console.log("financiamientos por pagar: ", acquiredDebt);
 
             // --- 4. Ganancias antes de gastos (sum totalPaid + renewalPayment de debts con earning=true) ---
-            const debtsRef = collection(firestore, "companies", companyId, "debts");
-            const earningDebtsQuery = query(debtsRef, where("earning", "==", true));
-            const earningDebtsSnap = await getAggregateFromServer(earningDebtsQuery, {
-                totalPaid: sum("totalPaid"),
-                totalRenewal: sum("renewalPayment"),
-                totalCapital: sum("capital"),
-            });
-            const totalPaid = earningDebtsSnap.data().totalPaid ?? 0;
-            const totalRenewal = earningDebtsSnap.data().totalRenewal ?? 0;
-            const totalCapital = earningDebtsSnap.data().totalCapital ?? 0;
-            const profitsBeforeExpenses = totalPaid - totalRenewal - totalCapital;
-            console.log("ganancias antes de gastos(total pagado + pago de renovación): ", profitsBeforeExpenses)
+            const earningAggregates = await this.getEarningDebtsAggregates(companyId);
+            const { totalPaid, totalRenewal, totalPaymentForLate, totalCapital } = earningAggregates;
 
+            console.log("total pago por mora: ", totalPaymentForLate);
+            console.log("ganancia por interes: ", totalPaid - totalCapital);
+            const totalImport = (totalPaid - totalCapital) - totalRenewal;
+            console.log("total importado de intereses: ", totalImport);
+            const profitsBeforeExpensesWithOutPapeleria = totalImport + totalPaymentForLate;
+            console.log("ganancias antes de gastos (Sin Papelería)-> recaudo + mora: ", profitsBeforeExpensesWithOutPapeleria);
 
-            const deliveredDebtsQuery = query(debtsRef, where("delivered", "==", true));
-            const deliveredDebtsSnap = await getAggregateFromServer(deliveredDebtsQuery, {
-                totalPapeleria: sum("papeleria"),
-            });
-            const totalPapeleria = deliveredDebtsSnap.data().totalPapeleria ?? 0;
-            console.log("papeleria: ", totalPapeleria)
+            const deliveredAggregates = await this.getDeliveredDebtsAggregates(companyId);
+            const { totalPapeleria, totalCapital: totalDeliveredCapital } = deliveredAggregates;
 
-            const totalDeliveredCapitalSnap = await getAggregateFromServer(deliveredDebtsQuery, {
-                totalCapital: sum("capital"),
-            });
+            console.log("ganancias por papeleria: ", totalPapeleria);
+            const profitsBeforeExpenses = profitsBeforeExpensesWithOutPapeleria + totalPapeleria;
+            console.log("ganancias antes de gastos recaudo + mora + papeleria: ", profitsBeforeExpenses);
+            console.log("capital entregado: ", totalDeliveredCapital);
 
-            const totalDeliveredCapital = totalDeliveredCapitalSnap.data().totalCapital ?? 0;
-
-            console.log("capital entregado: ", totalDeliveredCapital)
             // Pagos de impuestos
-            const taxtPaymentsRef = collection(firestore, "companies", companyId, "taxtPayments");
-            const taxtPaymentsSnap = await getAggregateFromServer(taxtPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalTaxtPayments: number = taxtPaymentsSnap.data().totalPayments ?? 0;
+            const totalTaxtPayments = await this.getTotalAmountFromCollection(companyId, "taxtPayments");
 
             // Otros pagos
-            const anotherPaymentsRef = collection(firestore, "companies", companyId, "anotherPayments");
-            const anotherPaymentsSnap = await getAggregateFromServer(anotherPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalAnotherPayments: number = anotherPaymentsSnap.data().totalPayments ?? 0;
+            const totalAnotherPayments = await this.getTotalAmountFromCollection(companyId, "anotherPayments");
 
-            const totalExpenses = totalFinancialPayments + totalTaxtPayments + totalAnotherPayments + businessExpenses;
+            // 1. perdida por creditos inactivos
+            const inactiveAggregates = await this.getInactiveDebtsAggregates(companyId);
+            const cancelledCredits = minZero(inactiveAggregates.totalCapital - inactiveAggregates.totalPaid);
+
+            console.log(cancelledCredits);
+
+            const totalExpenses = totalFinancialPayments + totalTaxtPayments + totalAnotherPayments + businessExpenses + cancelledCredits;
 
             // --- 6. Cálculos derivados ---
-            const stationeryProfits = profitsBeforeExpenses + totalPapeleria;       // ganancias con papelería
+            const stationeryProfits = profitsBeforeExpenses;       // ganancias antes de gastos
             const profitAfterExpenses = stationeryProfits - totalExpenses;        // ganancia después de gastos
-            const cashOnHand = socialContribution + profitAfterExpenses - totalDeliveredCapital;          // dinero en caja
-            const equityAfterExpenses = socialContribution - totalExpenses;       // patrimonio después de gastos
+            const equityAfterExpenses = profitAfterExpenses + socialContribution + totalFinancialDebts;       // patrimonio después de gastos
+            const capitalInversion = totalPaid + totalFinancialDebts + totalPapeleria + totalPaymentForLate + socialContribution;
+            console.log("dinero invertido", capitalInversion);
+            console.log("gastos de negocio ", totalExpenses);
+            const totalImported = totalCapital - totalRenewal;
+            console.log("total importado  ", totalImported);
 
-            console.log("se toma por gastos los pagos de nomina y pagos a deudas de la empresa(financiamientos) ")
-            console.log('dinero en caja igual a patrimonio(' + socialContribution + ")+ ganancias despues de gastos(" + profitAfterExpenses + ")-capital entregado(" + totalDeliveredCapital + ")")
+            const cashOnHand = capitalInversion - totalExpenses - totalImport;
+            console.log("dinero en caja ", cashOnHand);
 
             return ok({
                 cashOnHand,
@@ -124,25 +156,15 @@ export class FirebaseSummaryRepository implements SummaryGateway {
     async getProfitDetails(input: { companyId: string }): Promise<Result<ProfitDetails, { code: string }>> {
         try {
             const { companyId } = input;
-            console.log(companyId)
+            console.log(companyId);
 
             // Ganancias antes de gastos
-            const debtsRef = collection(firestore, "companies", companyId, "debts");
-            const earningDebtsQuery = query(debtsRef, where("earning", "==", true));
-            const earningDebtsSnap = await getAggregateFromServer(earningDebtsQuery, {
-                totalPaid: sum("totalPaid"),
-                totalRenewal: sum("renewalPayment"),
-            });
-            const profitsBeforeExpenses =
-                (earningDebtsSnap.data().totalPaid ?? 0) +
-                (earningDebtsSnap.data().totalRenewal ?? 0);
+            const earningAggregates = await this.getEarningDebtsAggregates(companyId);
+            const profitsBeforeExpenses = earningAggregates.totalPaid + earningAggregates.totalRenewal;
 
             // Papelería (delivered=true)
-            const deliveredDebtsQuery = query(debtsRef, where("delivered", "==", true));
-            const deliveredDebtsSnap = await getAggregateFromServer(deliveredDebtsQuery, {
-                totalPapeleria: sum("papeleria"),
-            });
-            const totalPapeleria = deliveredDebtsSnap.data().totalPapeleria ?? 0;
+            const deliveredAggregates = await this.getDeliveredDebtsAggregates(companyId);
+            const totalPapeleria = deliveredAggregates.totalPapeleria;
 
             return ok({ stationeryProfits: totalPapeleria, profitsBeforeExpenses });
         } catch (error) {
@@ -151,91 +173,112 @@ export class FirebaseSummaryRepository implements SummaryGateway {
         }
     }
 
+    async getGrossProfitDetails(input: { companyId: string }): Promise<Result<GrossProfitDetails, { code: string }>> {
+        try {
+            const { companyId } = input;
+
+            // 1. Recaudo e Intereses (earning=true)
+            const earningAggregates = await this.getEarningDebtsAggregates(companyId);
+            const { totalPaid, totalRenewal, totalPaymentForLate, totalCapital } = earningAggregates;
+
+            // Recaudo = Intereses (Total pagado - Capital - Renovación)
+            const collectionProfits = (totalPaid - totalCapital) - totalRenewal;
+
+            // Atrasos = Mora
+            const lateFeeProfits = totalPaymentForLate;
+
+            // 2. Papelería (delivered=true)
+            const deliveredAggregates = await this.getDeliveredDebtsAggregates(companyId);
+            const stationeryProfits = deliveredAggregates.totalPapeleria;
+
+            const totalGrossProfit = collectionProfits + lateFeeProfits + stationeryProfits;
+
+            return ok({
+                collectionProfits,
+                lateFeeProfits,
+                stationeryProfits,
+                totalGrossProfit
+            });
+        } catch (error) {
+            console.error("[FirebaseSummaryRepository.getGrossProfitDetails]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
     async getEquityDetails(input: { companyId: string }): Promise<Result<EquityDetails, { code: string }>> {
         try {
             const { companyId } = input;
 
-            const incomesRef = collection(firestore, "companies", companyId, "incomes");
-            const snap = await getAggregateFromServer(incomesRef, {
-                totalIncomes: sum("amount"),
-            });
+            const socialContribution = await this.getTotalAmountFromCollection(companyId, "incomes");
+            const payRolls = await this.getTotalAmountFromCollection(companyId, "payroll");
+            const totalFinancialPayments = await this.getTotalAmountFromCollection(companyId, "financialsPayments");
 
-            const payrollRef = collection(firestore, "companies", companyId, "payroll");
-            const payrollSnap = await getAggregateFromServer(payrollRef, {
-                totalPayroll: sum("amount"),
-            });
-            const businessExpenses = payrollSnap.data().totalPayroll ?? 0;
+            // --- 4. Ganancias antes de gastos (sum totalPaid + renewalPayment de debts con earning=true) ---
+            const earningAggregates = await this.getEarningDebtsAggregates(companyId);
+            const { totalPaid, totalRenewal, totalPaymentForLate, totalCapital } = earningAggregates;
 
-            const financialPaymentsRef = collection(firestore, "companies", companyId, "financialsPayments");
-            const financialPaymentsSnap = await getAggregateFromServer(financialPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalFinancialPayments = financialPaymentsSnap.data().totalPayments ?? 0;
+            console.log("total pago por mora: ", totalPaymentForLate);
+            console.log("ganancia por interes: ", totalPaid - totalCapital);
+            const profitsBeforeExpensesWithOutPapeleria = ((totalPaid - totalCapital) - totalRenewal) + totalPaymentForLate;
+            console.log("ganancias antes de gastos (Sin Papelería)-> recaudo + mora: ", profitsBeforeExpensesWithOutPapeleria);
 
+            const deliveredAggregates = await this.getDeliveredDebtsAggregates(companyId);
+            const totalPapeleria = deliveredAggregates.totalPapeleria;
 
-            const debtsRef = collection(firestore, "companies", companyId, "debts");
-            const earningDebtsQuery = query(debtsRef, where("earning", "==", true));
-            const earningDebtsSnap = await getAggregateFromServer(earningDebtsQuery, {
-                totalPaid: sum("totalPaid"),
-                totalRenewal: sum("renewalPayment"),
-            });
+            console.log("ganancias por papeleria: ", totalPapeleria);
+            const profitsBeforeExpenses = profitsBeforeExpensesWithOutPapeleria + totalPapeleria;
+            console.log("ganancias antes de gastos recaudo + mora + papeleria: ", profitsBeforeExpenses);
 
-            const profitsBeforeExpenses =
-                (earningDebtsSnap.data().totalPaid ?? 0) +
-                (earningDebtsSnap.data().totalRenewal ?? 0);
+            // Pagos de impuestos
+            const totalTaxtPayments = await this.getTotalAmountFromCollection(companyId, "taxtPayments");
 
-            const deliveredDebtsQuery = query(debtsRef, where("delivered", "==", true));
-            const deliveredDebtsSnap = await getAggregateFromServer(deliveredDebtsQuery, {
-                totalPapeleria: sum("papeleria"),
-            });
-            const totalPapeleria = deliveredDebtsSnap.data().totalPapeleria ?? 0;
-            const stationeryProfits = profitsBeforeExpenses + totalPapeleria;
+            // Otros pagos
+            const totalAnotherPayments = await this.getTotalAmountFromCollection(companyId, "anotherPayments");
 
-            const profitAfterExpenses = stationeryProfits - businessExpenses - totalFinancialPayments;
-            const socialContribution = snap.data().totalIncomes ?? 0;
+            // --- 3. Deuda adquirida (sum financialDebts.amount - sum financialsPayments.amount) ---
+            const totalFinancialDebts = await this.getTotalAmountFromCollection(companyId, "financialDebts");
+            console.log("financiamiento: ", totalFinancialDebts);
 
-            return ok({ socialContribution, profitAfterExpenses });
+            // 1. perdida por creditos inactivos
+            const inactiveAggregates = await this.getInactiveDebtsAggregates(companyId);
+            const cancelledCredits = minZero(inactiveAggregates.totalCapital - inactiveAggregates.totalPaid);
+
+            const totalExpenses = totalFinancialPayments + totalAnotherPayments + totalTaxtPayments + payRolls + cancelledCredits;
+
+            const profitAfterExpenses = profitsBeforeExpenses - totalExpenses;
+
+            return ok({ socialContribution, profitAfterExpenses, totalFinancialDebts });
         } catch (error) {
             console.error("[FirebaseSummaryRepository.getEquityDetails]", error);
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
 
-    async getExpensivesDetails(input: { companyId: string }): Promise<Result<GetExpensivesOutput, GetExpensivesError>> {
+    async getExpensivesDetails(input: GetExpensivesInput): Promise<Result<GetExpensivesOutput, GetExpensivesError>> {
         try {
             const { companyId } = input;
 
             // Gastos de nómina
-            const payrollRef = collection(firestore, "companies", companyId, "payroll");
-            const payrollSnap = await getAggregateFromServer(payrollRef, {
-                totalPayroll: sum("amount"),
-            });
-            const businessExpenses: number = payrollSnap.data().totalPayroll ?? 0;
+            const businessExpenses = await this.getTotalAmountFromCollection(companyId, "payroll");
 
             // Pagos a deudas de la empresa (financiamientos)
-            const financialPaymentsRef = collection(firestore, "companies", companyId, "financialsPayments");
-            const financialPaymentsSnap = await getAggregateFromServer(financialPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalFinancialPayments: number = financialPaymentsSnap.data().totalPayments ?? 0;
+            const totalFinancialPayments = await this.getTotalAmountFromCollection(companyId, "financialsPayments");
 
             // Pagos de impuestos
-            const taxtPaymentsRef = collection(firestore, "companies", companyId, "taxtPayments");
-            const taxtPaymentsSnap = await getAggregateFromServer(taxtPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalTaxtPayments: number = taxtPaymentsSnap.data().totalPayments ?? 0;
+            const totalTaxtPayments = await this.getTotalAmountFromCollection(companyId, "taxtPayments");
 
             // Otros pagos
-            const anotherPaymentsRef = collection(firestore, "companies", companyId, "anotherPayments");
-            const anotherPaymentsSnap = await getAggregateFromServer(anotherPaymentsRef, {
-                totalPayments: sum("amount"),
-            });
-            const totalAnotherPayments: number = anotherPaymentsSnap.data().totalPayments ?? 0;
+            const totalAnotherPayments = await this.getTotalAmountFromCollection(companyId, "anotherPayments");
 
             const totalExpenses = (businessExpenses) + (totalFinancialPayments) + (totalTaxtPayments) + (totalAnotherPayments);
 
-            return ok({ payrollExpenses: businessExpenses, financingPayments: totalFinancialPayments, taxExpenses: totalTaxtPayments, othersExpenses: totalAnotherPayments, totalExpenses: totalExpenses });
+            // 1. perdida por creditos inactivos
+            const inactiveAggregates = await this.getInactiveDebtsAggregates(companyId);
+            const cancelledCredits = minZero(inactiveAggregates.totalCapital - inactiveAggregates.totalPaid);
+
+            console.log(cancelledCredits);
+
+            return ok({ payrollExpenses: businessExpenses, financingPayments: totalFinancialPayments, taxExpenses: totalTaxtPayments, othersExpenses: totalAnotherPayments, totalExpenses: totalExpenses, cancelledCredits });
         } catch (error) {
             console.error("[FirebaseSummaryRepository.getExpensivesDetails]", error);
             return fail({ code: "UNKNOWN_ERROR" });
@@ -281,5 +324,5 @@ export class FirebaseSummaryRepository implements SummaryGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
-
 }
+

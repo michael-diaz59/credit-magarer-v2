@@ -14,18 +14,28 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
 
 
 
-    private toFirestore(attempt: Partial<CollectionAttempt>): DocumentData {
-        const { id: _id, ...data } = attempt;
-        const result: any = { ...data };
-
-        if (data.date !== undefined) result.date = encodeDate(data.date);
+    private toDocumentData(attempt: Omit<CollectionAttempt, "id">): DocumentData {
+        const result: DocumentData = {
+            installmentId: attempt.installmentId,
+            collectorId: attempt.collectorId,
+            routeId: attempt.routeId,
+            debtId: attempt.debtId,
+            customerId: attempt.customerId,
+            companyId: attempt.companyId,
+            auditorDescription: attempt.auditorDescription,
+            colletorDescription: attempt.colletorDescription,
+            date: attempt.date ? encodeDate(attempt.date) : undefined,
+            location: attempt.location,
+            name: attempt.name,
+        };
 
         return removeUndefined(result);
     }
 
-    private fromFirestore(id: string, data: DocumentData): CollectionAttempt {
+    private toCollectionAttempt(id: string, data: DocumentData): CollectionAttempt {
         return {
             id,
+            routeId: data.routeId ?? "",
             installmentId: data.installmentId ?? "",
             collectorId: data.collectorId ?? "",
             debtId: data.debtId ?? "",
@@ -52,7 +62,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
 
             const docRef = doc(colRef);
 
-            await setDoc(docRef, this.toFirestore(attempt));
+            await setDoc(docRef, this.toDocumentData(attempt));
 
             return ok(null);
         } catch (error) {
@@ -86,7 +96,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
 
             const snapshot = await getDocs(q);
 
-            const attempts = snapshot.docs.map(doc => this.fromFirestore(doc.id, doc.data()));
+            const attempts = snapshot.docs.map(doc => this.toCollectionAttempt(doc.id, doc.data()));
 
             return ok(attempts);
         } catch (error) {
@@ -104,7 +114,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
                 return fail({ code: "ATTEMPT_NOT_FOUND" });
             }
 
-            return ok(this.fromFirestore(snapshot.id, snapshot.data()));
+            return ok(this.toCollectionAttempt(snapshot.id, snapshot.data()));
         } catch (error) {
             console.error("[FirebaseCollectionAttemptRepository.getById]", error);
             return fail({ code: "UNKNOWN_ERROR" });

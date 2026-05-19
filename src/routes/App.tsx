@@ -11,6 +11,7 @@ import {
 } from "../features/userAuthentication/route/ProtectedRouteProps.tsx";
 import LoginPage from "./login/LoginController.tsx";
 import Dashboard from "../atomic_design/templates/home/home.tsx";
+import { UploadExcelScreen } from "../atomic_design/templates/home/UploadExcelScreen.tsx";
 import OfficeSalesLayout from "./seller/OfficeSeller_layout.tsx";
 import { ClientListPage } from "../atomic_design/templates/sale/clients.tsx";
 import { CostumerForm } from "../atomic_design/templates/costumers/CostumerForm.tsx";
@@ -65,6 +66,7 @@ import { GeneralSummaryScreen } from "../atomic_design/templates/accountant/Summ
 import { ProfitDetailsScreen } from "../atomic_design/templates/accountant/Summary/ProfitDetailsScreen.tsx";
 import { EquityDetailsScreen } from "../atomic_design/templates/accountant/Summary/EquityDetailsScreen.tsx";
 import { BusinessExpensesDetailsScreen } from "../atomic_design/templates/accountant/Summary/BusinessExpensesDetailsScreen.tsx";
+import { GrossProfitDetailsScreen } from "../atomic_design/templates/accountant/Summary/GrossProfitDetailsScreen.tsx";
 import { IncomeScreen } from "../atomic_design/templates/accountant/incomes/IncomeScreen.tsx";
 import { TaxtPaymentsScreen } from "../atomic_design/templates/accountant/Taxt/TaxtPaymentsScreen.tsx";
 import { RegisterTaxtPaymentScreen } from "../atomic_design/templates/accountant/Taxt/RegisterTaxtPaymentScreen.tsx";
@@ -78,6 +80,7 @@ import { FinancialPaymentDetailsScreen } from "../atomic_design/templates/accoun
 import { PayrollHistoryScreen } from "../atomic_design/templates/accountant/Roster/PayrollHistoryScreen.tsx";
 import { PayrollPaymentDetailScreen } from "../atomic_design/templates/accountant/Roster/PayrollPaymentDetailScreen.tsx";
 import { ForecastScreen } from "../atomic_design/templates/accountant/Forecast/ForecastScreen.tsx";
+import { FinancialReportsScreen } from "../atomic_design/templates/accountant/FinancialReportsScreen.tsx";
 
 
 
@@ -114,6 +117,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path={ScreenPaths.uploadExcel} element={<UploadExcelScreen />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 
@@ -580,6 +584,16 @@ export default function App() {
         }
       />
       <Route
+        path={ScreenPaths.accountant.grossProfitDetails}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <GrossProfitDetailsScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
         path={ScreenPaths.accountant.equityDetails}
         element={
           <ProtectedAuth>
@@ -715,6 +729,16 @@ export default function App() {
           <ProtectedAuth>
             <ProtectedAccountant>
               <ForecastScreen />
+            </ProtectedAccountant>
+          </ProtectedAuth>
+        }
+      />
+      <Route
+        path={ScreenPaths.accountant.financialReports}
+        element={
+          <ProtectedAuth>
+            <ProtectedAccountant>
+              <FinancialReportsScreen />
             </ProtectedAccountant>
           </ProtectedAuth>
         }

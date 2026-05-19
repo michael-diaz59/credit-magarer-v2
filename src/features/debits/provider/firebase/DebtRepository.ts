@@ -235,6 +235,133 @@ export class FirebaseDebtRepository implements DebtGateway {
         }
     }
 
+    async reserveDebtNumbers(
+        companyId: string,
+        quantity: number
+    ): Promise<Result<number[], CreateDebtError>> {
+        try {
+            const countersRef = doc(
+                firestore,
+                "companies",
+                companyId,
+                "metadata",
+                "counters"
+            );
+
+            const numbers = await runTransaction(
+                firestore,
+                async (tx) => {
+                    const snap = await tx.get(countersRef);
+
+                    const current = snap.exists()
+                        ? snap.data().debtCount ?? 0
+                        : 0;
+
+                    const start = current + 1;
+                    const end = current + quantity;
+
+                    tx.set(
+                        countersRef,
+                        {
+                            debtCount: end,
+                        },
+                        { merge: true }
+                    );
+
+                    return Array.from(
+                        { length: quantity },
+                        (_, i) => start + i
+                    );
+                }
+            );
+
+            return ok(numbers);
+        } catch (error) {
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
+    chunkArray<T>(
+        array: T[],
+        size: number
+    ): T[][] {
+        const result: T[][] = [];
+
+        for (let i = 0; i < array.length; i += size) {
+            result.push(array.slice(i, i + size));
+        }
+
+        return result;
+    }
+
+
+
+    async createMany(
+        input: {
+            companyId: string;
+            debts: Debt[];
+        }
+    ): Promise<Result<void, CreateDebtError>> {
+        try {
+            const debtsRef = collection(
+                firestore,
+                "companies",
+                input.companyId,
+                "debts"
+            );
+
+            // Reservar números UNA SOLA VEZ
+            const reserveResult = await this.reserveDebtNumbers(
+                input.companyId,
+                input.debts.length
+            );
+
+            if (!reserveResult.ok) {
+                return fail(reserveResult.error);
+            }
+
+            const numbers = reserveResult.value;
+
+            const chunks = this.chunkArray(input.debts, 500);
+
+            let globalIndex = 0;
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(firestore);
+
+                for (const debt of chunk) {
+                    const debtRef = doc(debtsRef);
+
+                    const debtNumber = numbers[globalIndex];
+
+                    const debtName = `DEBT-${debtNumber}`;
+
+                    batch.set(
+                        debtRef,
+                        DebtToDocumentData({
+                            ...debt,
+                            name: debtName,
+                        })
+                    );
+
+                    globalIndex++;
+                }
+
+                await batch.commit();
+            }
+
+            return ok(undefined);
+        } catch (error) {
+            console.error(error);
+
+            if (error instanceof FirebaseError) {
+                return fail({ code: "NETWORK_ERROR" });
+            }
+
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
     async create(
         input: CreateDebtUInput
     ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {

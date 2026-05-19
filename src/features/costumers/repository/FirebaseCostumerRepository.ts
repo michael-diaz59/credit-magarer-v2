@@ -1,6 +1,5 @@
 import {
   collection,
-  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -90,6 +89,7 @@ export async function customerDocumentExists(params: {
 
 /** <-deuda tecnica */
 export class FirebaseCostumerRepository implements CostumerGateway {
+
   async getCustomersListCase(
     input: GetCustomersListInput,
   ): Promise<Result<GetCustomersListOutput, GetCostumersErrors>> {
@@ -441,7 +441,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         const newIdNumber = costumer.applicant.idNumber;
 
         /* =========================
-                   🔁 CAMBIO DE CÉDULA
+                   🔁 CAMBIO DE CÉDULA en el índice de clientes
                 ========================= */
         if (oldIdNumber !== newIdNumber) {
           const oldIndexRef = doc(
@@ -473,6 +473,8 @@ export class FirebaseCostumerRepository implements CostumerGateway {
           });
         }
 
+        console.log(costumer.applicant.fullName);
+
         /* =========================
                    🆕 CAMBIO DE NOMBRE
                 ========================= */
@@ -496,6 +498,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
             [`items.${costumer.id}`]: costumer.applicant.fullName,
           });
         }
+        console.log("revison nombre actualizado");
 
         /* =========================
                    ✏️ UPDATE CUSTOMER
@@ -533,12 +536,16 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         });
       }
 
+      console.log("revison 3 documento actualizado");
+
       await this.syncCustomerDataAcrossDocuments({
         companyId,
         customer: costumer,
         oldIdNumber: oldIdNumberFromTx,
         isNameChange,
       });
+
+      console.log("revison 4 syncCustomerDataAcrossDocuments actualizado");
 
       return ok(undefined);
     } catch (error) {
@@ -600,12 +607,14 @@ export class FirebaseCostumerRepository implements CostumerGateway {
     ===================================================== */
 
     if (Object.keys(updateDebtData).length > 0) {
+      console.log("actualizando deudas");
       const debtsQuery = query(
         collection(firestore, "companies", companyId, "debts"),
         where("clientId", "==", customer.id)
       );
 
       const debtsSnap = await getDocs(debtsQuery);
+      console.log("revison 5 deudas actualizadas");
 
       for (const debtDoc of debtsSnap.docs) {
         batch.update(debtDoc.ref, updateDebtData);
@@ -620,17 +629,23 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       }
     }
 
+    console.log("revison 6 deudas actualizadas");
+
     /* =====================================================
        UPDATE INSTALLMENTS (SIEMPRE)
        🔥 UNA SOLA QUERY GLOBAL
     ===================================================== */
 
     const installmentsQuery = query(
-      collectionGroup(firestore, "installments"),
+      collection(firestore, "companies", companyId, "installments"),
       where("clientId", "==", customer.id)
     );
 
+    console.log("revison 7 cuotas actualizadas");
+
     const installmentsSnap = await getDocs(installmentsQuery);
+
+    console.log("revison 8 cuotas actualizadas");
 
     for (const installmentDoc of installmentsSnap.docs) {
       batch.update(installmentDoc.ref, {
@@ -647,9 +662,13 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       }
     }
 
+    console.log("revison 9 cuotas actualizadas");
+
     if (opCount > 0) {
       await batch.commit();
     }
+
+    console.log("revison 10 cuotas actualizadas");
   }
 
   async createCostumer(
@@ -814,6 +833,52 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       }
 
       return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+  async getMasiveCostumerByIdNumber(
+    input: {
+      companyId: string
+    }
+  ): Promise<Map<string, string> | null> {
+    try {
+      console.log(input);
+      /* -------- 1. Buscar en índice -------- */
+      const collectionRef = collection(
+        firestore,
+        "companies",
+        input.companyId,
+        "costumer_id_numbers",
+      );
+
+      const snap = await getDocs(collectionRef);
+      const map = new Map<string, string>();
+
+      snap.forEach((docSnap) => {
+        const data = docSnap.data() as {
+          costumerId: string;
+        };
+
+        map.set(
+          docSnap.id,
+          data.costumerId
+        );
+
+      });
+
+      return map;
+
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        console.log(error);
+        switch (error.code) {
+          case "permission-denied":
+          case "unauthenticated":
+          case "unavailable":
+            return null;
+        }
+      }
+
+      return null;
     }
   }
 }

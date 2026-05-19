@@ -26,6 +26,7 @@ import {
   Checkbox,
 } from "@mui/material";
 import {
+  defaultInstallment,
   type Installment,
 } from "../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
@@ -73,6 +74,7 @@ export const InstallmentDetailScreen = () => {
   const collectorId: string = user?.id ?? "";
   const companyId: string = user?.companyId ?? "";
 
+
   const [loading, setLoading] = useState(false);
 
   const [partialPaymentDialogOpen, setPartialPaymentDialogOpen] =
@@ -90,37 +92,7 @@ export const InstallmentDetailScreen = () => {
 
   const bankAccountOrchestrator = useMemo(() => new BankAccountOrchestrator(), []);
 
-  const emptyInstallment: Installment = {
-    id: "",
-    debtId: "",
-    companyId: "",
-    installmentTotalNumber: 0,
-    lateDueDate: "",
-    lateInterestRate: 0,
-    aplazado: false,
-    latepayment: 0,
-    payments: [],
-    paidLatePayment: 0,
-    paidAmount: 0,
-    paidAt: "",
-    interestRate: 0,
-    collectorId: "",
-    costumerId: "",
-    costumerDocument: "",
-    costumerName: "",
-    costumerNumber: "123213321321",
-    costumerAddres: {
-      address: "",
-      neighborhood: "",
-      stratum: 1,
-      city: "",
-    },
-    installmentNumber: 1,
-    amount: 0,
-    dueDate: new Date().toISOString().split("T")[0], // Fecha de hoy por defecto
-    status: "pendiente",
-    createdAt: new Date().toISOString(),
-  };
+  const emptyInstallment: Installment = { ...defaultInstallment, id: "" }
   const [installment, setInstallment] = useState<Installment>(emptyInstallment);
 
   const paymentOrchestrator = useMemo(() => new PaymentOrchestrator(), []);
@@ -162,7 +134,6 @@ export const InstallmentDetailScreen = () => {
 
         const result = await installmentsOrchestrator.getById({
           companyId: companyId,
-          collectorId: collectorId,
           installmentId: installmentId,
         });
 
@@ -252,15 +223,7 @@ export const InstallmentDetailScreen = () => {
         }
 
         const newMonto = selectedAccount.monto + amount;
-        if (newMonto > selectedAccount.tope) {
-          setDialogTitle("Tope Excedido");
-          setDialogBody(
-            `El registro no se puede hacer en la cuenta "${selectedAccount.name}" ya que viola el tope asignado de $ ${selectedAccount.tope.toLocaleString()}.`
-          );
-          setDialogOpen(true);
-          setLoading(false);
-          return;
-        }
+
 
         // Update Bank Account amount
         const updateResult = await bankAccountOrchestrator.update({
@@ -471,6 +434,7 @@ export const InstallmentDetailScreen = () => {
       const result = await orchestrator.createAttempt({
         companyId,
         collectorId,
+        routeId: installment.routeId,
         installmentId,
         description: attemptDescription,
         location

@@ -25,7 +25,7 @@ export class UpdateUserUseCase {
                 // 1. Obtener el usuario actual
                 const currentResult = await this.userRepository.getById2(input.idUser, input.idCompany);
                 if (!currentResult.ok) {
-                    return fail(currentResult.error);
+                    return fail({ code: "USER_NOT_FOUND" });
                 }
 
                 const currentUser = currentResult.value;

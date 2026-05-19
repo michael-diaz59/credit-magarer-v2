@@ -54,8 +54,8 @@ export interface Installment {
   /**tasa de interes para retraso*/
   lateInterestRate: number
 
-  /**id del collector */
-  collectorId: string;
+  /**id de la ruta asignada */
+  routeId: string;
 
   /**id del cliente*/
   costumerId: string;
@@ -142,7 +142,7 @@ export const defaultInstallment: Omit<Installment, "id"> = {
   companyId: "",
   interestRate: 0,
   lateInterestRate: 0,
-  collectorId: "",
+  routeId: "",
   costumerId: "",
   costumerDocument: "",
   costumerName: "",

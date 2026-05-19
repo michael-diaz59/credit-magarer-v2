@@ -11,6 +11,29 @@ function addDays(date: Date, days: number) {
   return d;
 }
 
+const colombianHolidays2026 = new Set([
+  "2026-01-01", "2026-01-12", "2026-03-23", "2026-04-02", "2026-04-03",
+  "2026-05-01", "2026-05-18", "2026-06-08", "2026-06-15", "2026-06-29",
+  "2026-07-20", "2026-08-07", "2026-08-17", "2026-10-12", "2026-11-02",
+  "2026-11-16", "2026-12-08", "2026-12-25"
+]);
+
+function getValidDueDate(date: Date): Date {
+  let validDate = new Date(date);
+  while (true) {
+    const isSunday = validDate.getDay() === 0;
+    const dateStr = validDate.toISOString().slice(0, 10);
+    const isHoliday = colombianHolidays2026.has(dateStr);
+
+    if (isSunday || isHoliday) {
+      validDate = addDays(validDate, 1);
+    } else {
+      break;
+    }
+  }
+  return validDate;
+}
+
 type RoundResult = {
   rounded: number;
   difference: number;
@@ -92,7 +115,8 @@ export function generateInstallments2(
 
   // 🔹 4. Generar cuotas finales
   for (let i = 0; i < debt.installmentCount; i++) {
-    const dueDate = addDays(start, stepDays * (i + 1));
+    const rawDueDate = addDays(start, stepDays * (i + 1));
+    const dueDate = getValidDueDate(rawDueDate);
 
     installments.push({
       installmentTotalNumber: debt.installmentCount,
@@ -104,12 +128,11 @@ export function generateInstallments2(
       lateInterestRate: 0,
       aplazado: false,
       latepayment: 0,
+      routeId: debt.routeId,
       paidLatePayment: 0,
-
       companyId: companyId,
       id: crypto.randomUUID(),
       debtId: debt.id,
-      collectorId: debt.collectorId,
       costumerId: debt.clientId,
       costumerDocument: debt.costumerDocument,
       costumerName: debt.costumerName,
@@ -125,8 +148,8 @@ export function generateInstallments2(
 
   return {
     installments,
-    firstDueDate: installments[0].dueDate,
     nextPaymentDue: installments[0].dueDate,
+    firstDueDate: installments[installments.length - 1].dueDate,
   };
 }
 

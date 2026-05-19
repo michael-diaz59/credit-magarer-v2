@@ -16,6 +16,7 @@ import { GetDebtsByRouteUseCase, type GetDebtsByRouteInput, type GetDebtsByRoute
 import { GetTotalDeliveredCapitalUseCase, type GetTotalDeliveredCapitalInput, type GetTotalDeliveredCapitalOutput, type GetTotalDeliveredCapitalError } from "../business/useCases/debt/GetTotalDeliveredCapitalUseCase";
 import { GetSumRenewalPaymentUseCase, type GetSumRenewalPaymentInput, type GetSumRenewalPaymentOutput, type GetSumRenewalPaymentError } from "../business/useCases/debt/GetSumRenewalPaymentUseCase";
 import { ConfirmDebtDeliveryUseCase, type ConfirmDebtDeliveryInput } from "../business/useCases/debt/ConfirmDebtDeliveryUseCase";
+import { CreateDebtFromExcelCase, type CreateDebtFromExcelInput } from "../business/useCases/debt/createDebtFromExcel";
 import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
 
 export default class DebtOrchestrator {
@@ -33,6 +34,7 @@ export default class DebtOrchestrator {
     private getTotalDeliveredCapitalUseCase: GetTotalDeliveredCapitalUseCase
     private getSumRenewalPaymentUseCase: GetSumRenewalPaymentUseCase
     private confirmDebtDeliveryUseCase: ConfirmDebtDeliveryUseCase
+    private createDebtFromExcelCase: CreateDebtFromExcelCase
 
     private getInstallmentsByDebtCase: GetInstallmentsByDebtCase
     private updateInstallmentByDebtCase: UpdateInstallmentByDebtCase
@@ -58,6 +60,7 @@ export default class DebtOrchestrator {
         this.getTotalDeliveredCapitalUseCase = new GetTotalDeliveredCapitalUseCase(this.debtGateway)
         this.getSumRenewalPaymentUseCase = new GetSumRenewalPaymentUseCase(this.debtGateway)
         this.confirmDebtDeliveryUseCase = new ConfirmDebtDeliveryUseCase(this.debtGateway)
+        this.createDebtFromExcelCase = new CreateDebtFromExcelCase(this.debtGateway)
     }
 
     async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
@@ -80,6 +83,10 @@ export default class DebtOrchestrator {
 
     async createDebt(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
         return this.createDebtCase.execute(input)
+    }
+
+    async createDebtFromExcel(input: CreateDebtFromExcelInput): Promise<Result<void, CreateDebtError>> {
+        return this.createDebtFromExcelCase.execute(input)
     }
 
     async getDebitById(input: GetDebitByIdInput): Promise<GetDebitByIdOutput> {

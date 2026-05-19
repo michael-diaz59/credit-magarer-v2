@@ -52,15 +52,42 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
 
 
   private InstallmetToDocument(installment: Omit<Installment, "id">): DocumentData {
-
-    const result: any = { installment };
-
-    if (result.managementDate !== undefined) result.managementDate = encodeDate(installment.managementDate);
-    if (result.dateAttemptedPayment !== undefined) result.dateAttemptedPayment = encodeDate(installment.dateAttemptedPayment);
-    if (result.dueDate !== undefined) result.dueDate = encodeDate(installment.dueDate);
-    if (result.lateDueDate !== undefined) result.lateDueDate = encodeDate(installment.lateDueDate);
-    if (result.paidAt !== undefined) result.paidAt = encodeDate(installment.paidAt);
-    if (result.createdAt !== undefined) result.createdAt = encodeDate(installment.createdAt);
+    const result: DocumentData = {
+      companyId: installment.companyId,
+      debtId: installment.debtId,
+      interestRate: installment.interestRate,
+      lateInterestRate: installment.lateInterestRate,
+      routeId: installment.routeId,
+      costumerId: installment.costumerId,
+      costumerDocument: installment.costumerDocument,
+      costumerName: installment.costumerName,
+      costumerNumber: installment.costumerNumber,
+      costumerAddres: {
+        address: installment.costumerAddres?.address ?? "",
+        neighborhood: installment.costumerAddres?.neighborhood ?? "",
+        stratum: installment.costumerAddres?.stratum ?? 0,
+        city: installment.costumerAddres?.city ?? "",
+      },
+      managed: installment.managed,
+      managementDate: installment.managementDate ? encodeDate(installment.managementDate) : undefined,
+      attemptedCollection: installment.attemptedCollection,
+      dateAttemptedPayment: installment.dateAttemptedPayment ? encodeDate(installment.dateAttemptedPayment) : undefined,
+      descriptionAttemptedPayment: installment.descriptionAttemptedPayment,
+      locationAttemptedPayment: installment.locationAttemptedPayment,
+      installmentTotalNumber: installment.installmentTotalNumber,
+      installmentNumber: installment.installmentNumber,
+      amount: installment.amount,
+      paidAmount: installment.paidAmount,
+      latepayment: installment.latepayment,
+      dueDate: installment.dueDate ? encodeDate(installment.dueDate) : undefined,
+      lateDueDate: installment.lateDueDate ? encodeDate(installment.lateDueDate) : undefined,
+      status: installment.status,
+      paidAt: installment.paidAt ? encodeDate(installment.paidAt) : undefined,
+      createdAt: installment.createdAt ? encodeDate(installment.createdAt) : undefined,
+      payments: installment.payments,
+      paidLatePayment: installment.paidLatePayment,
+      aplazado: installment.aplazado,
+    };
 
     return removeUndefined(result);
   }
@@ -73,7 +100,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       debtId: data.debtId ?? "",
       interestRate: data.interestRate ?? 0,
       lateInterestRate: data.lateInterestRate ?? 0,
-      collectorId: data.collectorId ?? "",
+      routeId: data.routeId ?? "",
       costumerId: data.costumerId ?? "",
       costumerDocument: data.costumerDocument ?? "",
       costumerName: data.costumerName ?? "",
@@ -132,11 +159,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         return fail({ code: "INSTALLMENT_NOT_FOUND" });
       }
 
-      // ⚠️ Nunca actualices el ID
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, ...dataToUpdate } = installment;
-
-      await updateDoc(ref, this.InstallmetToDocument(dataToUpdate));
+      await updateDoc(ref, this.InstallmetToDocument(installment));
 
       return ok({
         state: null,
@@ -290,10 +313,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
           installment.id,
         );
 
-        //  Nunca mandes el id dentro del documento
-        const { id: _id, ...data } = installment;
-
-        batch.update(ref, this.InstallmetToDocument(data));
+        batch.update(ref, this.InstallmetToDocument(installment));
       }
 
       await batch.commit();

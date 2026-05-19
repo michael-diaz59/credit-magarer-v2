@@ -51,6 +51,11 @@ export interface DebtGateway {
 
   getSumOfDeliveredCapital(companyId: string): Promise<Result<number, any>>;
   getSumOfRenewalPayment(companyId: string): Promise<Result<number, any>>;
+
+  createMany(input: {
+    companyId: string;
+    debts: Debt[];
+  }): Promise<Result<void, CreateDebtError>>;
 }
 
 export interface InstallmentGateway {

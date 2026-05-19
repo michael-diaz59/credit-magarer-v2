@@ -15,5 +15,13 @@ export interface ProfitDetails {
 export interface EquityDetails {
     socialContribution: number;
     profitAfterExpenses: number;
+    totalFinancialDebts: number;
+}
+
+export interface GrossProfitDetails {
+    collectionProfits: number;
+    lateFeeProfits: number;
+    stationeryProfits: number;
+    totalGrossProfit: number;
 }
 

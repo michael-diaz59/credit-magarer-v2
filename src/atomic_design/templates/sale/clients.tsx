@@ -99,11 +99,11 @@ export const ClientListPage = () => {
           navigate(ScreenPaths.advisor.home);
         }}   ></BaseDialog>
       <Typography variant="h4" fontWeight={600} mb={3}>
-        clientes
+        clientes ({customers.length})
       </Typography>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={2}>
         <TextField
-          label="Buscar por nombre o cedula"
+          label={`Buscar por nombre o cedula (${filteredCustomer.length})`}
           value={searchCustomer}
           onChange={(e) => setSearchCustomer(e.target.value)}
           fullWidth

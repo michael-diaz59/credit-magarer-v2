@@ -49,8 +49,6 @@ export type DebtTerms = "diario" | "semanal" | "quincenal" | "mensual";
 export interface Debt {
   id: string;
 
-  collectorId: string;
-
   /*id de la ruta a la que etsa enlazada la deuda* */
   routeId: string
 
@@ -76,21 +74,31 @@ export interface Debt {
   deliveredStatus: delivered_status;
 
 
-  /**indica el valor de pago de la deuda que se hizo por renovacion */
+  /**indica el valor pagado de la deuda por concepto de renovacion */
   renewalPayment: number;
 
   /** total del capital prestado sin intereses */
   capital: number;
 
-  /**total del prestamo pedido con intereses */
+  /**total de intereses que genera la deuda*/
+  totalInterest: number;
+
+  /**total del prestamo pedido con intereses (capital + totalInterest) */
   totalAmount: number;
 
-  /**indica si la deuda tiene ganancias */
-  earning: boolean;
+  /**indica si la deuda se termino de pagar en termno porcential 1 a 100 (capital + interes sin contar retraso)*/
+  creditPaid: number;
 
+  /**indica si el capital de la deuda se termino de pagar en termno porcential 1 a 100*/
+  capitalPaid: number;
+  /**indica si el interes de la deuda se termino de pagar en termno porcential 1 a 100*/
+  interestPaid: number;
 
   /**total pagado hasta el momento por base de cuotas */
   totalPaid: number;
+
+  /**restante para completar pago de credito( capital + intereses pendientes) no toma en cuenta mora*/
+  remainingToCompleteCredit: number;
 
   /** total pagado por interes de mora de la deuda */
   totalPaymentForLate: number;
@@ -156,12 +164,15 @@ export function createEmptyDebt(): Debt {
 
   return {
     id: "",
-    collectorId: "",
+    capitalPaid: 0,
+    interestPaid: 0,
+    totalInterest: 0,
+    remainingToCompleteCredit: 0,
     deliveredStatus: "false_preparacion",
     routeId: "",
     type: "credito",
     renewalPayment: 0,
-    earning: false,
+    creditPaid: 0,
     delivered: false,
     idVisit: "",
     debtTerms: "diario",
@@ -202,10 +213,13 @@ export function createBasicDebt(): Debt {
 
   return {
     id: "",
-    collectorId: "",
+    capitalPaid: 0,
+    interestPaid: 0,
+    totalInterest: 0,
+    remainingToCompleteCredit: 0,
     deliveredStatus: "false_preparacion",
     routeId: "",
-    earning: false,
+    creditPaid: 0,
     type: "credito",
     renewalPayment: 0,
     delivered: false,

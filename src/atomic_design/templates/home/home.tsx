@@ -5,6 +5,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import GavelIcon from "@mui/icons-material/Gavel";
 import PeopleIcon from "@mui/icons-material/People";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 
 import { CustomSx } from "../../sub_atomic_particles/Custom_sx";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
@@ -54,6 +55,16 @@ const Dashboard: React.FC = () => {
         />
       ),
       path: ScreenPaths.collector.home,
+    },
+    {
+      label: "Cargue de datos Excel",
+      icon: (
+        <CloudUploadIcon
+          fontSize="large"
+          sx={{ color: theme.palette.primary.contrastText }}
+        />
+      ),
+      path: ScreenPaths.uploadExcel,
     },
   ];
 

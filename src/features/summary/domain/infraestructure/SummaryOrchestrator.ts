@@ -2,6 +2,7 @@ import type { Result } from "../../../../core/helpers/ResultC";
 import { GetGeneralSummaryUseCase, type GetGeneralSummaryInput, type GetGeneralSummaryOutput, type GetGeneralSummaryError } from "../business/useCases/GetGeneralSummaryUseCase";
 import { GetProfitDetailsUseCase, type GetProfitDetailsInput, type GetProfitDetailsOutput, type GetProfitDetailsError } from "../business/useCases/GetProfitDetailsUseCase";
 import { GetEquityDetailsUseCase, type GetEquityDetailsInput, type GetEquityDetailsOutput, type GetEquityDetailsError } from "../business/useCases/GetEquityDetailsUseCase";
+import { GetGrossProfitDetailsUseCase, type GetGrossProfitDetailsInput, type GetGrossProfitDetailsOutput, type GetGrossProfitDetailsError } from "../business/useCases/GetGrossProfitDetailsUseCase";
 import type { SummaryGateway } from "./SummaryGateway";
 import { FirebaseSummaryRepository } from "../../provider/firebase/FirebaseSummaryRepository";
 import { GetExpensivesCase, type GetExpensivesError, type GetExpensivesInput, type GetExpensivesOutput } from "../business/useCases/GetExpensivesCase";
@@ -10,6 +11,7 @@ import { GetFinancialAggregatesByDateRangeUseCase, type GetFinancialAggregatesEr
 export default class SummaryOrchestrator {
     private getGeneralSummaryUseCase: GetGeneralSummaryUseCase;
     private getProfitDetailsUseCase: GetProfitDetailsUseCase;
+    private getGrossProfitDetailsUseCase: GetGrossProfitDetailsUseCase;
     private getEquityDetailsUseCase: GetEquityDetailsUseCase;
     private getExpensivesDetailsUseCase: GetExpensivesCase;
     private getFinancialAggregatesByDateRangeUseCase: GetFinancialAggregatesByDateRangeUseCase;
@@ -20,6 +22,7 @@ export default class SummaryOrchestrator {
         this.getExpensivesDetailsUseCase = new GetExpensivesCase(this.summaryGateway);
         this.getGeneralSummaryUseCase = new GetGeneralSummaryUseCase(this.summaryGateway);
         this.getProfitDetailsUseCase = new GetProfitDetailsUseCase(this.summaryGateway);
+        this.getGrossProfitDetailsUseCase = new GetGrossProfitDetailsUseCase(this.summaryGateway);
         this.getEquityDetailsUseCase = new GetEquityDetailsUseCase(this.summaryGateway);
         this.getFinancialAggregatesByDateRangeUseCase = new GetFinancialAggregatesByDateRangeUseCase(this.summaryGateway);
     }
@@ -30,6 +33,10 @@ export default class SummaryOrchestrator {
 
     async getProfitDetails(input: GetProfitDetailsInput): Promise<Result<GetProfitDetailsOutput, GetProfitDetailsError>> {
         return this.getProfitDetailsUseCase.execute(input);
+    }
+
+    async getGrossProfitDetails(input: GetGrossProfitDetailsInput): Promise<Result<GetGrossProfitDetailsOutput, GetGrossProfitDetailsError>> {
+        return this.getGrossProfitDetailsUseCase.execute(input);
     }
 
     async getEquityDetails(input: GetEquityDetailsInput): Promise<Result<GetEquityDetailsOutput, GetEquityDetailsError>> {

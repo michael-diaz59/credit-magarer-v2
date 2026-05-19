@@ -158,12 +158,17 @@ export class CreateInstallmentsUseCase {
         lateInterestRate: 0,
         aplazado: false,
         companyId: companyId,
+
         latepayment: 0,
         paidAmount: 0,
         paidAt: "",
+        routeId: debt.routeId,
+        attemptedCollection: false,
+        dateAttemptedPayment: "",
+        descriptionAttemptedPayment: "",
         debtId: debt.id,
         interestRate: debt.interestRate,
-        collectorId: debt.collectorId,
+
         costumerId: debt.clientId,
         costumerDocument: debt.costumerDocument,
         costumerName: debt.costumerName,

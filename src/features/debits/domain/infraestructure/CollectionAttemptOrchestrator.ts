@@ -3,7 +3,7 @@ import { FirebaseCollectionAttemptRepository } from "../../provider/firebase/Fir
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import {
     CreateCollectionAttemptUseCase,
-    type CreateCollectionAttemptUseCaseInput
+    type CreateCollectionAttemptInput
 } from "../business/useCases/installment/CreateCollectionAttemptUseCase";
 
 export class CollectionAttemptOrchestrator {
@@ -17,7 +17,7 @@ export class CollectionAttemptOrchestrator {
         this.createUseCase = new CreateCollectionAttemptUseCase(this.attemptRepo, installmentRepo, debtRepo);
     }
 
-    async createAttempt(input: CreateCollectionAttemptUseCaseInput) {
+    async createAttempt(input: CreateCollectionAttemptInput) {
         return await this.createUseCase.execute(input);
     }
 

@@ -64,35 +64,18 @@ export const ProfitDetailsScreen: React.FC = () => {
 
             <Box display="flex" flexDirection="column" gap={3}>
 
-                {/* Ganancias con papeleria */}
-                <Card sx={{ boxShadow: 3, borderRadius: 3, bgcolor: theme.palette.secondary.light, color: theme.palette.secondary.contrastText }}>
-                    <CardActionArea onClick={() => navigate(ScreenPaths.accountant.debits)}>
-                        <CardContent sx={{ textAlign: "center", py: 4 }}>
-                            <Typography variant="h6" fontWeight="medium" gutterBottom>
-                                Ganancias en papelería
-                            </Typography>
-                            <Typography variant="h3" fontWeight="bold">
-                                $ {FormatNumberToMoney(details.stationeryProfits)}
-                            </Typography>
-                            <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.8 }}>
-                                Presiona para ver detalles de créditos
-                            </Typography>
-                        </CardContent>
-                    </CardActionArea>
-                </Card>
-
                 {/* Ganancias antes de gastos */}
                 <Card sx={{ boxShadow: 3, borderRadius: 3, bgcolor: theme.palette.primary.light, color: theme.palette.primary.contrastText }}>
-                    <CardActionArea onClick={() => navigate(ScreenPaths.accountant.debits)}>
+                    <CardActionArea onClick={() => navigate(ScreenPaths.accountant.grossProfitDetails)}>
                         <CardContent sx={{ textAlign: "center", py: 4 }}>
                             <Typography variant="h6" fontWeight="medium" gutterBottom>
-                                Ganancias antes de gastos(sin papeleria)
+                                Ganancias antes de gastos
                             </Typography>
                             <Typography variant="h3" fontWeight="bold">
-                                $ {FormatNumberToMoney(details.profitsBeforeExpenses)}
+                                $ {FormatNumberToMoney(details.profitsBeforeExpenses + details.stationeryProfits)}
                             </Typography>
                             <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.8 }}>
-                                Presiona para ver detalles de créditos
+                                Presiona para ver detalles de ganancias
                             </Typography>
                         </CardContent>
                     </CardActionArea>

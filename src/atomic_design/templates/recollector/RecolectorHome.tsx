@@ -24,7 +24,6 @@ import {
 } from "../../organisms/ToCollectHomeBody";
 
 import { RouteManagementDialog } from "../../organisms/RouteManagementDialog";
-import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 
 /** indica si una fecha es menor a la actual */
 export function IsPastDate(dateStr: string): boolean {
@@ -305,10 +304,3 @@ export const RecolectorHome = () => {
     </Box>
   );
 };
-
-function getDebtByRoute(companyId: string, idRoutes: string[]) {
-  const orchestrator = new DebtOrchestrator();
-  orchestrator.getDebtsByRoute({ companyId: companyId, routeId: idRoutes[0] })
-
-
-}

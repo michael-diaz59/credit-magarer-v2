@@ -18,6 +18,8 @@ export interface GetExpensivesOutput {
     taxExpenses: number;
     //**otros pagos */
     othersExpenses: number;
+    //**creditos anulados */
+    cancelledCredits: number;
     //**total de gastos */
     totalExpenses: number;
 }

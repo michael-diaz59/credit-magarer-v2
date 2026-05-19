@@ -1,5 +1,6 @@
 export type getUserError =
     | { code: "NETWORK_ERROR" }
+    | { code: "USER_NOT_FOUND:IN_COMPANY" }
     | { code: "UNKNOWN_ERROR" }
 
 export type setUserError =

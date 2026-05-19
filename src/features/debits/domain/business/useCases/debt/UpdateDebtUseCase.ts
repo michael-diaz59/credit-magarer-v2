@@ -177,8 +177,8 @@ export class UpdateDebtUseCase {
               let updateNeeded = false;
 
               //marca como ganancias a la deuda original
-              if (originalDebtEntity.earning === false) {
-                originalDebtEntity.earning = true;
+              if (originalDebtEntity.creditPaid > 100) {
+                originalDebtEntity.creditPaid = 100;
                 updateNeeded = true;
               }
 

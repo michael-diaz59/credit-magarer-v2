@@ -75,6 +75,12 @@ export const BusinessExpensesDetailsScreen: React.FC = () => {
       color: theme.palette.secondary.main,
       path: ScreenPaths.accountant.anotherPayments
     },
+    {
+      label: "credito anulado",
+      amount: data.othersExpenses,
+      color: theme.palette.secondary.main,
+      path: ScreenPaths.accountant.debits
+    },
   ];
 
   return (

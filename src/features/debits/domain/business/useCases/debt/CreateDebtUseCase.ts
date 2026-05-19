@@ -82,7 +82,6 @@ export class CreateDebtUseCase {
       delivered: input.debt.delivered,
       routeId: input.debt.routeId,
       renewedToDebtId: input.debt.renewedToDebtId,
-      collectorId: input.debt.collectorId,
       type: input.debt.type,
       idVisit: input.debt.idVisit,
       debtTerms: input.debt.debtTerms,
