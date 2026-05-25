@@ -322,7 +322,7 @@ export class FirebaseDebtRepository implements DebtGateway {
 
             const numbers = reserveResult.value;
 
-            const chunks = this.chunkArray(input.debts, 500);
+            const chunks = this.chunkArray(input.debts, 200);
 
             let globalIndex = 0;
 
@@ -336,12 +336,15 @@ export class FirebaseDebtRepository implements DebtGateway {
 
                     const debtName = `DEBT-${debtNumber}`;
 
+                    // Asignamos el id y el name al objeto original en memoria
+                    // para que el código que llamó a esta función pueda usarlos.
+                    debt.id = debtRef.id;
+                    console.log("debt id", debt.id);
+                    debt.name = debtName;
+
                     batch.set(
                         debtRef,
-                        DebtToDocumentData({
-                            ...debt,
-                            name: debtName,
-                        })
+                        DebtToDocumentData(debt)
                     );
 
                     globalIndex++;
@@ -447,6 +450,76 @@ export class FirebaseDebtRepository implements DebtGateway {
             return { state: fail({ code: "UNKNOWN_ERROR" }) };
         }
     }
+
+    async migrateDeliveredStatus(
+        companyId: string
+    ) {
+        try {
+            const debtsRef = collection(
+                firestore,
+                "companies",
+                companyId,
+                "debts"
+            );
+
+            console.log("Obteniendo créditos...");
+
+            const snap = await getDocs(debtsRef);
+
+            console.log(
+                `Se encontraron ${snap.size} créditos`
+            );
+
+            const docs = snap.docs;
+
+            const chunks = this.chunkArray(docs, 500);
+
+            let updated = 0;
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(firestore);
+
+                for (const debtDoc of chunk) {
+                    const ref = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "debts",
+                        debtDoc.id
+                    );
+
+                    batch.update(ref, {
+                        deliveredStatus: "entregado",
+                    });
+
+                    updated++;
+                }
+
+                await batch.commit();
+
+                console.log(
+                    `${updated} créditos actualizados`
+                );
+            }
+
+            console.log(
+                "Migración completada correctamente"
+            );
+
+            return ok(true);
+
+        } catch (error) {
+            console.error(
+                "Error actualizando deliveredStatus",
+                error
+            );
+
+            return ok(true);
+        }
+    }
+
+
+
 
     async getById(
         input: GetDebitByIdInput

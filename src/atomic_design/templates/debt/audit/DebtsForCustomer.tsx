@@ -50,8 +50,8 @@ export const DebtsForCustomer = () => {
             if (!a.createdAt) return 1;
             return b.createdAt.localeCompare(a.createdAt);
           });
+          setDebts(sortDebtsByStatusAndDate(sorted));
 
-          setDebts(sorted);
         } else {
           setError("No se pudieron cargar las deudas del cliente");
         }
@@ -72,6 +72,8 @@ export const DebtsForCustomer = () => {
       </Box>
     );
   }
+
+
 
   return (
     <Box p={3}>
@@ -114,3 +116,35 @@ export const DebtsForCustomer = () => {
     </Box>
   );
 };
+
+function sortDebtsByStatusAndDate(
+  debts: Debt[]
+): Debt[] {
+
+  const paidDebts: Debt[] = [];
+  const otherDebts: Debt[] = [];
+
+  for (const debt of debts) {
+    if (debt.status === "pagada") {
+      paidDebts.push(debt);
+    } else {
+      otherDebts.push(debt);
+    }
+  }
+
+  const sortByDateDesc = (
+    a: Debt,
+    b: Debt
+  ) =>
+    Date.parse(b.startDate) -
+    Date.parse(a.startDate);
+
+  paidDebts.sort(sortByDateDesc);
+
+  otherDebts.sort(sortByDateDesc);
+
+  return [
+    ...paidDebts,
+    ...otherDebts,
+  ];
+}

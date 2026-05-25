@@ -31,7 +31,7 @@ export const PaymentDetailScreen = () => {
   const [payment, setPayment] = useState<Payment | null>(null);
 
   useEffect(() => {
-    console.log(paymentId,companyId)
+    console.log(paymentId, companyId)
     if (!paymentId || !companyId) return;
 
     const fetchPayment = async () => {
@@ -46,6 +46,7 @@ export const PaymentDetailScreen = () => {
 
         if (result.ok) {
           if (result.value) {
+            console.log("result.value", result.value)
             setPayment(result.value.payment);
           }
         }

@@ -5,7 +5,7 @@ import {
 import type { Debt, DebtTerms } from "../entities/Debt";
 import type { Installment } from "../entities/Installment";
 
-function addDays(date: Date, days: number) {
+export function addDays(date: Date, days: number) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
@@ -18,7 +18,7 @@ const colombianHolidays2026 = new Set([
   "2026-11-16", "2026-12-08", "2026-12-25"
 ]);
 
-function getValidDueDate(date: Date): Date {
+export function getValidDueDate(date: Date): Date {
   let validDate = new Date(date);
   while (true) {
     const isSunday = validDate.getDay() === 0;
@@ -368,3 +368,44 @@ export function calculateDebtFinancialsSimple({
     installmentCount: installmentCount,
   };
 }
+
+export interface DescuentoResult {
+  restado: number;
+  restante: number;
+}
+
+/**
+ * Descuenta del numero1 (monto disponible) todo lo que sea posible según el numero2 (monto requerido/límite).
+ * Retorna la cantidad que se logró restar y la cantidad que quedó del numero1.
+ *
+ * @param totalDisponible El monto original del cual se va a restar (Número 1).
+ * @param montoRequerido El valor límite o requerido que se desea restar (Número 2).
+ */
+export function descontarMonto(
+  totalDisponible: number,
+  montoRequerido: number
+): DescuentoResult {
+  const restado = Math.min(totalDisponible, montoRequerido);
+  const restante = totalDisponible - restado;
+  return { restado, restante };
+}
+
+/**
+ * Calcula cuántas cuotas completas se han pagado realmente en base al monto total pagado,
+ * el monto total de la deuda y la cantidad de cuotas.
+ *
+ * @param totalPaid El total de dinero pagado acumulado (Número 2).
+ * @param totalAmount El valor total del crédito (capital + intereses).
+ * @param installmentCount La cantidad de cuotas pactadas.
+ */
+export function calcularCuotasPagadas(
+  totalPaid: number,
+  totalAmount: number,
+  installmentCount: number
+): number {
+  if (totalAmount <= 0 || installmentCount <= 0) return 0;
+  const valorCuota = totalAmount / installmentCount;
+  return Math.min(Math.floor(totalPaid / valorCuota), installmentCount);
+}
+
+

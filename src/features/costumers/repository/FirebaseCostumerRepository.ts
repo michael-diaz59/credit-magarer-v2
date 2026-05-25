@@ -835,11 +835,72 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }
+
+  async updateCustomersDebtCounter(params: {
+    companyId: string;
+    customers: Customer[];
+  }): Promise<Result<void, { code: string }>> {
+    const { companyId, customers } = params;
+
+    try {
+      const batchLimit = 400;
+
+      let batch = writeBatch(firestore);
+      let operationCount = 0;
+
+      for (const customer of customers) {
+        const customerRef = doc(
+          firestore,
+          "companies",
+          companyId,
+          "customers",
+          customer.id,
+        );
+
+        batch.update(customerRef, {
+          debtCounter: customer.debtCounter,
+        });
+
+        operationCount++;
+
+        // 🔥 Firestore permite máximo 500 operaciones por batch
+        // usamos 400 por seguridad
+        if (operationCount >= batchLimit) {
+          await batch.commit();
+
+          batch = writeBatch(firestore);
+          operationCount = 0;
+        }
+      }
+
+      // 🔥 commit final
+      if (operationCount > 0) {
+        await batch.commit();
+      }
+
+      return ok(undefined);
+    } catch (error) {
+      console.log(error);
+
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "permission-denied":
+            return fail({ code: "PERMISSION_DENIED" });
+
+          case "unavailable":
+            return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
   async getMasiveCostumerByIdNumber(
     input: {
       companyId: string
     }
-  ): Promise<Map<string, string> | null> {
+  ): Promise<Map<string, Customer> | null> {
     try {
       console.log(input);
       /* -------- 1. Buscar en índice -------- */
@@ -851,18 +912,34 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       );
 
       const snap = await getDocs(collectionRef);
-      const map = new Map<string, string>();
+
+      /* -------- 2. Obtener todos los clientes -------- */
+      const customersRef = collection(
+        firestore,
+        "companies",
+        input.companyId,
+        "customers",
+      );
+      const customersSnap = await getDocs(customersRef);
+
+      const customersById = new Map<string, Customer>();
+      customersSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const customer = this.dataToCostumer(data, docSnap.id);
+        customersById.set(docSnap.id, customer);
+      });
+
+      const map = new Map<string, Customer>();
 
       snap.forEach((docSnap) => {
         const data = docSnap.data() as {
           costumerId: string;
         };
 
-        map.set(
-          docSnap.id,
-          data.costumerId
-        );
-
+        const customer = customersById.get(data.costumerId);
+        if (customer) {
+          map.set(docSnap.id, customer);
+        }
       });
 
       return map;

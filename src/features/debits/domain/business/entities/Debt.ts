@@ -148,6 +148,7 @@ export interface Debt {
 
   costumerName: string;
 
+  /**documento del costumer*/
   costumerDocument: string;
 
 

@@ -73,9 +73,10 @@ export default function DebtTable({ debts, onClick }: Props) {
                             debt.installmentCount - (debt.installmentsPaid ?? 0);
 
                         return (
-                            <TableRow key={debt.id} hover onClick={() => onClick?.(debt)}>
+                            <TableRow key={debt.id} hover onClick={() => onClick?.(debt)} sx={{ backgroundColor: debt.status === "pagada" ? "#7bc097ff" : "default" }}>
                                 <TableCell>
                                     <Typography fontWeight={600}>{"crdt-" + debt.name}</Typography>
+
                                 </TableCell>
 
                                 <TableCell>{debt.costumerName}</TableCell>

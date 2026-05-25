@@ -28,6 +28,7 @@ import type { Installment } from "../../domain/business/entities/Installment";
 import type {
   CreateInstallmentsGatewayInput,
   CreateInstallmentsOutput,
+  CreateInstallmentsError,
 } from "../../domain/business/useCases/installment/CreateInstallmentsUseCase";
 import type {
   GetByCollectorInput,
@@ -51,7 +52,7 @@ import type { GetManagementInstallmentsInput } from "../../domain/business/useCa
 export class FirebaseInstallmentRepository implements InstallmentGateway {
 
 
-  private InstallmetToDocument(installment: Omit<Installment, "id">): DocumentData {
+  private InstallmentToDocument(installment: Omit<Installment, "id">): DocumentData {
     const result: DocumentData = {
       companyId: installment.companyId,
       debtId: installment.debtId,
@@ -136,9 +137,6 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
     };
   }
 
-
-
-
   async updateById(
     input: UpdateByIdInput,
   ): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
@@ -159,7 +157,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         return fail({ code: "INSTALLMENT_NOT_FOUND" });
       }
 
-      await updateDoc(ref, this.InstallmetToDocument(installment));
+      await updateDoc(ref, this.InstallmentToDocument(installment));
 
       return ok({
         state: null,
@@ -283,7 +281,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         const docRef = doc(collectionRef);
 
         // NUNCA guardes el id dentro del documento
-        batch.set(docRef, this.InstallmetToDocument(installment));
+        batch.set(docRef, this.InstallmentToDocument(installment));
       }
 
       await batch.commit();
@@ -295,6 +293,52 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       }
 
       return { state: fail({ code: "UNKNOWN_ERROR" }) };
+    }
+  }
+
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const result: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      result.push(array.slice(i, i + size));
+    }
+    return result;
+  }
+
+  async createMany(input: {
+    companyId: string;
+    installments: Installment[];
+  }): Promise<Result<void, CreateInstallmentsError>> {
+    try {
+      const collectionRef = collection(
+        firestore,
+        "companies",
+        input.companyId,
+        "installments",
+      );
+
+      const chunks = this.chunkArray(input.installments, 200);
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(firestore);
+
+        for (const installment of chunk) {
+          const docRef = doc(collectionRef);
+          // Asignar el id generado en Firestore al objeto original en memoria
+          installment.id = docRef.id;
+
+          batch.set(docRef, this.InstallmentToDocument(installment));
+        }
+
+        await batch.commit();
+      }
+
+      return ok(undefined);
+    } catch (error) {
+      console.error("[createMany installments]", error);
+      if (error instanceof FirebaseError) {
+        return fail({ code: "NETWORK_ERROR" });
+      }
+      return fail({ code: "UNKNOWN_ERROR" });
     }
   }
 
@@ -313,7 +357,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
           installment.id,
         );
 
-        batch.update(ref, this.InstallmetToDocument(installment));
+        batch.update(ref, this.InstallmentToDocument(installment));
       }
 
       await batch.commit();

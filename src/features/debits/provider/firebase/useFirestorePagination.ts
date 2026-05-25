@@ -65,6 +65,7 @@ export function useFirestorePagination({
 
         constraints.push(limit(pageSize));
 
+
         return query(colRef, ...constraints);
     };
 

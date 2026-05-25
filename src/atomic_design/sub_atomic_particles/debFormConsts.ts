@@ -36,10 +36,19 @@ export const debtFormReadOnlyConfig: DebtFormConfig = {
     requiredFields: [],
 };
 
-export const auditDebtConfig: DebtFormConfig = {
-    visibleFields: allDebtFormFields,
-    editableFields: ["status", "routeId"],
-    requiredFields: ["routeId"],
+export function auditDebtConfig(isAdmin: boolean = false): DebtFormConfig {
+    if (isAdmin) {
+        return {
+            visibleFields: allDebtFormFields,
+            editableFields: [...allDebtFormFields],
+            requiredFields: ["routeId"],
+        };
+    }
+    return {
+        visibleFields: allDebtFormFields,
+        editableFields: ["status", "routeId"],
+        requiredFields: ["routeId"],
+    };
 };
 
 export const renewalComparisonConfig: DebtFormConfig = {

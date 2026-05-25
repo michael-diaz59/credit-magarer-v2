@@ -66,6 +66,9 @@ export const AuditorInstallmentsScreen = () => {
     (a, b) => a.installmentNumber - b.installmentNumber,
   );
 
+  console.log("installments", installments);
+
+
   const isRenewable =
     installments.length > 0 &&
     installments.filter((i) => i.status === "liquidada" || i.status === "pagada")

@@ -7,11 +7,12 @@ import { importDebtFromExcel } from "../../../features/debits/scripts/createDebt
 export const UploadExcelScreen: React.FC = () => {
   const theme = useTheme();
   const companyId = useAppSelector((state) => state.user.user?.companyId ?? "");
+  const collectorId = useAppSelector((state) => state.user.user?.id ?? "");
   const [idRoute, setIdRoute] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +39,7 @@ export const UploadExcelScreen: React.FC = () => {
       await importDebtFromExcel(file, {
         companyId,
         idRoute,
-        collectorId: "", // Ya no parece requerirse con la nueva lógica, pero lo enviamos vacío
+        collectorId: collectorId, // Ya no parece requerirse con la nueva lógica, pero lo enviamos vacío
       });
       setMessage({ type: "success", text: "Importación completada exitosamente. Revisa la consola para más detalles." });
       setFile(null);

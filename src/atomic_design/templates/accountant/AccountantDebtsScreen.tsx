@@ -8,8 +8,12 @@ import type { Debt } from "../../../features/debits/domain/business/entities/Deb
 import { DebtListAccountant } from "../../molecules/DebtList";
 import { CustomSx } from "../../sub_atomic_particles/Custom_sx";
 
+
+//se modifica temporalmente para cargar todos los creditos
 export function AccountantDebtsScreen() {
     const companyId = useAppSelector((state) => state.user.user?.companyId);
+
+    console.log("companyId", companyId);
 
 
     const {
@@ -22,8 +26,8 @@ export function AccountantDebtsScreen() {
         pageSize: 15,
         orderBy: [
             { field: "startDate", direction: "desc" },
-            { field: "id", direction: "desc" }
         ],
+
         filters: [
             { field: "deliveredStatus", op: "==", value: "entregado" }]
 

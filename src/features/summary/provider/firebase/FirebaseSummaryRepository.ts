@@ -26,7 +26,7 @@ export class FirebaseSummaryRepository implements SummaryGateway {
 
     private async getEarningDebtsAggregates(companyId: string) {
         const debtsRef = collection(firestore, "companies", companyId, "debts");
-        const earningDebtsQuery = query(debtsRef, where("earning", "==", true));
+        const earningDebtsQuery = query(debtsRef, where("creditPaid", "==", 100));
         const snap = await getAggregateFromServer(earningDebtsQuery, {
             totalPaid: sum("totalPaid"),
             totalRenewal: sum("renewalPayment"),

@@ -5,7 +5,7 @@ import type { GetInstallmentsByDebtInput, GetInstallmentsByDebtOutput } from "..
 import type { UpdateInstallmentByDebtInput, UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import type { GetDebitByIdInput, GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
 import type { GetDebstByCostumerDocumentInput, GetDebstByCostumerDocumentOutput } from "../business/useCases/debt/GetDebstByCostumerDocumentCase";
-import type { CreateInstallmentsGatewayInput, CreateInstallmentsOutput } from "../business/useCases/installment/CreateInstallmentsUseCase";
+import type { CreateInstallmentsGatewayInput, CreateInstallmentsOutput, CreateInstallmentsError } from "../business/useCases/installment/CreateInstallmentsUseCase";
 import type { GetDebtsInput, GetDebtsOutput } from "../business/useCases/debt/GetDebtsCase";
 import type { Result } from "../../../../core/helpers/ResultC";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../business/useCases/debt/GetByFiltersCase";
@@ -61,6 +61,11 @@ export interface DebtGateway {
 export interface InstallmentGateway {
 
   createForNewDebt(input: CreateInstallmentsGatewayInput): Promise<CreateInstallmentsOutput>
+
+  createMany(input: {
+    companyId: string;
+    installments: Installment[];
+  }): Promise<Result<void, CreateInstallmentsError>>;
 
   getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>>
 

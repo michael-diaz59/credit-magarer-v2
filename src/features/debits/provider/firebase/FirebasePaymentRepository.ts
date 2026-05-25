@@ -335,4 +335,55 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return fail(error);
         }
     }
+
+    private chunkArray<T>(array: T[], size: number): T[][] {
+        const result: T[][] = [];
+        for (let i = 0; i < array.length; i += size) {
+            result.push(array.slice(i, i + size));
+        }
+        return result;
+    }
+
+    async createMany(input: {
+        companyId: string;
+        payments: Payment[];
+    }): Promise<Result<void, CreatePaymentError>> {
+        try {
+            const refCollection = collection(
+                firestore,
+                "companies",
+                input.companyId,
+                "payments"
+            );
+
+            const chunks = this.chunkArray(input.payments, 200);
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(firestore);
+
+                for (const payment of chunk) {
+                    const docRef = doc(refCollection);
+                    // Asignamos el id generado en Firestore al objeto original en memoria
+                    payment.id = docRef.id;
+
+                    batch.set(docRef, this.paymentToFirestore(payment));
+                }
+
+                await batch.commit();
+            }
+
+            return ok(undefined);
+        } catch (error) {
+            console.error("Error in createMany payments:", error);
+            if (error instanceof FirebaseError) {
+                if (error.code === "permission-denied") {
+                    return fail({ code: "FORBIDDEN" });
+                }
+                if (error.code === "unavailable") {
+                    return fail({ code: "NETWORK_ERROR" });
+                }
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
 }

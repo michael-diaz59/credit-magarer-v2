@@ -29,7 +29,9 @@ export const AuditDebtScreen = () => {
   const [debt, setDebt] = useState<Debt | null>(null);
 
 
+
   const user = useAppSelector((state) => state.user.user);
+  const isAdmin: boolean = user?.roles.includes("ADMIN") || false
   const companyId = user?.companyId || "undefined";
   const { debitId } = useParams<{ debitId: string }>();
   const navigate = useNavigate();
@@ -254,8 +256,7 @@ export const AuditDebtScreen = () => {
 
                   return (
                     <>
-                      <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} config={auditDebtConfig} />
-
+                      <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} config={auditDebtConfig(isAdmin)} />
 
                       {debt?.totalAmount !== undefined && debt?.totalAmount !== null && (
                         <Typography>
