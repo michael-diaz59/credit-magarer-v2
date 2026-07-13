@@ -1,5 +1,5 @@
-export type DebtType = "credito" | "prenda";
-
+export type DebtType = "fijo" | "variable";
+export type adelanto = "si" | "no";
 
 // alert- despues de desembolsar no permitir modificar las deudas
 //en_mora => credito vencido: una deuda que a paso de la fecha de vencimiento, esta deuda debe estar en un segmento de alerta
@@ -49,10 +49,20 @@ export type DebtTerms = "diario" | "semanal" | "quincenal" | "mensual";
 export interface Debt {
   id: string;
 
+  //indica si ha alguna prenda relacioado con el credito
+  prenda: boolean
+
+  prendaDescription: string
+
+  prendaValue: number
+
   /*id de la ruta a la que etsa enlazada la deuda* */
   routeId: string
 
   type: DebtType;
+
+  /**indica si la deuda se creo con un adelanto */
+  adelanto?: adelanto;
 
   /**indica que la deuda esta relacionada con una visita, util para crear una deuda a la vez que una visita, una visita puede tener varias deudas */
   idVisit: string;
@@ -165,13 +175,16 @@ export function createEmptyDebt(): Debt {
 
   return {
     id: "",
+    prenda: false,
+    prendaDescription: "",
+    prendaValue: 0,
     capitalPaid: 0,
     interestPaid: 0,
     totalInterest: 0,
     remainingToCompleteCredit: 0,
     deliveredStatus: "false_preparacion",
     routeId: "",
-    type: "credito",
+    type: "fijo",
     renewalPayment: 0,
     creditPaid: 0,
     delivered: false,
@@ -214,6 +227,9 @@ export function createBasicDebt(): Debt {
 
   return {
     id: "",
+    prenda: false,
+    prendaDescription: "",
+    prendaValue: 0,
     capitalPaid: 0,
     interestPaid: 0,
     totalInterest: 0,
@@ -221,7 +237,7 @@ export function createBasicDebt(): Debt {
     deliveredStatus: "false_preparacion",
     routeId: "",
     creditPaid: 0,
-    type: "credito",
+    type: "fijo",
     renewalPayment: 0,
     delivered: false,
     idVisit: "",

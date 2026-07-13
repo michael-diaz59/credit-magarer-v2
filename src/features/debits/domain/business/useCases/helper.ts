@@ -2,36 +2,16 @@ import {
   diasDelMesPorTermino,
   diasPorTermino,
 } from "../../../../../core/helpers/debts/diasPorTermino";
+import { getValidDueDate } from "../../../../shared/helpers/calcularFestivosColombia";
+import { paidPorcential } from "../../../../shared/helpers/calculate";
+import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../shared/helpers/Days";
 import type { Debt, DebtTerms } from "../entities/Debt";
-import type { Installment } from "../entities/Installment";
+import type { Installment, InstallmentAddress } from "../entities/Installment";
 
 export function addDays(date: Date, days: number) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
-}
-
-const colombianHolidays2026 = new Set([
-  "2026-01-01", "2026-01-12", "2026-03-23", "2026-04-02", "2026-04-03",
-  "2026-05-01", "2026-05-18", "2026-06-08", "2026-06-15", "2026-06-29",
-  "2026-07-20", "2026-08-07", "2026-08-17", "2026-10-12", "2026-11-02",
-  "2026-11-16", "2026-12-08", "2026-12-25"
-]);
-
-export function getValidDueDate(date: Date): Date {
-  let validDate = new Date(date);
-  while (true) {
-    const isSunday = validDate.getDay() === 0;
-    const dateStr = validDate.toISOString().slice(0, 10);
-    const isHoliday = colombianHolidays2026.has(dateStr);
-
-    if (isSunday || isHoliday) {
-      validDate = addDays(validDate, 1);
-    } else {
-      break;
-    }
-  }
-  return validDate;
 }
 
 type RoundResult = {
@@ -79,29 +59,38 @@ export function generateInstallments2(
   installments: Installment[];
   firstDueDate: string;
   nextPaymentDue: string;
+  cuotasCompletas: number;
+  pago_ultima_cuota: number;
+  pago_cuota_reound: number;
+  total_deuda_a_pagar: number;
+  pago_cuota: number;
+  total_dias_deuda: number;
+  total_meses_deuda: number;
 } {
   const installments: Installment[] = [];
 
   const [year, month, day] = debt.startDate.split("-").map(Number);
-  const start = new Date(year, month - 1, day);
+  var start = new Date(year, month - 1, day);
   console.log("start date:", start)
   const stepDays = diasPorTermino[debt.debtTerms]
   console.log("stepDays:", stepDays)
 
-  const { pago_cuota, total_deuda_a_pagar } = calculateDebtFinancials(
+  const { pago_cuota, total_deuda_a_pagar, cuotasCompletas, pago_ultima_cuota, pago_cuota_reound, total_meses_deuda, total_dias_deuda } = calculateDebtFinancials(
     debt,
     months,
   );
+
 
   // 🔹 1. Redondear cuota
   const redondeo = roundUpToThousand(pago_cuota);
 
   const total_con_redondeo = redondeo.rounded * debt.installmentCount;
 
+
   let excedente = total_con_redondeo - total_deuda_a_pagar;
 
   // 🔹 2. Crear arreglo base con todas las cuotas redondeadas
-  const valoresCuotas = Array(debt.installmentCount).fill(redondeo.rounded);
+  const valoresCuotas: number[] = Array(debt.installmentCount).fill(redondeo.rounded);
 
   // 🔹 3. Descontar excedente desde la última cuota hacia atrás
   for (let i = valoresCuotas.length - 1; i >= 0; i--) {
@@ -113,10 +102,35 @@ export function generateInstallments2(
     excedente -= descuento;
   }
 
+
+  var dayParasiguientes: number = start.getDate()
+
   // 🔹 4. Generar cuotas finales
   for (let i = 0; i < debt.installmentCount; i++) {
-    const rawDueDate = addDays(start, stepDays * (i + 1));
+    let rawDueDate: Date;
+
+    switch (debt.debtTerms) {
+      case "diario":
+        rawDueDate = obtenerDiaSimple(start, "diario");
+        break;
+      case "semanal":
+        rawDueDate = obtenerDiaSimple(start, "semanal");
+        break;
+      case "quincenal":
+        const { date, nextDay } = obtenerDiaSiguienteQuincena(start, dayParasiguientes);
+        rawDueDate = date
+        dayParasiguientes = nextDay
+        break;
+      case "mensual":
+        rawDueDate = obtenerDiaMesSiguiente(start.getFullYear(), start.getMonth(), day);
+
+        break;
+    }
     const dueDate = getValidDueDate(rawDueDate);
+    //console.log("rawDueDate ", rawDueDate.toISOString())
+    //console.log("next payment due ", dueDate.toISOString())
+    //const diaSemanaCompleto = dueDate.toLocaleDateString('es-ES', { weekday: 'long' });
+    //console.log("dia de la semana: ", diaSemanaCompleto)
 
     installments.push({
       installmentTotalNumber: debt.installmentCount,
@@ -143,13 +157,37 @@ export function generateInstallments2(
       dueDate: dueDate.toISOString().slice(0, 10),
       status: "pendiente",
       createdAt: new Date().toISOString().slice(0, 10),
+      latePaidRatio: paidPorcential(0, 0),
+      basePaidRatio: paidPorcential(valoresCuotas[i], 0),
+
     });
+    switch (debt.debtTerms) {
+      case "diario":
+        start = dueDate
+        break;
+      case "semanal":
+        start = rawDueDate
+        break;
+      case "quincenal":
+        start = rawDueDate
+        break;
+      case "mensual":
+        start = rawDueDate
+        break;
+    }
   }
 
   return {
     installments,
     nextPaymentDue: installments[0].dueDate,
     firstDueDate: installments[installments.length - 1].dueDate,
+    cuotasCompletas: cuotasCompletas,
+    pago_ultima_cuota: pago_ultima_cuota,
+    pago_cuota_reound: pago_cuota_reound,
+    total_deuda_a_pagar: total_deuda_a_pagar,
+    pago_cuota: pago_cuota,
+    total_dias_deuda: total_dias_deuda,
+    total_meses_deuda: total_meses_deuda,
   };
 }
 
@@ -162,21 +200,23 @@ export function simulateInstallments(
   cuotasCompletas: number;
   pago_ultima_cuota: number;
   pago_cuota_reound: number;
+  installments: Installment[];
 } {
-  const {
-    total_deuda_a_pagar,
-    pago_cuota,
+  const { installments, cuotasCompletas, pago_ultima_cuota, pago_cuota_reound, total_deuda_a_pagar, pago_cuota } = generateInstallments2(debt, {
+    address: "",
+    city: "",
+    neighborhood: "",
+    stratum: 1,
+  }, "", months)
+
+  return {
+    installments,
     cuotasCompletas,
     pago_ultima_cuota,
     pago_cuota_reound,
-  } = calculateDebtFinancials(debt, months);
-  return {
-    total_deuda_a_pagar: total_deuda_a_pagar,
-    pago_cuota: pago_cuota,
-    cuotasCompletas: cuotasCompletas,
-    pago_ultima_cuota: pago_ultima_cuota,
-    pago_cuota_reound: pago_cuota_reound,
-  };
+    total_deuda_a_pagar,
+    pago_cuota,
+  }
 }
 
 export function calculateDebtFinancials(debt: Debt, months?: number) {
@@ -406,6 +446,51 @@ export function calcularCuotasPagadas(
   if (totalAmount <= 0 || installmentCount <= 0) return 0;
   const valorCuota = totalAmount / installmentCount;
   return Math.min(Math.floor(totalPaid / valorCuota), installmentCount);
+}
+
+
+
+export function diario(debt: Debt, companyId: string, costumerAddress: InstallmentAddress, valoresCuotas: number[]): Installment[] {
+  const stepDays = diasPorTermino[debt.debtTerms]
+  const installments: Installment[] = [];
+  const [year, month, day] = debt.startDate.split("-").map(Number);
+  const start = new Date(year, month - 1, day);
+  for (let i = 0; i < debt.installmentCount; i++) {
+    const rawDueDate = addDays(start, stepDays * (i + 1));
+    const dueDate = getValidDueDate(rawDueDate);
+
+    installments.push({
+      installmentTotalNumber: debt.installmentCount,
+      paidAmount: 0,
+      paidAt: "",
+      costumerNumber: "",
+      payments: [],
+      lateDueDate: "",
+      lateInterestRate: 0,
+      aplazado: false,
+      latepayment: 0,
+      routeId: debt.routeId,
+      paidLatePayment: 0,
+      companyId: companyId,
+      id: crypto.randomUUID(),
+      debtId: debt.id,
+      costumerId: debt.clientId,
+      costumerDocument: debt.costumerDocument,
+      costumerName: debt.costumerName,
+      costumerAddres: costumerAddress,
+      installmentNumber: i + 1,
+      interestRate: debt.interestRate,
+      amount: valoresCuotas[i],
+      dueDate: dueDate.toISOString().slice(0, 10),
+      status: "pendiente",
+      createdAt: new Date().toISOString().slice(0, 10),
+      latePaidRatio: paidPorcential(0, 0),
+      basePaidRatio: paidPorcential(valoresCuotas[i], 0),
+
+    });
+  }
+
+  return installments;
 }
 
 

@@ -153,6 +153,8 @@ export class CreateInstallmentsUseCase {
     for (let i = 0; i < count; i++) {
       const currentInstallmentNumber = startNumber + i;
       installments.push({
+        basePaidRatio: 0,
+        latePaidRatio: 0,
         installmentTotalNumber: debt.installmentCount,
         lateDueDate: "",
         lateInterestRate: 0,

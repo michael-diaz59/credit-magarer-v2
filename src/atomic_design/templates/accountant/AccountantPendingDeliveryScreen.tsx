@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
-import { DebtForm, mapDebtToForm } from "../../templates/debt/debtForm2";
+import { DebtForm, mapDebtToForm } from "../debt/debtForm";
 import { DebtFormDataProvider } from "../../templates/debt/debts/DebtFormDataProvider";
 import { useAppSelector } from "../../../store/redux/coreRedux";
 import { confirmPaymentConfig } from "../../sub_atomic_particles/debFormConsts";

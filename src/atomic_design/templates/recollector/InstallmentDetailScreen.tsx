@@ -182,8 +182,10 @@ export const InstallmentDetailScreen = () => {
     proofUrl?: string,
     method: PaymentMethod = "efectivo",
     bankAccountId?: string,
+
   ): Payment => {
     return {
+      debtId: installment.debtId,
       isTight: false,
       idRoute: debt?.routeId || "",
       id: paymentId || "",
@@ -262,9 +264,11 @@ export const InstallmentDetailScreen = () => {
         method === "consignacion" ? selectedBankAccountId : undefined,
       );
 
+
       const registerResult = await paymentOrchestrator.registerPayment({
         payment,
         companyId,
+        payLatePayment: false,
       });
 
       if (!registerResult.ok) {

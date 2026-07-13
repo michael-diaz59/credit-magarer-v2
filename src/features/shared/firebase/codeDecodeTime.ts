@@ -20,6 +20,9 @@ export function encodeDate(date: string | null | undefined, isNew: boolean = fal
     if (isNew || !date) {
         if (!date) {
             console.log("no hay fecha");
+        } else {
+
+            console.log("es fecha nueva");
         }
         return Timestamp.now();
     }
@@ -27,9 +30,23 @@ export function encodeDate(date: string | null | undefined, isNew: boolean = fal
     try {
         const [year, month, day] = date.split("-").map(Number);
         const parsedDate = new Date(year, month - 1, day);
+        console.log(date);
+        console.log(parsedDate);
         if (!isNaN(parsedDate.getTime())) {
-            return Timestamp.fromDate(parsedDate);
+            let time = Timestamp.fromDate(parsedDate);
+            console.log(time);
+            return time;
+        } else {
+            const parsedDate = new Date(date);
+
+            if (!isNaN(parsedDate.getTime())) {
+                console.log(parsedDate);
+                return Timestamp.fromDate(parsedDate);
+            }
+            console.log("fecha invalida")
+
         }
+        console.log("fecha invalida")
     } catch (e) {
         console.error("Error parsing date for encoding:", date);
     }

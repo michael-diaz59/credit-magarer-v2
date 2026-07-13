@@ -18,6 +18,9 @@ export type PaymentMethod =
 /**representa los pagos que hacen los clientes a los cobradores*/
 export interface Payment {
   //el comprobante se guarda en storage
+
+  /**es el id a la deuda a la que pertenece el pago*/
+  debtId: string;
   /**es el id al documento de comprobante de pago */
   idProofOfPayment: string
 

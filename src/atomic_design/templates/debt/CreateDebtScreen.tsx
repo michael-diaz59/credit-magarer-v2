@@ -13,7 +13,7 @@ import { createEmptyDebt, type Debt } from "../../../features/debits/domain/busi
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { BaseDialog } from "../../atoms/BaseDialog";
-import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "./debtForm2";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "./debtForm";
 import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import { CREATE_DEBT_FIELDS_INSTALLMENTS, CREATE_DEBT_FIELDS_MONTHS, SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "./form/constsForm";

@@ -12,7 +12,7 @@ import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/b
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import { Box, Button, Card, CardContent, CircularProgress, FormControlLabel, Switch } from "@mui/material";
 import { VisitFormDataProvider } from "../../visit/VisitFormDataProvider";
-import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm";
 import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
 import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";

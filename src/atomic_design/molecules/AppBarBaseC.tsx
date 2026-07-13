@@ -10,13 +10,25 @@ import {
   Paper,
   Drawer,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MenuIcon from "@mui/icons-material/Menu";
 
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../sub_atomic_particles/Custom_sx";
 import { MenuNavLinkItems, NavLinkItems } from "../atoms/NavLinkItems";
+import { useNavigate } from "react-router";
 
-export const AppBarBaseC = ({ items }: FloatingAppBarProps) => {
+export const AppBarBaseC = ({ items, showBackButton = true,
+  onBack, }: FloatingAppBarProps) => {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+  };
   const [expandedMenu, setExpandedMenu] = useState(false);
   const theme = useTheme();
   const { hasScrolled, scrollDirection } = useScroll();
@@ -68,14 +80,14 @@ export const AppBarBaseC = ({ items }: FloatingAppBarProps) => {
               : CustomSx.basic.borderRadius.squareBorder,
           backgroundColor: showFloatAppBar
             ? alpha(
+              theme.palette.primary.main,
+              CustomSx.basic.trasparent.backgroundsElements,
+            )
+            : hasScrolled
+              ? alpha(
                 theme.palette.primary.main,
                 CustomSx.basic.trasparent.backgroundsElements,
               )
-            : hasScrolled
-              ? alpha(
-                  theme.palette.primary.main,
-                  CustomSx.basic.trasparent.backgroundsElements,
-                )
               : theme.palette.primary.main,
           backdropFilter: showFloatAppBar
             ? CustomSx.basic.backdropFilter
@@ -100,13 +112,30 @@ export const AppBarBaseC = ({ items }: FloatingAppBarProps) => {
           {/* Desktop */}
           <Box
             sx={{
-              display: { xs: "none", md: "flex" },
+              display: "flex",
+              alignItems: "center",
               gap: 2,
-              alignContent: "end",
-              alignItems: "end",
             }}
           >
-            <NavLinkItems items={items} />
+            {showBackButton && (
+              <IconButton
+                onClick={handleBack}
+                sx={{
+                  color: theme.palette.primary.contrastText,
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            )}
+
+            <Box
+              sx={{
+                display: { xs: "none", md: "flex" },
+                gap: 2,
+              }}
+            >
+              <NavLinkItems items={items} />
+            </Box>
           </Box>
 
           {/* Mobile */}
@@ -179,4 +208,6 @@ export const AppBarBaseC = ({ items }: FloatingAppBarProps) => {
 
 export interface FloatingAppBarProps {
   items: RoutNav[];
+  showBackButton?: boolean;
+  onBack?: () => void;
 }

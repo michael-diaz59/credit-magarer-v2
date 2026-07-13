@@ -26,7 +26,6 @@ import type { UpdateMultiplePaymentsIsTightError } from "../../domain/business/u
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../domain/business/useCases/payment/GetPaymentsByStatusUseCase";
 import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
 import type { DocumentData } from "firebase/firestore";
-import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 /**corregir any y removeUndefined con variable no usada */
 export class FirebasePaymentRepository implements PaymentGateway {
@@ -38,12 +37,30 @@ export class FirebasePaymentRepository implements PaymentGateway {
 
         if (payment.paidAt !== undefined) result.paidAt = encodeDate(payment.paidAt);
 
-        return removeUndefined(result);
+        return {
+            debtId: payment.debtId,
+            idRoute: payment.idRoute,
+            isTight: payment.isTight,
+            collectorObservation: payment.collectorObservation,
+            accountantObservation: payment.accountantObservation,
+            installmentId: payment.installmentId,
+            costumerName: payment.costumerName,
+            collectorName: payment.collectorName,
+            collectorId: payment.collectorId,
+            amount: payment.amount,
+            method: payment.method,
+            status: payment.status,
+            paidAt: encodeDate(payment.paidAt),
+            location: payment.location,
+            bankAccountId: payment.bankAccountId,
+            idProofOfPayment: payment.idProofOfPayment,
+        }
     }
 
     private documentToPayment(id: string, data: DocumentData): Payment {
         return {
             id: id,
+            debtId: data.debtId ?? "",
             idRoute: data.idRoute ?? "",
             isTight: data.isTight ?? false,
             collectorObservation: data.collectorObservation ?? "",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAppSelector } from "../../store/redux/coreRedux";
 import type { Customer } from "../../features/costumers/domain/business/entities/Customer";
@@ -41,7 +41,7 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
 
     return customers.filter((c) => {
       const name = c.applicant.fullName.toLowerCase();
-      const document = c.applicant.idNumber.toLowerCase();
+      const document = String(c.applicant.idNumber).toLowerCase();
 
       return (
         name.includes(normalizedSearch) || document.includes(normalizedSearch)
@@ -69,7 +69,6 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
         if (!mounted) return;
 
         if (result.ok) {
-          console.log(result.value.state);
           setCustomers(result.value.state);
         } else {
           setDialogText("No se pudieron obtener los clientes.");
@@ -110,19 +109,22 @@ export const CustomerList = ({ navigateTo }: CustomerListProps) => {
       </Stack>
 
       <Grid container spacing={2}>
+
         {filteredCustomer.map((customer) => (
-          <Grid key={customer.id}>
+          <Grid key={"GridKey-" + customer.id}>
             <CustomerCard
+              key={"CustomerCard-" + customer.id}
               customer={customer}
               onClick={() => {
-                console.log("idNumber:" + customer.applicant.idNumber);
-                console.log("id:" + customer.id);
                 navigate(navigateTo(customer.applicant.idNumber, customer.id));
               }}
             />
           </Grid>
         ))}
+
+
       </Grid>
+
     </>
   );
 };
@@ -132,12 +134,13 @@ type CustomerCardProps = {
   onClick: () => void;
 };
 
-export const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
+export const CustomerCard = memo(({ customer, onClick }: CustomerCardProps) => {
 
   const applicant = customer.applicant;
 
   return (
     <Card
+      key={"customerCardIntern-" + customer.id}
       elevation={2}
       sx={{
         borderRadius: 2,
@@ -236,7 +239,7 @@ export const CustomerCard = ({ customer, onClick }: CustomerCardProps) => {
       </CardActionArea>
     </Card>
   );
-};
+});
 
 const getCalificationColor = (calification?: string) => {
 

@@ -121,12 +121,12 @@ function sortDebtsByStatusAndDate(
   debts: Debt[]
 ): Debt[] {
 
-  const paidDebts: Debt[] = [];
+  const activeDebts: Debt[] = [];
   const otherDebts: Debt[] = [];
 
   for (const debt of debts) {
-    if (debt.status === "pagada") {
-      paidDebts.push(debt);
+    if (debt.status === "activa") {
+      activeDebts.push(debt);
     } else {
       otherDebts.push(debt);
     }
@@ -139,12 +139,12 @@ function sortDebtsByStatusAndDate(
     Date.parse(b.startDate) -
     Date.parse(a.startDate);
 
-  paidDebts.sort(sortByDateDesc);
+  activeDebts.sort(sortByDateDesc);
 
   otherDebts.sort(sortByDateDesc);
 
   return [
-    ...paidDebts,
+    ...activeDebts,
     ...otherDebts,
   ];
 }

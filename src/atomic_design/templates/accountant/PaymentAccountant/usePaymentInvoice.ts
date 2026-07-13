@@ -9,6 +9,7 @@ import type { Route } from "../../../../features/routes/domain/business/entities
 
 export const usePaymentInvoice = () => {
     const [payment, setPayment] = useState<Payment>({
+        debtId: "",
         id: "1",
         idProofOfPayment: "proof1",
         idRoute: "route1",

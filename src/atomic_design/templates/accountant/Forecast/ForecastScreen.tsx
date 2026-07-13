@@ -1,18 +1,18 @@
 import { useEffect, useState, useMemo } from "react";
-import { 
-    Box, 
-    Typography, 
-    CircularProgress, 
-    useTheme, 
-    Paper, 
-    Button, 
-    Stack, 
-    Grid, 
-    Dialog, 
-    DialogTitle, 
-    DialogContent, 
-    DialogActions, 
-    TextField 
+import {
+    Box,
+    Typography,
+    CircularProgress,
+    useTheme,
+    Paper,
+    Button,
+    Stack,
+    Grid,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField
 } from "@mui/material";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -28,7 +28,7 @@ export const ForecastScreen = () => {
     const companyId = useAppSelector((state) => state.user.user?.companyId) || "";
 
     const [summary, setSummary] = useState<GetInstallmentsSummaryOutput | null>(null);
-    
+
     const getForecastDates = (days: number) => {
         const start = new Date();
         const end = new Date();
@@ -130,19 +130,19 @@ export const ForecastScreen = () => {
     }
 
     const metricItems = [
-        { 
-            label: "Expectativa de Recaudo", 
-            value: summary?.expectedPayment || 0, 
-            icon: <MonetizationOnIcon />, 
-            color: theme.palette.success.main, 
+        {
+            label: "Expectativa de Recaudo",
+            value: summary?.expectedPayment || 0,
+            icon: <MonetizationOnIcon />,
+            color: theme.palette.success.main,
             bgcolor: theme.palette.success.light,
             description: "Total proyectado a recibir (Capital + Interés corriente)"
         },
-        { 
-            label: "Intereses de Mora Esperados", 
-            value: summary?.paymentExpectedToDelay || 0, 
-            icon: <WarningAmberIcon />, 
-            color: theme.palette.error.main, 
+        {
+            label: "expectativa de Mora Esperada",
+            value: summary?.paymentExpectedToDelay || 0,
+            icon: <WarningAmberIcon />,
+            color: theme.palette.error.main,
             bgcolor: theme.palette.error.light,
             description: "Interés de mora proyectado por retrasos en el periodo"
         },
@@ -258,15 +258,15 @@ export const ForecastScreen = () => {
                         * Pronóstico calculado en el rango: {currentRange.startDate} — {currentRange.endDate}
                     </Typography>
                     <Typography variant="caption" color="textSecondary" sx={{ display: "block", maxWidth: 600, mx: "auto" }}>
-                        Este análisis proyecta los ingresos basados en las fechas de vencimiento de las cuotas activas. 
+                        Este análisis proyecta los ingresos basados en las fechas de vencimiento de las cuotas activas.
                         No tiene en cuenta posibles refinanciaciones o cancelaciones anticipadas fuera del periodo.
                     </Typography>
                 </Box>
             </Box>
 
             {/* Custom Range Dialog */}
-            <Dialog 
-                open={isDialogOpen} 
+            <Dialog
+                open={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
                 PaperProps={{
                     sx: { borderRadius: 5, p: 2, minWidth: { sm: 450 } }
@@ -306,9 +306,9 @@ export const ForecastScreen = () => {
                     <Button onClick={() => setIsDialogOpen(false)} color="inherit" sx={{ fontWeight: "bold" }}>
                         Cancelar
                     </Button>
-                    <Button 
-                        onClick={handleApplyCustomRange} 
-                        variant="contained" 
+                    <Button
+                        onClick={handleApplyCustomRange}
+                        variant="contained"
                         disabled={isInvalidRange || !tempStart || !tempEnd}
                         sx={{ borderRadius: 3, px: 4, fontWeight: "bold" }}
                     >

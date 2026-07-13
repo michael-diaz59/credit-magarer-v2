@@ -1,5 +1,5 @@
-import { Stack, TextField, MenuItem, Button } from "@mui/material";
-import { Controller, useForm } from "react-hook-form";
+import { Stack, TextField, MenuItem, Button, FormControl, FormControlLabel, Checkbox, FormHelperText } from "@mui/material";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import {
   debtStatusList,
   type Debt,
@@ -8,7 +8,7 @@ import {
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
 
-const debtTypes: DebtType[] = ["credito", "prenda"];
+const debtTypes: DebtType[] = ["fijo", "variable"];
 const debtTermsList: DebtTerms[] = [
   "diario",
   "semanal",
@@ -34,6 +34,12 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
     formState: { errors },
   } = useForm<Omit<Debt, "id">>({
     defaultValues,
+    shouldUnregister: true,
+  });
+
+  const hasDiscount = useWatch({
+    control,
+    name: "prenda",
   });
 
   return (
@@ -61,6 +67,57 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
                 ))}
               </TextField>
             )}
+          />
+        )}
+
+        {/* ----------PRENDA ---------- */}
+        <Controller
+          name="prenda"
+          control={control}
+          rules={{ required: "Debes marcar esta opción" }}
+          render={({ field }) => (
+            <FormControl error={!!errors.prenda}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={field.value ?? false}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                  />
+                }
+                label="Activo"
+              />
+              <FormHelperText>
+                {errors.prenda?.message}
+              </FormHelperText>
+            </FormControl>
+          )}
+        />
+        {/* ---------- DESCRIPCIÓN DE LA PRENDA ---------- */}
+        {hasDiscount && (
+          <TextField
+            label="Descripción de la prenda"
+            fullWidth
+            multiline
+            rows={3}
+            error={!!errors.prendaDescription}
+            helperText={errors.prendaDescription?.message}
+            {...register("prendaDescription", {
+              required: "La descripción es obligatoria",
+            })}
+          />
+        )}
+
+        {/* ----------VALOR DE LA PRENDA ---------- */}
+        {hasDiscount && (
+          <TextField
+            label="Valor de la prenda"
+            fullWidth
+            type="number"
+            error={!!errors.prendaValue}
+            helperText={errors.prendaValue?.message}
+            {...register("prendaValue", {
+              required: "El valor de la prenda es obligatorio",
+            })}
           />
         )}
 

@@ -20,7 +20,7 @@ export type UpdateDebtError =
 
 export interface UpdateDebitInput {
   debt: Debt;
-  isNewCollector: boolean;
+  isNewRoute: boolean;
   companyId: string;
 }
 
@@ -59,6 +59,7 @@ export class UpdateDebtUseCase {
 
   /** su funcion es actualizar un debt, si el debt tiene un nuevo collector actualiza el collector de sus installments que no esten pagos o cancelados*/
   async execute(input: UpdateDebitInput): Promise<UpdateDebitOutput> {
+    console.log("startDate:" + input.debt.startDate)
     if (input.debt.status === "activa") {
       if (!input.debt.routeId) {
         return { state: fail({ code: "no hay una ruta asignada" }) };
@@ -91,6 +92,9 @@ export class UpdateDebtUseCase {
       currentDebt.interestRate !== input.debt.interestRate ||
       currentDebt.debtTerms !== input.debt.debtTerms;
 
+    console.log("financialChanged", financialChanged)
+
+
     if (financialChanged) {
       // Sincronizar cuotas
       const syncResult = await this.syncInstallments(input, currentDebt);
@@ -98,7 +102,12 @@ export class UpdateDebtUseCase {
         console.log(syncResult.error);
         return { state: fail({ code: "ERROR_INSTALLMENTS" }) };
       }
-    } else if (input.isNewCollector) {
+    }
+    //validar cambio de ruta y egercerla
+    if (input.isNewRoute) {
+
+      console.log("isNewCollector" + input.isNewRoute)
+
       // Solo cambio de cobrador
       const installments = await this.getInstallmentsByDebtCase.execute({
         companyId: input.companyId,
@@ -107,6 +116,10 @@ export class UpdateDebtUseCase {
       });
 
       if (installments.state.ok) {
+        for (let installment of installments.state.value) {
+          installment.routeId = input.debt.routeId;
+
+        }
         const updateIOnstallment = await this.updateInstallments(
           input,
           installments.state.value,
@@ -129,6 +142,7 @@ export class UpdateDebtUseCase {
     const wasPreliminary = !preliminaryStates.includes(currentDebt.status);
 
     if (updateResult.state.ok && wasPreliminary && isNowActive) {
+      console.log("actualizar contador de cliente")
       const customerResult = await this.costumerGateway.getCostumerById(input.companyId, input.debt.clientId);
       if (customerResult.ok && customerResult.value) {
         const customer = customerResult.value;
@@ -199,9 +213,10 @@ export class UpdateDebtUseCase {
               }
 
               if (updateNeeded) {
+                console.log("updateNeeded", originalDebtEntity.startDate)
                 await this.debtGateway.update({
                   companyId: input.companyId,
-                  isNewCollector: false,
+                  isNewRoute: false,
                   debt: originalDebtEntity,
                 });
               }
@@ -348,7 +363,7 @@ export class UpdateDebtUseCase {
     return saveResult.state;
   }
 
-  /**actualiza los installments(unicamente el collector de los installments)*/
+  /**actualiza los installments*/
   private async updateInstallments(
     input: UpdateDebitInput,
     installments: Installment[],

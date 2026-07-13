@@ -4,7 +4,7 @@ import { FirebaseCostumerRepository } from "../../costumers/repository/FirebaseC
 import { CreateDebtFromExcelCase } from "../domain/business/useCases/debt/createDebtFromExcel";
 import { FirebaseDebtRepository } from "../provider/firebase/DebtRepository";
 import { diasPorTermino } from "../../../core/helpers/debts/diasPorTermino";
-import { addDays, getValidDueDate, descontarMonto, calcularCuotasPagadas } from "../domain/business/useCases/helper";
+import { addDays, descontarMonto, calcularCuotasPagadas } from "../domain/business/useCases/helper";
 import type { Installment, InstallmentStatus } from "../domain/business/entities/Installment";
 import type { Customer } from "../../costumers/domain/business/entities/Customer";
 import { FirebaseInstallmentRepository } from "../provider/firebase/FirebaseInstallmentRepository";
@@ -13,6 +13,8 @@ import type { Payment } from "../domain/business/entities/Payment";
 import { collection, getDocs, type DocumentData } from "firebase/firestore";
 import { firestore } from "../../../store/firebase/firebase";
 import { decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { paidPorcential } from "../../shared/helpers/calculate";
+import { getValidDueDate } from "../../shared/helpers/calcularFestivosColombia";
 
 
 
@@ -20,6 +22,59 @@ export interface ImportDebtFromExcelConfig {
     companyId: string;
     collectorId: string;
     idRoute: string;
+}
+
+
+export async function buscarCreditoMalo(
+    _: File,
+    config: ImportDebtFromExcelConfig
+) {
+    const firebaseDebtRepository = new FirebaseDebtRepository();
+
+    await firebaseDebtRepository.updateAllDebts(config.companyId)
+}
+
+
+
+export async function corregirCreditos(
+    _: File,
+    config: ImportDebtFromExcelConfig
+) {
+    const firebaseDebtRepository = new FirebaseDebtRepository();
+
+    await firebaseDebtRepository.updateAllDebts(config.companyId)
+}
+
+export function calculateDatesOfDebts(debt: Debt) {
+
+    console.log("debt", debt);
+
+    debt.totalInterest = debt.capital * (debt.interestRate / 100);
+
+    debt.totalAmount = debt.capital + debt.totalInterest;
+
+    debt.interestPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.totalInterest);
+
+    debt.capitalPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.capital);
+
+    debt.totalPaymentForLate = 0
+
+    debt.remainingToCompleteCredit = debt.totalAmount - (debt.totalPaid + debt.renewalPayment);
+
+    debt.creditPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.totalAmount);
+
+
+}
+
+export async function importDebtFromExcel4(
+    _: File,
+    config: ImportDebtFromExcelConfig
+) {
+    const firebaseDebtRepository = new FirebaseDebtRepository();
+
+    const result = await firebaseDebtRepository.migrateDeliveredStatus(config.companyId)
+    if (!result) return;
+
 }
 
 export async function importDebtFromExcel3(
@@ -57,7 +112,7 @@ export async function importDebtFromExcel(
         raw: true,
     });
 
-    if (!jsonData || jsonData.length < 2) {
+    if (!jsonData || jsonData.length < 1) {
         throw new Error("El archivo Excel está vacío o no tiene datos válidos.");
     }
 
@@ -65,8 +120,7 @@ export async function importDebtFromExcel(
     const firebaseDebtRepository = new FirebaseDebtRepository();
     const createDebtFromExcelCase = new CreateDebtFromExcelCase(firebaseDebtRepository)
 
-    const result = await firebaseDebtRepository.migrateDeliveredStatus(config.companyId)
-    if (!result) return;
+
 
 
     let customers: Map<string, Customer> | null
@@ -83,7 +137,7 @@ export async function importDebtFromExcel(
         throw new Error("No se encontraron clientes para la empresa");
     }
 
-    const rows = jsonData.slice(1) as any[][];
+    const rows = jsonData as any[][];
 
     var debts: Debt[] = [];
 
@@ -114,7 +168,7 @@ export async function importDebtFromExcel(
             const capital = Number(row[4]) || 0;
             const interestRate = Number(row[6]) * 100 || 0;
             const debtTerms: DebtTerms = mapDebtTerms(String(row[5] || ""));
-            const totalInterest = Number(row[18]) || 0;
+            const totalInterest = capital * (interestRate / 100)
             const papeleria = Number(row[14]) || 0;
             const totalAmount = capital + totalInterest;
             const installmentCount = Number(row[17]) || 0;
@@ -135,18 +189,21 @@ export async function importDebtFromExcel(
                 ...createBasicDebt(),
                 capital: capital,
                 totalInterest: totalInterest,
+                //mora
+                totalPaymentForLate: 0,
+
 
                 totalAmount: totalAmount,
                 totalPaid: totalPaid,
 
                 renewalPayment: renewalPayment,
                 remainingToCompleteCredit: totalAmount - (totalPaid + renewalPayment),
-                creditPaid: capitalpaidPorcential(totalPaid + renewalPayment, capital + totalInterest),
+                creditPaid: paidPorcential(totalPaid + renewalPayment, capital + totalInterest),
                 installmentsPaid: calcularCuotasPagadas(totalPaid + renewalPayment, totalAmount, installmentCount),
-                capitalPaid: capital,
-                interestPaid: 0,
+                capitalPaid: paidPorcential(totalPaid + renewalPayment, capital),
+                interestPaid: paidPorcential(totalPaid + renewalPayment, totalInterest),
                 routeId: config.idRoute,
-                type: "credito",
+                type: "fijo",
                 idVisit: "",
                 delivered: true,
                 deliveredStatus: "entregado",
@@ -282,13 +339,7 @@ function excelDateToISO(excelDate: number): string {
 }
 
 
-function capitalpaidPorcential(totalPaid: number, capital: number): number {
-    let porcentaje = (totalPaid / capital) * 100;
-    if (porcentaje > 100) {
-        porcentaje = 100
-    }
-    return Math.ceil(porcentaje);
-}
+
 
 async function createInstallments(
     debts: Debt[],
@@ -331,6 +382,8 @@ async function createInstallments(
                 paidAt: restado >= installmentAmount ? new Date().toISOString().slice(0, 10) : "",
                 costumerNumber: costumer?.applicant.phone || "",
                 payments: [],
+                basePaidRatio: paidPorcential(restado, installmentAmount),
+                latePaidRatio: 100,
                 lateDueDate: "",
                 lateInterestRate: 0,
                 aplazado: false,
@@ -360,6 +413,7 @@ async function createInstallments(
             if (restado > 0) {
 
                 payments.push({
+                    debtId: debt.id,
                     idProofOfPayment: "",
                     id: "",
                     idRoute: debt.routeId,
@@ -467,6 +521,7 @@ async function migratePaymentsFromInstallments(input: {
 
 
                 const payment: Payment = {
+                    debtId: installment.debtId,
                     idProofOfPayment: "",
                     id: "",
 
@@ -533,12 +588,14 @@ async function migratePaymentsFromInstallments(input: {
         console.log(
             `Installments ignorados: ${skipped}`
         );
+        return;
 
         /* =======================================================
            4. GUARDAR PAYMENTS
-        ======================================================= */
+        ======================================================= 
 
-        const paymentRepository =
+       
+            const paymentRepository =
             new FirebasePaymentRepository();
 
         const result =
@@ -560,6 +617,7 @@ async function migratePaymentsFromInstallments(input: {
         console.log(
             "Migración completada correctamente"
         );
+        */
 
     } catch (error) {
 
@@ -576,6 +634,8 @@ async function migratePaymentsFromInstallments(input: {
 function DocumentToInstallment(id: string, data: DocumentData): Installment {
     return {
         id,
+        basePaidRatio: data.basePaidRatio ?? 0,
+        latePaidRatio: data.latePaidRatio ?? 0,
         companyId: data.companyId ?? "",
         debtId: data.debtId ?? "",
         interestRate: data.interestRate ?? 0,

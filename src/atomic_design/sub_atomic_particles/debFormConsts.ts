@@ -1,4 +1,4 @@
-import type { DebtFormConfig, DebtFormValues } from "../templates/debt/debtForm2";
+import type { DebtFormConfig, DebtFormValues } from "../templates/debt/debtForm";
 import { CREATE_DEBT_FIELDS_INSTALLMENTS, CREATE_DEBT_FIELDS_MONTHS, SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS } from "../templates/debt/form/constsForm";
 
 const allDebtFormFields: (keyof DebtFormValues)[] = [
@@ -6,6 +6,10 @@ const allDebtFormFields: (keyof DebtFormValues)[] = [
     "costumerDocument",
     "status",
     "type",
+    "prenda",
+    "prendaDescription",
+    "prendaValue",
+    "adelanto",
     "capital",
     "debtTerms",
     "interestRate",
@@ -15,13 +19,25 @@ const allDebtFormFields: (keyof DebtFormValues)[] = [
     "calculationMode",
     "months",
 ];
-
-const allDebtFormFieldsWithoutType: (keyof DebtFormValues)[] = [
+const allDebtFormFieldssegurosparaeditar: (keyof DebtFormValues)[] = [
     "routeId",
     "costumerDocument",
     "status",
+    "type",
+    "startDate",
+];
+
+
+export const allDebtFormFieldsWithoutType: (keyof DebtFormValues)[] = [
+    "routeId",
+    "costumerDocument",
+    "adelanto",
+    "status",
     "capital",
+    "prenda",
     "debtTerms",
+    "prendaDescription",
+    "prendaValue",
     "interestRate",
     "installmentCount",
     "startDate",
@@ -40,7 +56,7 @@ export function auditDebtConfig(isAdmin: boolean = false): DebtFormConfig {
     if (isAdmin) {
         return {
             visibleFields: allDebtFormFields,
-            editableFields: [...allDebtFormFields],
+            editableFields: [...allDebtFormFieldssegurosparaeditar],
             requiredFields: ["routeId"],
         };
     }
@@ -56,8 +72,12 @@ export const renewalComparisonConfig: DebtFormConfig = {
     editableFields: [
         "routeId",
         "status",
+        "prenda",
+        "prendaDescription",
+        "prendaValue",
         "type",
         "capital",
+        "adelanto",
         "debtTerms",
         "interestRate",
         "installmentCount",
@@ -158,8 +178,8 @@ export const confirmPaymentConfig: DebtFormConfig = {
 };
 
 export const CREATE_DEBT_CONFIG: DebtFormConfig = {
-    visibleFields: allDebtFormFieldsWithoutType,
-    editableFields: allDebtFormFieldsWithoutType,
+    visibleFields: allDebtFormFields,
+    editableFields: allDebtFormFields,
     requiredFields: Array.from(new Set([
         ...CREATE_DEBT_FIELDS_MONTHS,
         ...CREATE_DEBT_FIELDS_INSTALLMENTS,

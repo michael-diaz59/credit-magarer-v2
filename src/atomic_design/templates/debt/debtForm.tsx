@@ -1,7 +1,7 @@
 import { useWatch } from "react-hook-form";
 
 import { Controller, useForm } from "react-hook-form";
-import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo } from "react";
 import { MoneyField } from "../../atoms/MoneyField";
 import {
   RadioGroup,
@@ -12,10 +12,13 @@ import {
   TextField,
   Grid,
   Typography,
+  Checkbox,
+  FormControl,
+  FormHelperText,
 } from "@mui/material";
 import { diasDelMesPorTermino } from "../../../core/helpers/debts/diasPorTermino";
 import type { Route } from "../../../features/routes/domain/business/entities/Route";
-import type { Debt, DebtStatus, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
+import type { adelanto, Debt, DebtStatus, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
 import type { CalculationMode } from "./form/constsForm";
 import { mergeDefined } from "../../sub_atomic_particles/helpers";
 import { MoneyTypography } from "../../atoms/MoneyTypography";
@@ -33,8 +36,12 @@ export type DebtFormValues = {
   costumerDocument: string;
   status: DebtStatus;
   type: DebtType;
+  adelanto: adelanto;
+  prenda: boolean;
   capital: number;
   debtTerms: DebtTerms;
+  prendaDescription: string
+  prendaValue: number
   interestRate: number;
   installmentCount: number;
   startDate: string;
@@ -55,10 +62,14 @@ const debtFormDefaults = {
 const baseDefaults: DebtFormValues = {
   routeId: "",
   status: "tentativa",
+  prenda: false,
+  adelanto: "no",
+  prendaDescription: "",
+  prendaValue: 0,
   calculationMode: debtFormDefaults.calculationMode,
   costumerDocument: "",
   months: undefined,
-  type: "credito",
+  type: "fijo",
   capital: 0,
   debtTerms: debtFormDefaults.debtTerms,
   interestRate: 0,
@@ -142,10 +153,12 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       control,
       trigger,
       getValues,
+      resetField,
       setValue,
       formState: { errors },
     } = useForm<DebtFormValues>({
       defaultValues: formDefaults,
+      shouldUnregister: true,
     });
 
 
@@ -159,6 +172,21 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       control,
       name: "calculationMode",
     });
+
+    const type = useWatch({
+      control,
+      name: "type",
+    });
+
+    const hasDiscount = useWatch({
+      control,
+      name: "prenda",
+    });
+    useEffect(() => {
+      if (!hasDiscount) {
+        resetField("prendaDescription");
+      }
+    }, [hasDiscount, resetField]);
 
     // 🔥 Exponemos funciones al padre
     useImperativeHandle(ref, () => ({
@@ -217,6 +245,55 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 )}
               </>
             )}
+            <Controller name="prenda" control={control} rules={{
+              required: "Debes marcar esta opción"
+            }}
+              render={({ field }) => (<FormControl error={!!errors.prenda}>
+                <FormControlLabel control={
+                  <Checkbox checked={field.value ?? false} onChange={(e) => field.onChange(e.target.checked)} />
+                } label="Activo" />
+                <FormHelperText>
+                  {errors.prenda?.message}
+                </FormHelperText>
+              </FormControl>
+              )} />
+            {/* Mostrar siguiente campo si prenda es true */}
+            {hasDiscount && (
+              <Controller
+                name="prendaDescription"
+                control={control}
+                rules={{
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Descripción de la prenda"
+                    fullWidth
+                    multiline
+                    rows={3}
+                    disabled={!isEditable("prendaDescription")}
+                    error={!!errors.prendaDescription}
+                    helperText={errors.prendaDescription?.message}
+                  />
+                )}
+              />
+
+            )}
+            {hasDiscount && (
+              <Controller name="prendaValue" control={control} rules={{
+              }} render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Valor de la prenda"
+                  fullWidth
+                  disabled={!isEditable("prendaValue")}
+                  error={!!errors.prendaValue}
+                  helperText={errors.prendaValue?.message}
+                />
+              )} />
+
+            )}
+
             {/* CÉDULA */}
             {isVisible("costumerDocument") &&
 
@@ -263,8 +340,8 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                       helperText={errors.type?.message}
                       value={field.value || ""}
                     >
-                      <MenuItem value="credito">Crédito</MenuItem>
-                      <MenuItem value="prenda">Prenda</MenuItem>
+                      <MenuItem value="fijo">fijo</MenuItem>
+                      <MenuItem value="variable">variable</MenuItem>
                     </TextField>
                   )}
                 />
@@ -274,6 +351,32 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                   </Typography>
                 )}
               </>
+            )}
+            {(type == "variable") && (
+              <Controller
+                name="adelanto"
+                control={control}
+                rules={{
+                  required: isRequired("adelanto")
+                    ? "El adelanto es obligatorio"
+                    : false,
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Adelanto en el credito"
+                    fullWidth
+                    disabled={!isEditable("adelanto")}
+                    error={!!errors.adelanto}
+                    helperText={errors.adelanto?.message}
+                    value={field.value || ""}
+                  >
+                    <MenuItem value="si">si</MenuItem>
+                    <MenuItem value="no">no</MenuItem>
+                  </TextField>
+                )}
+              />
             )}
           </Stack>
         </Grid>
@@ -594,6 +697,7 @@ function normalizeDebtForm(values: DebtFormValues): DebtFormValues {
 
 export function mapDebtToForm(debt: Debt): DebtFormValues {
   return {
+    adelanto: debt.adelanto || "no",
     calculationMode: "installments",
     routeId: debt.routeId,
     status: debt.status,
@@ -605,6 +709,9 @@ export function mapDebtToForm(debt: Debt): DebtFormValues {
     installmentCount: debt.installmentCount,
     startDate: debt.startDate,
     diasMes: debt.diasMes,
+    prenda: debt.prenda,
+    prendaDescription: debt.prendaDescription,
+    prendaValue: debt.prendaValue,
   };
 }
 
@@ -632,6 +739,8 @@ export function mergeDebtWithForm(
   originalDebt: Debt,
   formValues: DebtFormValues
 ): Debt {
+  console.log("originalDebt", originalDebt)
+  console.log("formValues", formValues)
   return {
     ...originalDebt,
 

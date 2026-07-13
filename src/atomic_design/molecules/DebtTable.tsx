@@ -51,6 +51,7 @@ export default function DebtTable({ debts, onClick }: Props) {
                     <TableRow>
                         <TableCell>codificacion</TableCell>
                         <TableCell>Cliente</TableCell>
+                        <TableCell>fecha inicio</TableCell>
                         <TableCell>Capital</TableCell>
                         <TableCell>Interés</TableCell>
                         <TableCell>modalidad</TableCell>
@@ -73,13 +74,15 @@ export default function DebtTable({ debts, onClick }: Props) {
                             debt.installmentCount - (debt.installmentsPaid ?? 0);
 
                         return (
-                            <TableRow key={debt.id} hover onClick={() => onClick?.(debt)} sx={{ backgroundColor: debt.status === "pagada" ? "#7bc097ff" : "default" }}>
+                            <TableRow key={debt.id} hover onClick={() => onClick?.(debt)} sx={{ backgroundColor: debt.status === "pagada" ? "#b0b0b9ff" : "default" }}>
                                 <TableCell>
                                     <Typography fontWeight={600}>{"crdt-" + debt.name}</Typography>
 
                                 </TableCell>
 
                                 <TableCell>{debt.costumerName}</TableCell>
+
+                                <TableCell>{formatISOToInputDate(debt.startDate)}</TableCell>
 
                                 <TableCell>{FormatNumberToMoney(debt.capital)}</TableCell>
 

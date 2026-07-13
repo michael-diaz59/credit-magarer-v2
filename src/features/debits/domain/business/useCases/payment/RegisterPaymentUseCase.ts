@@ -4,6 +4,7 @@ import type { PaymentGateway } from "../../../infraestructure/PaymentGateway";
 import type { Payment } from "../../entities/Payment";
 import type { Installment } from "../../entities/Installment";
 import type { Debt } from "../../entities/Debt";
+import { calculateAmountToPay, paidPorcential } from "../../../../../shared/helpers/calculate";
 
 export type RegisterPaymentError =
     | { code: "DEBT_NOT_FOUND" }
@@ -12,9 +13,16 @@ export type RegisterPaymentError =
     | { code: "NETWORK_ERROR" }
     | { code: "EXCEEDS_TOTAL_DEBT", maxAllowed: number };
 
+
+/**
+ * @param payment datos del pago
+ * @param companyId id de la empresa
+ * @param payLatePayment si es false no se tiene en cuenta el pago por atraso
+ */
 export interface RegisterPaymentInput {
     payment: Payment;
     companyId: string;
+    payLatePayment: boolean;
 }
 
 export interface RegisterPaymentOutput {
@@ -39,10 +47,10 @@ export class RegisterPaymentUseCase {
     }
 
     async execute(input: RegisterPaymentInput): Promise<Result<RegisterPaymentOutput, RegisterPaymentError>> {
-        const { payment, companyId } = input;
+        const { payment, companyId, payLatePayment } = input;
 
         try {
-            // 1. Obtener todas las cuotas de la deuda para manejar el excedente
+            // 1. obtiene la cuota inicial vinculada al pago
             const initialInstallmentResult = await this.installmentGateway.getById({
                 companyId,
                 installmentId: payment.installmentId
@@ -55,6 +63,7 @@ export class RegisterPaymentUseCase {
             const currentInstallment = initialInstallmentResult.value.state;
             const debtId = currentInstallment.debtId;
 
+            // 2. obtiene todas las cuotas de la deuda
             const allInstallmentsResult = await this.installmentGateway.getByDebt({
                 companyId,
                 debtId
@@ -64,6 +73,7 @@ export class RegisterPaymentUseCase {
                 return fail({ code: "UNKNOWN_ERROR" });
             }
 
+            //organizar en una lista de menor a mayor las cuotas por su numero de cuota
             const allInstallments = allInstallmentsResult.state.value.sort((a, b) => a.installmentNumber - b.installmentNumber);
 
             // 2. Obtener la deuda
@@ -78,66 +88,64 @@ export class RegisterPaymentUseCase {
 
             const debt = debtResult.state.value;
 
-            // 3. Identificar cuotas futuras y calcular el máximo permitido
-            // Máximo permitido = Deuda pendiente de la cuota actual (base + mora) + Suma de valores base de cuotas futuras
-            const currentIndex = allInstallments.findIndex(i => i.id === payment.installmentId);
-            const futureInstallments = allInstallments.slice(currentIndex + 1).filter(i => i.status !== 'pagada' && i.status !== 'liquidada' && i.status !== 'cancelada');
+            // 3. Identificar cuotas futuras
 
+            //obtiene el inidce de la lista que apunta a la cuota actual 
+            const currentIndex = allInstallments.findIndex(i => i.id === payment.installmentId);
+
+            //obtiene todas las cuotas desde la actual hasta que se acaben y que no esten pagadas, liquidadas o canceladas
+            const installmentsToPay: Installment[] = allInstallments.slice(currentIndex).filter(i => i.status !== 'pagada' && i.status !== 'liquidada' && i.status !== 'cancelada');
+
+            /**
+             * valor a pagar por retraso
+             */
             const currentPendingLate = currentInstallment.latepayment - (currentInstallment.paidLatePayment ?? 0);
+            /**
+             * valor a pagar por base de la cuota
+             */
             const currentPendingBase = currentInstallment.amount - currentInstallment.paidAmount;
 
-            let maxAllowed = currentPendingLate + currentPendingBase;
-            futureInstallments.forEach(i => {
-                maxAllowed += (i.amount - i.paidAmount);
-            });
+            console.log("currentPendingLate", currentPendingLate)
+            console.log("currentPendingBase", currentPendingBase)
 
-            if (payment.amount > maxAllowed) {
-                return fail({ code: "EXCEEDS_TOTAL_DEBT", maxAllowed });
-            }
+
 
             // 4. Distribuir el pago
+
+            /**
+             * valor restante del pago por distribuir
+             */
             let remainingAmount = payment.amount;
             let totalPaidToBase = 0;
             let totalPaidToLate = 0;
             const updatedInstallments: Installment[] = [];
 
-            // A. Primero la cuota actual (Mora -> Base)
-            let paidToLateThis = 0;
-            let paidToBaseThis = 0;
-
-            if (currentPendingLate > 0) {
-                paidToLateThis = Math.min(remainingAmount, currentPendingLate);
-                remainingAmount -= paidToLateThis;
-                totalPaidToLate += paidToLateThis;
-            }
-
-            paidToBaseThis = Math.min(remainingAmount, currentPendingBase);
-            remainingAmount -= paidToBaseThis;
-            totalPaidToBase += paidToBaseThis;
-
-            const updatedCurrent: Installment = {
-                ...currentInstallment,
-                paidAmount: currentInstallment.paidAmount + paidToBaseThis,
-                paidLatePayment: (currentInstallment.paidLatePayment ?? 0) + paidToLateThis,
-                payments: [...(currentInstallment.payments ?? []), payment.id]
-            };
-            this.updateInstallmentStatus(updatedCurrent);
-            updatedInstallments.push(updatedCurrent);
 
             // B. Luego las cuotas futuras (Solo Base)
-            for (const inst of futureInstallments) {
+            for (const installment of installmentsToPay) {
                 if (remainingAmount <= 0) break;
 
-                const pendingBase = inst.amount - inst.paidAmount;
-                const paidToBase = Math.min(remainingAmount, pendingBase);
+                const pendingBase = (installment.amount ?? 0) - (installment.paidAmount ?? 0);
+                const pendingLate = (installment.latepayment ?? 0) - (installment.paidLatePayment ?? 0);
 
-                remainingAmount -= paidToBase;
+                const paidToBase = calculateAmountToPay(remainingAmount, pendingBase);
                 totalPaidToBase += paidToBase;
 
+                remainingAmount = remainingAmount - paidToBase;
+
+                let paidToLate = 0;
+                if (payLatePayment) {
+                    paidToLate = calculateAmountToPay(remainingAmount, pendingLate);
+                    remainingAmount -= paidToLate;
+                    totalPaidToLate += paidToLate;
+                }
                 const updatedInst: Installment = {
-                    ...inst,
-                    paidAmount: inst.paidAmount + paidToBase,
-                    payments: [...(inst.payments ?? []), payment.id]
+                    ...installment,
+                    paidAmount: (installment.paidAmount ?? 0) + paidToBase,
+                    paidLatePayment: (installment.paidLatePayment ?? 0) + paidToLate,
+                    payments: [...(installment.payments ?? []), payment.id],
+                    basePaidRatio: paidPorcential((installment.paidAmount ?? 0), installment.amount),
+                    latePaidRatio: paidPorcential((installment.paidLatePayment ?? 0), installment.latepayment)
                 };
                 this.updateInstallmentStatus(updatedInst);
                 updatedInstallments.push(updatedInst);
@@ -155,6 +163,9 @@ export class RegisterPaymentUseCase {
                 ...debt,
                 totalPaid: (debt.totalPaid ?? 0) + totalPaidToBase,
                 totalPaymentForLate: (debt.totalPaymentForLate ?? 0) + totalPaidToLate,
+                capitalPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.capital),
+                interestPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.totalInterest),
+                creditPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.totalAmount),
                 dateLastPayment: payment.paidAt,
                 installmentsPaid: installmentsPaidCount,
             };
@@ -173,7 +184,7 @@ export class RegisterPaymentUseCase {
             await this.debtGateway.update({
                 companyId,
                 debt: updatedDebt,
-                isNewCollector: false
+                isNewRoute: false
             });
 
             return ok({
@@ -189,7 +200,7 @@ export class RegisterPaymentUseCase {
     }
 
     private updateInstallmentStatus(installment: Installment) {
-        const totalDue = installment.amount + installment.latepayment;
+        const totalDue = installment.amount + (installment.latepayment ?? 0);
         const totalPaid = installment.paidAmount + (installment.paidLatePayment ?? 0);
 
         if (totalPaid >= totalDue) {

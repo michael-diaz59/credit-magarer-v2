@@ -29,6 +29,8 @@ import type { Debt, DebtStatus } from "../../domain/business/entities/Debt";
 import type { GetDebtsInput, GetDebtsOutput } from "../../domain/business/useCases/debt/GetDebtsCase";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../../domain/business/useCases/debt/GetByFiltersCase";
 import { DebtToDocumentData, documentToDebt } from "./mapDocumentToDebt";
+import { calculateDatesOfDebts } from "../../scripts/createDebtExcel";
+import { InstallmentToDocument } from "./FirebaseInstallmentRepository";
 
 export class FirebaseDebtRepository implements DebtGateway {
 
@@ -169,18 +171,19 @@ export class FirebaseDebtRepository implements DebtGateway {
                 /** 🏷️ Nombre secuencial */
                 const debtName = `${nextDebtNumber}`;
                 debtNameOut = debtName
+                input.debt.name = debtName
 
+                console.log("input.debt", input.debt.name)
                 /** 📌 Crear deuda */
                 tx.set(debtRef, DebtToDocumentData(input.debt));
 
                 /** 📌 Crear cuotas */
                 for (const installment of input.installments) {
+                    installment.debtId = debtId
                     const installmentRef = doc(installmentsCol);
 
                     tx.set(installmentRef, {
-                        ...installment,
-                        id: installmentRef.id,
-                        debtId,
+                        ...InstallmentToDocument(installment),
                     });
                 }
             });
@@ -437,6 +440,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 "debts",
                 input.debt.id
             );
+            console.log("startDate: ", debt.startDate)
 
             await updateDoc(ref, DebtToDocumentData(debt));
 
@@ -515,6 +519,87 @@ export class FirebaseDebtRepository implements DebtGateway {
             );
 
             return ok(true);
+        }
+    }
+    async getAll(companyId: string): Promise<Debt[]> {
+        const ref = collection(
+            firestore,
+            "companies",
+            companyId,
+            "debts"
+        );
+
+        const snapshot = await getDocs(ref);
+
+        return snapshot.docs.map((doc) => documentToDebt(doc, doc.id));
+    }
+
+    async updateAllDebts(
+        companyId: string,
+    ): Promise<void> {
+        try {
+            const refCollection = collection(
+                firestore,
+                "companies",
+                companyId,
+                "debts",
+            );
+
+            const snapshot = await getDocs(refCollection);
+
+            const debts = snapshot.docs.map((doc) => documentToDebt(doc));
+
+            const chunks = this.chunkArray(debts, 200);
+
+            let totalUpdated = 0;
+
+            for (const chunk of chunks) {
+                const batch = writeBatch(firestore);
+
+                for (const debt of chunk) {
+                    calculateDatesOfDebts(debt);
+                    const updatedDebt = debt
+
+                    const ref = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "debts",
+                        debt.id,
+                    );
+
+                    batch.update(ref, {
+                        totalInterest:
+                            updatedDebt.totalInterest,
+
+                        totalAmount:
+                            updatedDebt.totalAmount,
+
+                        remainingToCompleteCredit:
+                            updatedDebt.remainingToCompleteCredit,
+
+                        capitalPaid:
+                            updatedDebt.capitalPaid,
+
+                        interestPaid:
+                            updatedDebt.interestPaid,
+
+                        creditPaid:
+                            updatedDebt.creditPaid,
+                        totalPaymentForLate:
+                            updatedDebt.totalPaymentForLate,
+                    });
+                    totalUpdated++;
+                }
+
+                await batch.commit();
+            }
+            console.log(`Deudas actualizadas: ${totalUpdated}`);
+
+            return
+        } catch (error) {
+            console.error("Error actualizando deudas:", error);
+            return
         }
     }
 

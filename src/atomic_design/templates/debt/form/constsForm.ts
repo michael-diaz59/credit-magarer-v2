@@ -1,4 +1,4 @@
-import type { DebtFormValues } from "../debtForm2";
+import type { DebtFormValues } from "../debtForm";
 
 
 export const CREATE_DEBT_FIELDS_MONTHS: (keyof DebtFormValues)[] = [
@@ -29,6 +29,7 @@ export const CREATE_DEBT_FIELDS_IN_VISIT: (keyof DebtFormValues)[] = [
 
 export const SIMULATION_FIELDS_MONTHS: (keyof DebtFormValues)[] = [
     "capital",
+    "startDate",
     "interestRate",
     "debtTerms",
     "months",
@@ -36,6 +37,7 @@ export const SIMULATION_FIELDS_MONTHS: (keyof DebtFormValues)[] = [
 ];
 export const SIMULATION_FIELDS_INSTALLMENTS: (keyof DebtFormValues)[] = [
     "capital",
+    "startDate",
     "interestRate",
     "debtTerms",
     "installmentCount",

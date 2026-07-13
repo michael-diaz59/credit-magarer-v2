@@ -16,7 +16,7 @@ import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
 
-import { DebtForm, mapDebtToForm, mergeDebtWithForm, type DebtFormRef } from "../debtForm2";
+import { DebtForm, mapDebtToForm, mergeDebtWithForm, type DebtFormRef } from "../debtForm";
 import { DebtFormDataProvider } from "./DebtFormDataProvider";
 
 /**pantalla deuda del asesor de oficina */
@@ -77,7 +77,7 @@ export const ViewDebtScreen = () => {
       console.log(debtToUpdate.id);
 
       const update = await orchestrator.updateDebtUse({
-        isNewCollector: true,
+        isNewRoute: true,
         companyId: companyId,
         debt: debtToUpdate,
       });
@@ -180,10 +180,10 @@ export const ViewDebtScreen = () => {
 
                 return (
                   <>
-                    <DebtForm 
-                      ref={formRef} 
-                      routes={routes} 
-                      debValues={mapDebtToForm(form as Debt)} 
+                    <DebtForm
+                      ref={formRef}
+                      routes={routes}
+                      debValues={mapDebtToForm(form as Debt)}
                       config={{
                         editableFields: mode === "edit" ? undefined : []
                       }}
@@ -192,17 +192,17 @@ export const ViewDebtScreen = () => {
                     <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
                       {mode === "edit" && (
                         <>
-                          <Button 
-                            variant="outlined" 
-                            color="primary" 
+                          <Button
+                            variant="outlined"
+                            color="primary"
                             onClick={() => handleSubmit("update")}
                             disabled={loading}
                           >
                             Actualizar
                           </Button>
-                          <Button 
-                            variant="contained" 
-                            color="primary" 
+                          <Button
+                            variant="contained"
+                            color="primary"
                             onClick={() => handleSubmit("preApprove")}
                             disabled={loading}
                           >

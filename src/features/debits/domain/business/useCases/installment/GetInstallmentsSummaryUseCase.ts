@@ -7,6 +7,10 @@ export interface GetInstallmentsSummaryInput {
     endDate: string;
 }
 
+/**
+ * expectedPayment => dinero esperado por base de cuotas
+ * paymentExpectedToDelay => dinero esperado por mora de cuotas
+ */
 export interface GetInstallmentsSummaryOutput {
     totalAmount: number;
     totalPaidAmount: number;

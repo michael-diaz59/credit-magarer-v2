@@ -55,7 +55,7 @@ export const DebtCard = ({ debt, onClick }: Props) => {
         sx={{
           p: 2, // 👈 padding compacto
           "&:last-child": { pb: 2 },
-          backgroundColor: debt.status === "pagada" ? "#25aa5cff" : "default",
+          backgroundColor: debt.status === "pagada" ? "#b0b0b9ff" : "default",
         }}
       >
         <Stack spacing={1.2}>

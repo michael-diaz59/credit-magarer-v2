@@ -1,5 +1,6 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
 import type { Debt } from "../../entities/Debt";
+import type { Installment } from "../../entities/Installment";
 import { simulateInstallments } from "../helper";
 
 export type SimulateDebtError =
@@ -23,10 +24,12 @@ export interface SimulateDebtOutput {
   cuotasCompletas: number
   pago_ultima_cuota: number
   pago_cuota_reound: number;
+  installments: Installment[];
 }
 
 export function createEmptySimulateDebtOutput(): SimulateDebtOutput {
   return {
+    installments: [],
     valueOfInstallments: 0,
     totalAmount: 0,
     capital: 0,
@@ -63,7 +66,7 @@ export class SimulateDebtCase {
     };
 
     /** 4️⃣ Generar cuotas */
-    const { pago_cuota, total_deuda_a_pagar, cuotasCompletas, pago_ultima_cuota, pago_cuota_reound } = simulateInstallments(
+    const { pago_cuota, total_deuda_a_pagar, cuotasCompletas, pago_ultima_cuota, pago_cuota_reound, installments } = simulateInstallments(
       debt,
       input.months
     );
@@ -75,7 +78,8 @@ export class SimulateDebtCase {
       totalInstallments: debt.installmentCount,
       cuotasCompletas: cuotasCompletas,
       pago_ultima_cuota: pago_ultima_cuota,
-      pago_cuota_reound: pago_cuota_reound
+      pago_cuota_reound: pago_cuota_reound,
+      installments: installments,
     })
 
   }

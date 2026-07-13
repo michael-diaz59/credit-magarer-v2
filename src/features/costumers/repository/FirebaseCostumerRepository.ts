@@ -111,10 +111,7 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       const snapshot = await getDocs(customersRef);
 
       /** 🧠 Parseo */
-      const customers: Customer[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Customer, "id">),
-      }));
+      const customers: Customer[] = snapshot.docs.map((doc) => (this.dataToCostumer(doc.data(), doc.id)));
 
       return ok({
         state: customers,

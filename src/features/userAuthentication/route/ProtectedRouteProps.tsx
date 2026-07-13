@@ -101,3 +101,17 @@ export function ProtectedCollector({ children }: ProtectedRouteProps) {
 
 
 }
+
+export function ProtectedAdmin({ children }: ProtectedRouteProps) {
+    const roles: Role[] | undefined = useAppSelector((state) => state.user.user?.roles);
+
+    if (!roles) {
+    return <Navigate to="/" replace />;
+  }
+
+  // No tiene el rol requerido
+  if (roles.includes("ADMIN")) {
+     return children;
+  }
+   return <Navigate to="/" replace />;
+}

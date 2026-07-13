@@ -21,7 +21,7 @@ import DebtOrchestrator from "../../../../features/debits/domain/infraestructure
 import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
 import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
-import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm";
 import type { SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
 import type { DialogState } from "../../../sub_atomic_particles/DialogState";
@@ -60,6 +60,7 @@ export const FieldVisit = () => {
       capital: 0,
       totalInstallments: 0,
       valueOfInstallments: 0,
+      installments: [],
     });
   const navigate = useNavigate();
 
@@ -122,7 +123,7 @@ export const FieldVisit = () => {
 
     const result = await debtOrchestrator.updateDebtUse({
       companyId: companyId ?? "",
-      isNewCollector: false,
+      isNewRoute: false,
       debt: updatedDebt,
     });
 
@@ -161,6 +162,7 @@ export const FieldVisit = () => {
         capital: 0,
         totalInstallments: 0,
         valueOfInstallments: 0,
+        installments: []
       }
     )
     let isValid: boolean = false;

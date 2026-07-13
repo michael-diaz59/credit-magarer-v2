@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { Box, Typography, Button, TextField, CircularProgress, useTheme } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { useAppSelector } from "../../../store/redux/coreRedux";
-import { importDebtFromExcel } from "../../../features/debits/scripts/createDebtExcel";
+import { corregirCreditos } from "../../../features/debits/scripts/createDebtExcel";
 
 export const UploadExcelScreen: React.FC = () => {
   const theme = useTheme();
@@ -36,7 +36,7 @@ export const UploadExcelScreen: React.FC = () => {
     setMessage(null);
 
     try {
-      await importDebtFromExcel(file, {
+      await corregirCreditos(file, {
         companyId,
         idRoute,
         collectorId: collectorId, // Ya no parece requerirse con la nueva lógica, pero lo enviamos vacío

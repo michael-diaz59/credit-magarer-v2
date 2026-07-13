@@ -51,92 +51,6 @@ import type { GetManagementInstallmentsInput } from "../../domain/business/useCa
 
 export class FirebaseInstallmentRepository implements InstallmentGateway {
 
-
-  private InstallmentToDocument(installment: Omit<Installment, "id">): DocumentData {
-    const result: DocumentData = {
-      companyId: installment.companyId,
-      debtId: installment.debtId,
-      interestRate: installment.interestRate,
-      lateInterestRate: installment.lateInterestRate,
-      routeId: installment.routeId,
-      costumerId: installment.costumerId,
-      costumerDocument: installment.costumerDocument,
-      costumerName: installment.costumerName,
-      costumerNumber: installment.costumerNumber,
-      costumerAddres: {
-        address: installment.costumerAddres?.address ?? "",
-        neighborhood: installment.costumerAddres?.neighborhood ?? "",
-        stratum: installment.costumerAddres?.stratum ?? 0,
-        city: installment.costumerAddres?.city ?? "",
-      },
-      managed: installment.managed,
-      managementDate: installment.managementDate ? encodeDate(installment.managementDate) : undefined,
-      attemptedCollection: installment.attemptedCollection,
-      dateAttemptedPayment: installment.dateAttemptedPayment ? encodeDate(installment.dateAttemptedPayment) : undefined,
-      descriptionAttemptedPayment: installment.descriptionAttemptedPayment,
-      locationAttemptedPayment: installment.locationAttemptedPayment,
-      installmentTotalNumber: installment.installmentTotalNumber,
-      installmentNumber: installment.installmentNumber,
-      amount: installment.amount,
-      paidAmount: installment.paidAmount,
-      latepayment: installment.latepayment,
-      dueDate: installment.dueDate ? encodeDate(installment.dueDate) : undefined,
-      lateDueDate: installment.lateDueDate ? encodeDate(installment.lateDueDate) : undefined,
-      status: installment.status,
-      paidAt: installment.paidAt ? encodeDate(installment.paidAt) : undefined,
-      createdAt: installment.createdAt ? encodeDate(installment.createdAt) : undefined,
-      payments: installment.payments,
-      paidLatePayment: installment.paidLatePayment,
-      aplazado: installment.aplazado,
-    };
-
-    return removeUndefined(result);
-  }
-
-
-  private DocumentToInstallment(id: string, data: DocumentData): Installment {
-    return {
-      id,
-      companyId: data.companyId ?? "",
-      debtId: data.debtId ?? "",
-      interestRate: data.interestRate ?? 0,
-      lateInterestRate: data.lateInterestRate ?? 0,
-      routeId: data.routeId ?? "",
-      costumerId: data.costumerId ?? "",
-      costumerDocument: data.costumerDocument ?? "",
-      costumerName: data.costumerName ?? "",
-      costumerNumber: data.costumerNumber ?? "",
-
-      costumerAddres: {
-        address: data.costumerAddres?.address ?? "",
-        neighborhood: data.costumerAddres?.neighborhood ?? "",
-        stratum: data.costumerAddres?.stratum ?? 0,
-        city: data.costumerAddres?.city ?? "",
-      },
-      managed: data.managed ?? false,
-      managementDate: data.managementDate ? decodeDate(data.managementDate) : "",
-
-      attemptedCollection: data.attemptedCollection ?? false,
-      dateAttemptedPayment: data.dateAttemptedPayment ? decodeDate(data.dateAttemptedPayment) : "",
-      descriptionAttemptedPayment: data.descriptionAttemptedPayment ?? "",
-      locationAttemptedPayment: data.locationAttemptedPayment,
-
-      installmentTotalNumber: data.installmentTotalNumber ?? 0,
-      installmentNumber: data.installmentNumber ?? 0,
-      amount: data.amount ?? 0,
-      paidAmount: data.paidAmount ?? 0,
-      latepayment: data.latepayment ?? 0,
-      dueDate: data.dueDate ? decodeDate(data.dueDate) : "",
-      lateDueDate: data.lateDueDate ? decodeDate(data.lateDueDate) : "",
-      status: data.status ?? "pendiente",
-      paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
-      createdAt: data.createdAt ? decodeDate(data.createdAt) : "",
-      payments: data.payments ?? [],
-      paidLatePayment: data.paidLatePayment ?? 0,
-      aplazado: data.aplazado ?? false,
-    };
-  }
-
   async updateById(
     input: UpdateByIdInput,
   ): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
@@ -157,7 +71,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         return fail({ code: "INSTALLMENT_NOT_FOUND" });
       }
 
-      await updateDoc(ref, this.InstallmentToDocument(installment));
+      await updateDoc(ref, InstallmentToDocument(installment));
 
       return ok({
         state: null,
@@ -197,7 +111,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         return fail({ code: "UNKNOWN_ERROR" });
       }
       const raw: DocumentData = snapshot.data();
-      const installment = this.DocumentToInstallment(snapshot.id, raw);
+      const installment = DocumentToInstallment(snapshot.id, raw);
 
       return ok({
         state: installment,
@@ -243,7 +157,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       const snapshot = await getDocs(q);
 
       const installments: Installment[] = snapshot.docs.map((doc) =>
-        this.DocumentToInstallment(doc.id, doc.data()),
+        DocumentToInstallment(doc.id, doc.data()),
       );
 
       return ok({
@@ -281,7 +195,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         const docRef = doc(collectionRef);
 
         // NUNCA guardes el id dentro del documento
-        batch.set(docRef, this.InstallmentToDocument(installment));
+        batch.set(docRef, InstallmentToDocument(installment));
       }
 
       await batch.commit();
@@ -326,7 +240,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
           // Asignar el id generado en Firestore al objeto original en memoria
           installment.id = docRef.id;
 
-          batch.set(docRef, this.InstallmentToDocument(installment));
+          batch.set(docRef, InstallmentToDocument(installment));
         }
 
         await batch.commit();
@@ -357,7 +271,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
           installment.id,
         );
 
-        batch.update(ref, this.InstallmentToDocument(installment));
+        batch.update(ref, InstallmentToDocument(installment));
       }
 
       await batch.commit();
@@ -389,7 +303,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       const snapshot = await getDocs(q);
 
       const installments = snapshot.docs.map((doc) =>
-        this.DocumentToInstallment(doc.id, doc.data()),
+        DocumentToInstallment(doc.id, doc.data()),
       );
 
       return { state: ok<Installment[]>(installments) };
@@ -445,7 +359,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       }
 
       const docVal = snapshot.docs[0];
-      const installment = this.DocumentToInstallment(docVal.id, docVal.data());
+      const installment = DocumentToInstallment(docVal.id, docVal.data());
 
       return ok(installment);
     } catch (error) {
@@ -474,8 +388,14 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
+      console.log("start", start);
+      console.log("end", end);
+
       const startTimestamp = Timestamp.fromDate(start);
       const endTimestamp = Timestamp.fromDate(end);
+
+      console.log("startTimestamp", startTimestamp.toDate());
+      console.log("endTimestamp", endTimestamp.toDate());
 
       const q = query(
         ref,
@@ -489,6 +409,8 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
         totalPaidLatePayment: sum("paidLatePayment"),
         totalLatePayment: sum("latepayment"),
       });
+
+      console.log(snapshot.data());
 
       const data = snapshot.data();
 
@@ -518,7 +440,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       const snapshot = await getDocs(q);
 
       const installments = snapshot.docs.map((doc) =>
-        this.DocumentToInstallment(doc.id, doc.data())
+        DocumentToInstallment(doc.id, doc.data())
       );
 
       // Filtrado en memoria para las fechas para mayor flexibilidad y evitar índices compuestos complejos
@@ -534,4 +456,92 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }
+}
+
+export function InstallmentToDocument(installment: Omit<Installment, "id">): DocumentData {
+  const result: DocumentData = {
+    companyId: installment.companyId,
+    basePaidRatio: installment.basePaidRatio,
+    latePaidRatio: installment.latePaidRatio,
+    debtId: installment.debtId,
+    interestRate: installment.interestRate,
+    lateInterestRate: installment.lateInterestRate,
+    routeId: installment.routeId,
+    costumerId: installment.costumerId,
+    costumerDocument: installment.costumerDocument,
+    costumerName: installment.costumerName,
+    costumerNumber: installment.costumerNumber,
+    costumerAddres: {
+      address: installment.costumerAddres?.address ?? "",
+      neighborhood: installment.costumerAddres?.neighborhood ?? "",
+      stratum: installment.costumerAddres?.stratum ?? 0,
+      city: installment.costumerAddres?.city ?? "",
+    },
+    managed: installment.managed,
+    managementDate: installment.managementDate ? encodeDate(installment.managementDate) : undefined,
+    attemptedCollection: installment.attemptedCollection,
+    dateAttemptedPayment: installment.dateAttemptedPayment ? encodeDate(installment.dateAttemptedPayment) : undefined,
+    descriptionAttemptedPayment: installment.descriptionAttemptedPayment,
+    locationAttemptedPayment: installment.locationAttemptedPayment,
+    installmentTotalNumber: installment.installmentTotalNumber,
+    installmentNumber: installment.installmentNumber,
+    amount: installment.amount,
+    paidAmount: installment.paidAmount,
+    latepayment: installment.latepayment,
+    dueDate: installment.dueDate ? encodeDate(installment.dueDate) : undefined,
+    lateDueDate: installment.lateDueDate ? encodeDate(installment.lateDueDate) : undefined,
+    status: installment.status,
+    paidAt: installment.paidAt ? encodeDate(installment.paidAt) : undefined,
+    createdAt: installment.createdAt ? encodeDate(installment.createdAt) : undefined,
+    payments: installment.payments,
+    paidLatePayment: installment.paidLatePayment,
+    aplazado: installment.aplazado,
+  };
+
+  return removeUndefined(result);
+}
+
+export function DocumentToInstallment(id: string, data: DocumentData): Installment {
+  return {
+    id,
+    companyId: data.companyId ?? "",
+    basePaidRatio: data.basePaidRatio ?? 0,
+    latePaidRatio: data.latePaidRatio ?? 0,
+    debtId: data.debtId ?? "",
+    interestRate: data.interestRate ?? 0,
+    lateInterestRate: data.lateInterestRate ?? 0,
+    routeId: data.routeId ?? "",
+    costumerId: data.costumerId ?? "",
+    costumerDocument: data.costumerDocument ?? "",
+    costumerName: data.costumerName ?? "",
+    costumerNumber: data.costumerNumber ?? "",
+
+    costumerAddres: {
+      address: data.costumerAddres?.address ?? "",
+      neighborhood: data.costumerAddres?.neighborhood ?? "",
+      stratum: data.costumerAddres?.stratum ?? 0,
+      city: data.costumerAddres?.city ?? "",
+    },
+    managed: data.managed ?? false,
+    managementDate: data.managementDate ? decodeDate(data.managementDate) : "",
+
+    attemptedCollection: data.attemptedCollection ?? false,
+    dateAttemptedPayment: data.dateAttemptedPayment ? decodeDate(data.dateAttemptedPayment) : "",
+    descriptionAttemptedPayment: data.descriptionAttemptedPayment ?? "",
+    locationAttemptedPayment: data.locationAttemptedPayment,
+
+    installmentTotalNumber: data.installmentTotalNumber ?? 0,
+    installmentNumber: data.installmentNumber ?? 0,
+    amount: data.amount ?? 0,
+    paidAmount: data.paidAmount ?? 0,
+    latepayment: data.latepayment ?? 0,
+    dueDate: data.dueDate ? decodeDate(data.dueDate) : "",
+    lateDueDate: data.lateDueDate ? decodeDate(data.lateDueDate) : "",
+    status: data.status ?? "pendiente",
+    paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
+    createdAt: data.createdAt ? decodeDate(data.createdAt) : "",
+    payments: data.payments ?? [],
+    paidLatePayment: data.paidLatePayment ?? 0,
+    aplazado: data.aplazado ?? false,
+  };
 }

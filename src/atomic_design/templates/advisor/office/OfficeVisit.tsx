@@ -22,7 +22,7 @@ import DebtOrchestrator from "../../../../features/debits/domain/infraestructure
 import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import { VisitFormDataProvider } from "../../visit/VisitFormDataProvider";
 import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
-import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import { DebtForm, mergeDebtWithForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import type { DialogState } from "../../../sub_atomic_particles/DialogState";
@@ -199,7 +199,7 @@ export const OfficeVisit = () => {
 
     const result = await debtOrchestrator.updateDebtUse({
       companyId: companyId ?? "",
-      isNewCollector: false,
+      isNewRoute: false,
       debt: updatedDebt,
     });
 

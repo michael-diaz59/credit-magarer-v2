@@ -80,6 +80,11 @@ export class CreateDebtUseCase {
       ...createBasicDebt(),
       deliveredStatus: input.debt.deliveredStatus,
       delivered: input.debt.delivered,
+      prenda: input.debt.prenda,
+      prendaValue: input.debt.prendaValue,
+      papeleria: input.debt.papeleria,
+      totalInterest: input.debt.totalInterest,
+      prendaDescription: input.debt.prendaDescription,
       routeId: input.debt.routeId,
       renewedToDebtId: input.debt.renewedToDebtId,
       type: input.debt.type,
@@ -188,7 +193,7 @@ export class CreateDebtUseCase {
               if (originalDebtEntity.renewedToDebtId !== result.value.debtId) {
                 await this.debtGateway.update({
                   companyId: input.companyId,
-                  isNewCollector: false,
+                  isNewRoute: false,
                   debt: {
                     ...originalDebtEntity,
                     renewedToDebtId: result.value.debtId,

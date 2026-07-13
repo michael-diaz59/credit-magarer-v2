@@ -113,6 +113,8 @@ const pathAccountPayrollHistory = pathAccountant + "/payroll-history"
 export const pathAccountPayrollPaymentDetail = pathAccountant + "/payroll-payment-detail"
 export const pathAccountForecasts = pathAccountant + "/forecasts"
 
+const pathAdmin = "/admin"
+
 
 export const baseAppBar: RoutNav[] = [
   { label: "configuracion", path: pathConfiguration },
@@ -225,6 +227,9 @@ export const ScreenPaths = {
     payrollPaymentDetail: (payrollId: string) => `${pathAccountPayrollPaymentDetail}/${payrollId}`,
     forecasts: pathAccountForecasts,
     financialReports: pathAccountant + "/financial-reports",
+  },
+  admin: {
+    home: pathAdmin,
   }
 
 } as const;
@@ -252,4 +257,14 @@ export const auditorAppBar: RoutNav[] = [
   { label: "clientes", path: ScreenPaths.auditor.debitsC },
   { label: "desembolsos", path: ScreenPaths.auditor.home },
   { label: "inicio", path: ScreenPaths.home },
+];
+
+export const accountantAppBar: RoutNav[] = [
+  { label: "inicio", path: ScreenPaths.home },
+  { label: "dashboard", path: ScreenPaths.accountant.home },
+  { label: "cuadres movimientos", path: ScreenPaths.accountant.dailyOperations },
+  { label: "creditos", path: ScreenPaths.accountant.debits },
+  { label: "rutas", path: ScreenPaths.accountant.routesBalance },
+  { label: "entregas péndientes", path: ScreenPaths.accountant.pendingDelivery },
+  { label: "reportes", path: ScreenPaths.accountant.financialReports },
 ];

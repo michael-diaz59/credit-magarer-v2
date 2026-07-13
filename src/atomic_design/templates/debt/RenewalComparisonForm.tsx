@@ -3,7 +3,7 @@ import {
     type Debt
 } from "../../../features/debits/domain/business/entities/Debt";
 import type { DebtFormMode } from "./DebtFormMode";
-import { DebtForm, mapDebtToForm, type DebtFormConfig, type DebtFormRef } from "./debtForm2";
+import { DebtForm, mapDebtToForm, type DebtFormConfig, type DebtFormRef } from "./debtForm";
 import { useRef } from "react";
 import { debtComparisonConfig } from "../../sub_atomic_particles/debFormConsts";
 import { DebtFormDataProvider } from "./debts/DebtFormDataProvider";

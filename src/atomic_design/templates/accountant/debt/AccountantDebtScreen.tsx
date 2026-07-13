@@ -13,7 +13,7 @@ import DebtOrchestrator from "../../../../features/debits/domain/infraestructure
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
-import { DebtForm, mergeDebtWithForm, mapDebtToForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm2";
+import { DebtForm, mergeDebtWithForm, mapDebtToForm, type DebtFormRef, type DebtFormValues } from "../../debt/debtForm";
 import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
@@ -117,7 +117,7 @@ export const AccountantDebtScreen = () => {
       debtToUpdate.id = debt.id;
 
       const update = await orchestrator.updateDebtUse({
-        isNewCollector: false,
+        isNewRoute: false,
         companyId: companyId,
         debt: debtToUpdate,
       });

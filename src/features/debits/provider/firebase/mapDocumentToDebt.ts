@@ -1,5 +1,5 @@
 import { type DocumentData } from "firebase/firestore";
-import type { Debt } from "../../domain/business/entities/Debt";
+import type { Debt, DebtType } from "../../domain/business/entities/Debt";
 import { decodeDate, encodeDate } from "../../../shared/firebase/codeDecodeTime";
 // Importa tu tipo Debt aquí
 
@@ -11,6 +11,9 @@ export const documentToDebt = (doc: DocumentData, id?: string): Debt => {
 
     return {
         id: documentId,
+        prenda: data.prenda ?? false,
+        prendaValue: data.prendaValue ?? 0,
+        prendaDescription: data.prendaDescription ?? "",
         creditPaid: data.earning ?? false,
         papeleria: data.papeleria ?? 0,
         capitalPaid: data.capitalPaid ?? 0,
@@ -18,10 +21,10 @@ export const documentToDebt = (doc: DocumentData, id?: string): Debt => {
         remainingToCompleteCredit: data.remainingToCompleteCredit ?? 0,
         totalInterest: data.totalInterest ?? 0,
         routeId: data.routeId ?? "",
-        type: data.type ?? "credito",
+        type: transformacionType(data.type),
         idVisit: data.idVisit ?? "",
         debtTerms: data.debtTerms ?? "diario",
-        name: data.name ?? "",
+        name: "Crédito " + extraerNumeroDeString(data.name),
         diasMes: data.diasMes ?? 30,
         status: data.status ?? "tentativa",
         delivered: data.delivered ?? false,
@@ -50,39 +53,66 @@ export const documentToDebt = (doc: DocumentData, id?: string): Debt => {
     };
 };
 
-export const DebtToDocumentData = (doc: Omit<Debt, "id">): DocumentData => {
+export const DebtToDocumentData = (debt: Omit<Debt, "id">): DocumentData => {
+    console.log("doc", debt)
     return {
-        papeleria: doc.papeleria,
-        routeId: doc.routeId,
-        earning: doc.creditPaid,
-        type: doc.type,
-        idVisit: doc.idVisit,
-        debtTerms: doc.debtTerms,
-        name: doc.name,
-        diasMes: doc.diasMes,
-        status: doc.status,
-        delivered: doc.delivered,
-        deliveredStatus: doc.deliveredStatus,
-        renewalPayment: doc.renewalPayment,
-        capital: doc.capital,
-        totalAmount: doc.totalAmount,
-        totalPaid: doc.totalPaid,
-        totalPaymentForLate: doc.totalPaymentForLate,
-        interestRate: doc.interestRate,
-        installmentCount: doc.installmentCount,
-        installmentsPaid: doc.installmentsPaid,
-        overdueInstallmentsCount: doc.overdueInstallmentsCount,
-        clientId: doc.clientId,
-        costumerName: doc.costumerName,
-        costumerDocument: doc.costumerDocument,
-        originalDebt: doc.originalDebt,
-        renewedToDebtId: doc.renewedToDebtId,
+        prenda: debt.prenda,
+        prendaDescription: debt.prendaDescription,
+        prendaValue: debt.prendaValue,
+        totalInterest: debt.totalInterest,
+        remainingToCompleteCredit: debt.remainingToCompleteCredit,
+        capitalPaid: debt.capitalPaid,
+        interestPaid: debt.interestPaid,
+        creditPaid: debt.creditPaid,
+        papeleria: debt.papeleria,
+        routeId: debt.routeId,
+        type: debt.type,
+        idVisit: debt.idVisit,
+        debtTerms: debt.debtTerms,
+        name: extraerNumeroDeString(debt.name).toString(),
+        diasMes: debt.diasMes,
+        status: debt.status,
+        delivered: debt.delivered,
+        deliveredStatus: debt.deliveredStatus,
+        renewalPayment: debt.renewalPayment,
+        capital: debt.capital,
+        totalAmount: debt.totalAmount,
+        totalPaid: debt.totalPaid,
+        totalPaymentForLate: debt.totalPaymentForLate,
+        interestRate: debt.interestRate,
+        installmentCount: debt.installmentCount,
+        installmentsPaid: debt.installmentsPaid,
+        overdueInstallmentsCount: debt.overdueInstallmentsCount,
+        clientId: debt.clientId,
+        costumerName: debt.costumerName,
+        costumerDocument: debt.costumerDocument,
+        originalDebt: debt.originalDebt,
+        renewedToDebtId: debt.renewedToDebtId,
 
         // Mapeo de fechas utilizando la lógica de normalización
-        startDate: doc.startDate ? encodeDate(doc.startDate) : "",
-        createdAt: doc.createdAt ? encodeDate(doc.createdAt) : "",
-        firstDueDate: doc.firstDueDate ? encodeDate(doc.firstDueDate) : "",
-        nextPaymentDue: doc.nextPaymentDue ? encodeDate(doc.nextPaymentDue) : "",
-        dateLastPayment: doc.dateLastPayment ? encodeDate(doc.dateLastPayment) : "",
+        startDate: debt.startDate ? encodeDate(debt.startDate) : "",
+        createdAt: debt.createdAt ? encodeDate(debt.createdAt) : "",
+        firstDueDate: debt.firstDueDate ? encodeDate(debt.firstDueDate) : "",
+        nextPaymentDue: debt.nextPaymentDue ? encodeDate(debt.nextPaymentDue) : "",
+        dateLastPayment: debt.dateLastPayment ? encodeDate(debt.dateLastPayment) : "",
     };
 };
+
+export function extraerNumeroDeString(texto: string): number {
+    // La RegEx /\d+/g busca secuencias de uno o más números en el texto
+    const coincidencias = texto.match(/\d+/);
+
+    // Si encuentra números, los une y los convierte a tipo 'number'
+    if (coincidencias) {
+        return Number(coincidencias[0]);
+    }
+
+    // Si el string no tenía ningún número (ej: "credit-none"), devuelve null
+    return 0;
+}
+
+export const transformacionType = (type: string): DebtType => {
+    if (type === "credito") return "fijo"
+    if (type === "variable") return "variable"
+    return "fijo"
+}

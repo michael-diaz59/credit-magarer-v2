@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useScroll } from "../../core/hooks/scrolll/useScroll";
 import { CustomSx } from "../../atomic_design/sub_atomic_particles/Custom_sx";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import FloatAppBar from "../../atomic_design/organisms/float_app_bar";
+import { EmptyAppBar } from "../../atomic_design/organisms/AppbarBase2";
 
 export default function Layout() {
   const theme = useTheme();
@@ -39,7 +39,7 @@ export default function Layout() {
             flexShrink: 0, // evita que se colapse con otros elementos
           }}
         ></Box>
-        <FloatAppBar/>
+        <EmptyAppBar />
 
         <Box flex={1}>
           <Outlet /> {/* Aquí se renderiza tu página */}

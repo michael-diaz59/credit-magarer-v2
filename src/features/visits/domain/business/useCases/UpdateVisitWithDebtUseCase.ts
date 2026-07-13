@@ -45,7 +45,7 @@ export class UpdateVisitWithDebtUseCase {
         const debtResult = await this.updateDebtUseCase.execute({
             companyId: input.idCompany,
             debt: input.debt,
-            isNewCollector: false // Por defecto false, se podría exponer en el input si fuera necesario
+            isNewRoute: false // Por defecto false, se podría exponer en el input si fuera necesario
         });
 
         if (!debtResult.state.ok) {

@@ -15,7 +15,7 @@ export type DebtFormProps = {
 };
 
 // ... (tus listas debtStatusList y debtTypes siguen igual) ...
-const debtTypes: DebtType[] = ["credito", "prenda"];
+const debtTypes: DebtType[] = ["fijo", "variable"];
 
 export const DebtFormT = ({
   defaultValues,

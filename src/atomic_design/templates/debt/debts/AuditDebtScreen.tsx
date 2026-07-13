@@ -16,7 +16,7 @@ import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
 import { BaseDialog } from "../../../atoms/BaseDialog";
 import { RenewalComparisonForm } from "../RenewalComparisonForm";
 import { useRef } from "react";
-import { DebtForm, mergeDebtWithForm, mapDebtToForm, type DebtFormRef, type DebtFormValues } from "../debtForm2";
+import { DebtForm, mergeDebtWithForm, mapDebtToForm, type DebtFormRef, type DebtFormValues } from "../debtForm";
 import { DebtFormDataProvider } from "./DebtFormDataProvider";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../form/constsForm";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
@@ -26,6 +26,9 @@ import { ScreenPaths } from "../../../../core/helpers/name_routes";
 
 export const AuditDebtScreen = () => {
   const debtFormRef = useRef<DebtFormRef>(null);
+  /**
+   * debt obtenido por id
+   */
   const [debt, setDebt] = useState<Debt | null>(null);
 
 
@@ -117,10 +120,15 @@ export const AuditDebtScreen = () => {
 
   const handleUpdateDebt = async (updatedData?: Debt) => {
     if (!debt?.id) return;
+    console.log("handleUpdateDebt")
+    console.log(updatedData)
+    console.log("debt obtenido")
+    console.log(debt)
 
     setLoading(true);
 
     let debtToUpdate: Debt;
+    var isNewRoute = false
 
     // Si recibimos updatedData, es porque venimos del submit de RenewalComparisonForm
     if (updatedData) {
@@ -131,6 +139,7 @@ export const AuditDebtScreen = () => {
         setLoading(false);
         return;
       }
+      isNewRoute = debt.routeId === debtFormRef.current?.getValues().routeId
       debtToUpdate = mergeDebtWithForm(debt, debtFormRef.current?.getValues());
     }
 
@@ -142,7 +151,7 @@ export const AuditDebtScreen = () => {
       debtToUpdate.id = debt.id;
 
       const update = await orchestrator.updateDebtUse({
-        isNewCollector: true,
+        isNewRoute: isNewRoute,
         companyId: companyId,
         debt: debtToUpdate,
       });

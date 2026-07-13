@@ -84,6 +84,12 @@ export interface Installment {
   /**monto pagado de la cuota */
   paidAmount: number;
 
+  /**porcentaje pagado de la base de cuota */
+  basePaidRatio: number;
+
+  /**porcentaje pagado de los intereses de mora de esta cuota, este porcentaje solo sube despues de haber pagado el total de la base de la cuota*/
+  latePaidRatio: number;
+
   /**dinero extra que se debe pagar por atraso en el pago */
   latepayment: number;
 
@@ -141,6 +147,8 @@ export const defaultInstallment: Omit<Installment, "id"> = {
   debtId: "",
   companyId: "",
   interestRate: 0,
+  basePaidRatio: 0,
+  latePaidRatio: 0,
   lateInterestRate: 0,
   routeId: "",
   costumerId: "",

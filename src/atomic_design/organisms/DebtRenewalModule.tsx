@@ -16,7 +16,7 @@ import { MoneyTypography } from "../atoms/MoneyTypography";
 import { BaseDialog } from "../atoms/BaseDialog";
 import { useNavigate } from "react-router-dom";
 import { ScreenPaths } from "../../core/helpers/name_routes";
-import { DebtForm, mapDebtToForm, type DebtFormRef } from "../templates/debt/debtForm2";
+import { DebtForm, mapDebtToForm, type DebtFormRef } from "../templates/debt/debtForm";
 import { DebtFormDataProvider } from "../templates/debt/debts/DebtFormDataProvider";
 import DebtOrchestrator from "../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { createEmptyDebt, type Debt } from "../../features/debits/domain/business/entities/Debt";
