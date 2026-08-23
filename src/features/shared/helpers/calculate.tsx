@@ -27,3 +27,13 @@ export function calculateAmountToPay(amountToPay: number, funds: number): number
     return Math.min(amountToPay, funds);
 }
 
+/**
+ * devuelve 0 si el monto es negativo, o el valor dado si es mayor o igual a cero
+ * @param amount valor a validar
+ * @returns valor mayor o igual a cero
+ */
+export function minZero(amount: number): number {
+    if (amount < 0) return 0;
+    return amount;
+}
+

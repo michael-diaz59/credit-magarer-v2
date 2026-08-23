@@ -106,7 +106,7 @@ export const PaymentInvoiceView = ({
                     {/* Info */}
                     <Box mb={2}>
                         <Typography><b>Cobrador:</b> {payment.collectorName}</Typography>
-                        <Typography><b>Cliente:</b> {payment.costumerName}</Typography>
+                        <Typography><b>Cliente:</b> {payment.clientName}</Typography>
                         <Typography><b>Fecha:</b> {formatDateTime(payment.paidAt)}</Typography>
                         <Box display="flex" alignItems="center" gap={1} mt={1}>
                             <Typography variant="body1"><b>Ruta:</b></Typography>

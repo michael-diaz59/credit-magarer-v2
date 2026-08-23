@@ -84,8 +84,8 @@ export const CollectionAttemptDetailScreen = () => {
                     <Divider sx={{ my: 3 }} />
                     <Typography variant="h6" mb={2}>Ubicación del Intento</Typography>
                     <MiniMap
-                        latitude={attempt.location.latitude}
-                        longitude={attempt.location.longitude}
+                        latitude={attempt.location.latitude || 0}
+                        longitude={attempt.location.longitude || 0}
                     />
                 </>
             )}

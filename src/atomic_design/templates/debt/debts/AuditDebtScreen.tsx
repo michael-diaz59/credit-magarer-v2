@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Card,
@@ -9,7 +9,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
-import { createEmptyDebt, type Debt } from "../../../../features/debits/domain/business/entities/Debt";
+import { createEmptyDebt, type Debt, type DebtStatus } from "../../../../features/debits/domain/business/entities/Debt";
 import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { LoadingOverlay } from "../../../molecules/LoadingOverlay";
@@ -23,6 +23,8 @@ import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../..
 import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
 import { auditDebtConfig } from "../../../sub_atomic_particles/debFormConsts";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
+import { selectActionAuditor } from "../../audit/helpers/selecActionAuditor";
+import { MoneyTypography } from "../../../atoms/MoneyTypography";
 
 export const AuditDebtScreen = () => {
   const debtFormRef = useRef<DebtFormRef>(null);
@@ -30,6 +32,11 @@ export const AuditDebtScreen = () => {
    * debt obtenido por id
    */
   const [debt, setDebt] = useState<Debt | null>(null);
+
+  const actions = useMemo(() => {
+    if (!debt) return [];
+    return selectActionAuditor(debt.status);
+  }, [debt]);
 
 
 
@@ -91,6 +98,45 @@ export const AuditDebtScreen = () => {
       }
     }
   };
+  const handleChangeStatus = async (nextStatus: DebtStatus): Promise<void> => {
+    const orchestrator = new DebtOrchestrator();
+    console.log("companyId", companyId)
+    console.log("debt?.id", debt?.id)
+    console.log("nextStatus", nextStatus)
+
+    const result = await orchestrator.updateDebtStatus({
+      companyId: companyId,
+      idDebt: debt?.id ?? "",
+      debtStatus: nextStatus,
+    });
+
+    console.log("result:", result)
+    setDialogOpen(true);
+    if (result.ok) {
+      setDebt((prev) => ({
+        ...(prev ?? createEmptyDebt()),
+        status: nextStatus,
+      }));
+
+      setForm({
+        ...debt!,
+        status: nextStatus,
+      });
+
+
+      setDialogConfig({
+        title: "Actualización exitosa",
+        body: "La deuda fue actualizada correctamente.",
+        buttonText: "Entendido",
+      });
+    } else {
+      setDialogConfig({
+        title: "Error al actualizar",
+        body: result.error.code ?? "Ocurrió un error inesperado al actualizar la deuda.",
+        buttonText: "Cerrar",
+      });
+    }
+  }
 
   const handleSimulateDebt = async (data: Debt, months?: number) => {
     const orchestrator = new DebtOrchestrator();
@@ -267,11 +313,11 @@ export const AuditDebtScreen = () => {
                     <>
                       <DebtForm ref={debtFormRef} routes={routes} debValues={mapDebtToForm(form)} config={auditDebtConfig(isAdmin)} />
 
-                      {debt?.totalAmount !== undefined && debt?.totalAmount !== null && (
-                        <Typography>
-                          Total de credito a pagar: {debt?.totalAmount}
-                        </Typography>
-                      )}
+                      <MoneyTypography
+                        label="Total de credito a pagar:"
+                        value={debt?.amount ?? 0}
+                        strong={false}
+                      />
                       <Divider />
 
                       <Button onClick={() => handleSubmitDebt("actualizar")}>
@@ -280,6 +326,18 @@ export const AuditDebtScreen = () => {
                       <Button onClick={() => handleSubmitDebt("simular")}>
                         simular deuda
                       </Button>
+                      {actions.map((action) => (
+                        <Button
+                          key={action.nextStatus}
+                          variant="contained"
+                          color={action.color}
+                          onClick={() => handleChangeStatus(action.nextStatus)}
+                        >
+                          {action.label}
+                        </Button>
+                      ))}
+
+
                     </>
                   );
                 }}

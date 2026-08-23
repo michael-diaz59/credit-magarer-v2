@@ -426,6 +426,64 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
     }
   }
 
+  async obtenerGananciasRangoDeTiempo(input: {
+    companyId: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<Result<{
+    totalAmount: number;
+    totalPaidAmount: number;
+    totalPaidLatePayment: number;
+    totalLatePayment: number;
+  }, any>> {
+    const { companyId, startDate, endDate } = input;
+    try {
+      const ref = collection(firestore, "companies", companyId, "installments");
+
+      // Normalize dates to Timestamps
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      console.log("start", start);
+      console.log("end", end);
+
+      const startTimestamp = Timestamp.fromDate(start);
+      const endTimestamp = Timestamp.fromDate(end);
+
+      console.log("startTimestamp", startTimestamp.toDate());
+      console.log("endTimestamp", endTimestamp.toDate());
+
+      const q = query(
+        ref,
+        where("dueDate", ">=", startTimestamp),
+        where("dueDate", "<=", endTimestamp)
+      );
+
+      const snapshot = await getAggregateFromServer(q, {
+        totalAmount: sum("amount"),
+        totalPaidAmount: sum("paidAmount"),
+        totalPaidLatePayment: sum("paidLatePayment"),
+        totalLatePayment: sum("latepayment"),
+      });
+
+      console.log(snapshot.data());
+
+      const data = snapshot.data();
+
+      return ok({
+        totalAmount: data.totalAmount ?? 0,
+        totalPaidAmount: data.totalPaidAmount ?? 0,
+        totalPaidLatePayment: data.totalPaidLatePayment ?? 0,
+        totalLatePayment: data.totalLatePayment ?? 0,
+      });
+    } catch (error) {
+      console.error("[getInstallmentsSummaryByDateRange]", error);
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
+
   async getPendingInstallmentsForCollector(input: GetManagementInstallmentsInput): Promise<Result<Installment[], any>> {
     const { companyId, routeId, today } = input;
     try {
@@ -446,7 +504,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       // Filtrado en memoria para las fechas para mayor flexibilidad y evitar índices compuestos complejos
       const filtered = installments.filter((inst) => {
         const isDueDatePastOrToday = inst.dueDate && inst.dueDate <= today;
-        const isLateDueDatePastOrToday = inst.lateDueDate && inst.lateDueDate <= today;
+        const isLateDueDatePastOrToday = inst.arrearsDueDate && inst.arrearsDueDate <= today;
         return isDueDatePastOrToday || isLateDueDatePastOrToday;
       });
 
@@ -456,92 +514,334 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }
+
+  async getPendingInstallmentsForCollectorByRoutes(
+    input: import("../../domain/business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesInput
+  ): Promise<Result<Installment[], import("../../domain/business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesError>> {
+    const { companyId, routeIds, today } = input;
+
+    if (!routeIds || routeIds.length === 0) {
+      return ok([]);
+    }
+
+    try {
+      const ref = collection(firestore, "companies", companyId, "installments");
+      const allInstallments: Installment[] = [];
+
+      // Firestore "in" queries are limited to 30 items
+      const chunks = this.chunkArray(routeIds, 30);
+
+      for (const chunk of chunks) {
+        const q = query(
+          ref,
+          where("routeId", "in", chunk),
+          where("status", "in", ["pendiente", "incompleto"])
+        );
+
+        const snapshot = await getDocs(q);
+
+        const installments = snapshot.docs.map((doc) =>
+          DocumentToInstallment(doc.id, doc.data())
+        );
+        allInstallments.push(...installments);
+      }
+
+      // Filtrado en memoria para las fechas para mayor flexibilidad y evitar índices compuestos complejos
+      const filtered = allInstallments.filter((inst) => {
+        const isDueDatePastOrToday = inst.dueDate && inst.dueDate <= today;
+        const isLateDueDatePastOrToday = inst.arrearsDueDate && inst.arrearsDueDate <= today;
+        return isDueDatePastOrToday || isLateDueDatePastOrToday;
+      });
+
+      return ok(filtered);
+    } catch (error) {
+      console.error("[getPendingInstallmentsForCollectorByRoutes]", error);
+      if (error instanceof FirebaseError) {
+        if (error.code === "unavailable") {
+          return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
 }
 
-export function InstallmentToDocument(installment: Omit<Installment, "id">): DocumentData {
+export function InstallmentToDocument(
+  installment: Omit<Installment, "id">
+): DocumentData {
   const result: DocumentData = {
-    companyId: installment.companyId,
-    basePaidRatio: installment.basePaidRatio,
-    latePaidRatio: installment.latePaidRatio,
+    // --- IDENTIFICACIÓN Y RUTA ---
     debtId: installment.debtId,
-    interestRate: installment.interestRate,
-    lateInterestRate: installment.lateInterestRate,
+    companyId: installment.companyId,
     routeId: installment.routeId,
-    costumerId: installment.costumerId,
-    costumerDocument: installment.costumerDocument,
-    costumerName: installment.costumerName,
-    costumerNumber: installment.costumerNumber,
-    costumerAddres: {
-      address: installment.costumerAddres?.address ?? "",
-      neighborhood: installment.costumerAddres?.neighborhood ?? "",
-      stratum: installment.costumerAddres?.stratum ?? 0,
-      city: installment.costumerAddres?.city ?? "",
-    },
-    managed: installment.managed,
-    managementDate: installment.managementDate ? encodeDate(installment.managementDate) : undefined,
-    attemptedCollection: installment.attemptedCollection,
-    dateAttemptedPayment: installment.dateAttemptedPayment ? encodeDate(installment.dateAttemptedPayment) : undefined,
-    descriptionAttemptedPayment: installment.descriptionAttemptedPayment,
-    locationAttemptedPayment: installment.locationAttemptedPayment,
+
     installmentTotalNumber: installment.installmentTotalNumber,
     installmentNumber: installment.installmentNumber,
+
+    // --- INFORMACIÓN DEL CLIENTE ---
+    clientId: installment.clientId,
+    clientName: installment.clientName,
+    clientDocument: installment.clientDocument,
+    clientNumber: installment.clientNumber,
+
+    clientAddres: {
+      address: installment.clientAddres?.address ?? "",
+      neighborhood: installment.clientAddres?.neighborhood ?? "",
+      stratum: installment.clientAddres?.stratum ?? 0,
+      city: installment.clientAddres?.city ?? "",
+
+      locationGPS: installment.clientAddres?.locationGPS
+        ? {
+          coordinates:
+            installment.clientAddres.locationGPS.coordinates ?? "",
+          latitude:
+            installment.clientAddres.locationGPS.latitude ?? 0,
+          longitude:
+            installment.clientAddres.locationGPS.longitude ?? 0,
+          accuracy:
+            installment.clientAddres.locationGPS.accuracy ?? 0,
+        }
+        : undefined,
+    },
+
+    // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+    interestRate: installment.interestRate,
+    arrearsInterestRate: installment.arrearsInterestRate,
+
+    // --- VALORES BASE DE LA CUOTA ---
+    capital: installment.capital,
+    interest: installment.interest,
     amount: installment.amount,
-    paidAmount: installment.paidAmount,
-    latepayment: installment.latepayment,
-    dueDate: installment.dueDate ? encodeDate(installment.dueDate) : undefined,
-    lateDueDate: installment.lateDueDate ? encodeDate(installment.lateDueDate) : undefined,
+    arrears: installment.arrears,
+    total: installment.total,
+
+    // --- PAGOS REALIZADOS ---
+    capitalPaid: installment.capitalPaid,
+    interestPaid: installment.interestPaid,
+    amountPaid: installment.amountPaid,
+    arrearsPaid: installment.arrearsPaid,
+    totalPaid: installment.totalPaid,
+
+    // --- PORCENTAJES DE PAGO ---
+    percentageOfCapitalPaid: installment.percentageOfCapitalPaid,
+    percentageOfInterestPaid: installment.percentageOfInterestPaid,
+    percentageOfAmountPaid: installment.percentageOfAmountPaid,
+    porcentageOfArrearsPaid: installment.porcentageOfArrearsPaid,
+    percentageOfTotalPaid: installment.percentageOfTotalPaid,
+
+    // --- RESTANTE POR PAGAR ---
+    remainingCapitalToPay: installment.remainingCapitalToPay,
+    remainingInterestToPay: installment.remainingInterestToPay,
+    remainingAmountToPay: installment.remainingAmountToPay,
+    remainingArrearsToPay: installment.remainingArrearsToPay,
+    remainingTotalToPay: installment.remainingTotalToPay,
+
+    // --- MORA Y RETRASO ---
+    numberOfArrearsDays: installment.numberOfArrearsDays,
+
+    arrearsDueDate: installment.arrearsDueDate
+      ? encodeDate(installment.arrearsDueDate)
+      : undefined,
+
+    // --- ESTADO Y FECHAS ---
     status: installment.status,
-    paidAt: installment.paidAt ? encodeDate(installment.paidAt) : undefined,
-    createdAt: installment.createdAt ? encodeDate(installment.createdAt) : undefined,
-    payments: installment.payments,
-    paidLatePayment: installment.paidLatePayment,
-    aplazado: installment.aplazado,
+
+    dueDate: installment.dueDate
+      ? encodeDate(installment.dueDate)
+      : undefined,
+
+    createdAt: installment.createdAt
+      ? encodeDate(installment.createdAt)
+      : undefined,
+
+    paidAt: installment.paidAt
+      ? encodeDate(installment.paidAt)
+      : undefined,
+
+    payments: installment.payments ?? [],
+
+    // --- GESTIÓN DE COBRO EN CAMPO ---
+    deferred: installment.deferred,
+    managed: installment.managed,
+
+    managementDate: installment.managementDate
+      ? encodeDate(installment.managementDate)
+      : undefined,
+
+    attemptedCollection: installment.attemptedCollection,
+
+    dateAttemptedPayment: installment.dateAttemptedPayment
+      ? encodeDate(installment.dateAttemptedPayment)
+      : undefined,
+
+    descriptionAttemptedPayment:
+      installment.descriptionAttemptedPayment ?? "",
+
+    locationAttemptedPayment: installment.locationAttemptedPayment
+      ? {
+        coordinates:
+          installment.locationAttemptedPayment.coordinates ?? "",
+        latitude:
+          installment.locationAttemptedPayment.latitude ?? 0,
+        longitude:
+          installment.locationAttemptedPayment.longitude ?? 0,
+        accuracy:
+          installment.locationAttemptedPayment.accuracy ?? 0,
+      }
+      : undefined,
   };
 
   return removeUndefined(result);
 }
 
-export function DocumentToInstallment(id: string, data: DocumentData): Installment {
+export function DocumentToInstallment(
+  id: string,
+  data: DocumentData
+): Installment {
   return {
+    // --- IDENTIFICACIÓN Y RUTA ---
     id,
-    companyId: data.companyId ?? "",
-    basePaidRatio: data.basePaidRatio ?? 0,
-    latePaidRatio: data.latePaidRatio ?? 0,
+
     debtId: data.debtId ?? "",
-    interestRate: data.interestRate ?? 0,
-    lateInterestRate: data.lateInterestRate ?? 0,
+    companyId: data.companyId ?? "",
     routeId: data.routeId ?? "",
-    costumerId: data.costumerId ?? "",
-    costumerDocument: data.costumerDocument ?? "",
-    costumerName: data.costumerName ?? "",
-    costumerNumber: data.costumerNumber ?? "",
-
-    costumerAddres: {
-      address: data.costumerAddres?.address ?? "",
-      neighborhood: data.costumerAddres?.neighborhood ?? "",
-      stratum: data.costumerAddres?.stratum ?? 0,
-      city: data.costumerAddres?.city ?? "",
-    },
-    managed: data.managed ?? false,
-    managementDate: data.managementDate ? decodeDate(data.managementDate) : "",
-
-    attemptedCollection: data.attemptedCollection ?? false,
-    dateAttemptedPayment: data.dateAttemptedPayment ? decodeDate(data.dateAttemptedPayment) : "",
-    descriptionAttemptedPayment: data.descriptionAttemptedPayment ?? "",
-    locationAttemptedPayment: data.locationAttemptedPayment,
 
     installmentTotalNumber: data.installmentTotalNumber ?? 0,
     installmentNumber: data.installmentNumber ?? 0,
+
+    // --- INFORMACIÓN DEL CLIENTE ---
+    clientId: data.clientId ?? "",
+    clientName: data.clientName ?? "",
+    clientDocument: data.clientDocument ?? "",
+    clientNumber: data.clientNumber ?? "",
+
+    clientAddres: {
+      address: data.clientAddres?.address ?? "",
+      neighborhood: data.clientAddres?.neighborhood ?? "",
+      stratum: data.clientAddres?.stratum ?? 0,
+      city: data.clientAddres?.city ?? "",
+
+      locationGPS: data.clientAddres?.locationGPS
+        ? {
+          coordinates:
+            data.clientAddres.locationGPS.coordinates ?? "",
+          latitude:
+            data.clientAddres.locationGPS.latitude ?? 0,
+          longitude:
+            data.clientAddres.locationGPS.longitude ?? 0,
+          accuracy:
+            data.clientAddres.locationGPS.accuracy ?? 0,
+        }
+        : undefined,
+    },
+
+    // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+    interestRate: data.interestRate ?? 0,
+    arrearsInterestRate: data.arrearsInterestRate ?? 0,
+
+    // --- VALORES BASE DE LA CUOTA ---
+    capital: data.capital ?? 0,
+    interest: data.interest ?? 0,
     amount: data.amount ?? 0,
-    paidAmount: data.paidAmount ?? 0,
-    latepayment: data.latepayment ?? 0,
-    dueDate: data.dueDate ? decodeDate(data.dueDate) : "",
-    lateDueDate: data.lateDueDate ? decodeDate(data.lateDueDate) : "",
+    arrears: data.arrears ?? 0,
+    total: data.total ?? 0,
+
+    // --- PAGOS REALIZADOS ---
+    capitalPaid: data.capitalPaid ?? 0,
+    interestPaid: data.interestPaid ?? 0,
+    amountPaid: data.amountPaid ?? 0,
+    arrearsPaid: data.arrearsPaid ?? 0,
+    totalPaid: data.totalPaid ?? 0,
+
+    // --- PORCENTAJES DE PAGO ---
+    percentageOfCapitalPaid:
+      data.percentageOfCapitalPaid ?? 0,
+
+    percentageOfInterestPaid:
+      data.percentageOfInterestPaid ?? 0,
+
+    percentageOfAmountPaid:
+      data.percentageOfAmountPaid ?? 0,
+
+    porcentageOfArrearsPaid:
+      data.porcentageOfArrearsPaid ?? 0,
+
+    percentageOfTotalPaid:
+      data.percentageOfTotalPaid ?? 0,
+
+    // --- RESTANTE POR PAGAR ---
+    remainingCapitalToPay:
+      data.remainingCapitalToPay ?? 0,
+
+    remainingInterestToPay:
+      data.remainingInterestToPay ?? 0,
+
+    remainingAmountToPay:
+      data.remainingAmountToPay ?? 0,
+
+    remainingArrearsToPay:
+      data.remainingArrearsToPay ?? 0,
+
+    remainingTotalToPay:
+      data.remainingTotalToPay ?? 0,
+
+    // --- MORA Y RETRASO ---
+    numberOfArrearsDays:
+      data.numberOfArrearsDays ?? 0,
+
+    arrearsDueDate: data.arrearsDueDate
+      ? decodeDate(data.arrearsDueDate)
+      : undefined,
+
+    // --- ESTADO Y FECHAS ---
     status: data.status ?? "pendiente",
-    paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
-    createdAt: data.createdAt ? decodeDate(data.createdAt) : "",
+
+    dueDate: data.dueDate
+      ? decodeDate(data.dueDate)
+      : "",
+
+    createdAt: data.createdAt
+      ? decodeDate(data.createdAt)
+      : "",
+
+    paidAt: data.paidAt
+      ? decodeDate(data.paidAt)
+      : undefined,
+
     payments: data.payments ?? [],
-    paidLatePayment: data.paidLatePayment ?? 0,
-    aplazado: data.aplazado ?? false,
+
+    // --- GESTIÓN DE COBRO EN CAMPO ---
+    deferred: data.deferred ?? false,
+
+    managed: data.managed ?? false,
+
+    managementDate: data.managementDate
+      ? decodeDate(data.managementDate)
+      : undefined,
+
+    attemptedCollection:
+      data.attemptedCollection ?? false,
+
+    dateAttemptedPayment: data.dateAttemptedPayment
+      ? decodeDate(data.dateAttemptedPayment)
+      : undefined,
+
+    descriptionAttemptedPayment:
+      data.descriptionAttemptedPayment ?? undefined,
+
+    locationAttemptedPayment:
+      data.locationAttemptedPayment
+        ? {
+          coordinates:
+            data.locationAttemptedPayment.coordinates ?? "",
+          latitude:
+            data.locationAttemptedPayment.latitude ?? 0,
+          longitude:
+            data.locationAttemptedPayment.longitude ?? 0,
+          accuracy:
+            data.locationAttemptedPayment.accuracy ?? 0,
+        }
+        : undefined,
   };
+
 }

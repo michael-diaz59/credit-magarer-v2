@@ -39,7 +39,7 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
 
   const hasDiscount = useWatch({
     control,
-    name: "prenda",
+    name: "pledge",
   });
 
   return (
@@ -72,11 +72,11 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
 
         {/* ----------PRENDA ---------- */}
         <Controller
-          name="prenda"
+          name="pledge"
           control={control}
           rules={{ required: "Debes marcar esta opción" }}
           render={({ field }) => (
-            <FormControl error={!!errors.prenda}>
+            <FormControl error={!!errors.pledge}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -87,7 +87,7 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
                 label="Activo"
               />
               <FormHelperText>
-                {errors.prenda?.message}
+                {errors.pledge?.message}
               </FormHelperText>
             </FormControl>
           )}
@@ -99,9 +99,9 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
             fullWidth
             multiline
             rows={3}
-            error={!!errors.prendaDescription}
-            helperText={errors.prendaDescription?.message}
-            {...register("prendaDescription", {
+            error={!!errors.pledgeDescription}
+            helperText={errors.pledgeDescription?.message}
+            {...register("pledgeDescription", {
               required: "La descripción es obligatoria",
             })}
           />
@@ -113,9 +113,9 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
             label="Valor de la prenda"
             fullWidth
             type="number"
-            error={!!errors.prendaValue}
-            helperText={errors.prendaValue?.message}
-            {...register("prendaValue", {
+            error={!!errors.pledgeValue}
+            helperText={errors.pledgeValue?.message}
+            {...register("pledgeValue", {
               required: "El valor de la prenda es obligatorio",
             })}
           />
@@ -126,9 +126,9 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
           label="Cédula del cliente"
           fullWidth
           InputProps={{ readOnly }}
-          error={!!errors.costumerDocument}
-          helperText={errors.costumerDocument?.message}
-          {...register("costumerDocument", {
+          error={!!errors.clientDocument}
+          helperText={errors.clientDocument?.message}
+          {...register("clientDocument", {
             required: "La cédula es obligatoria",
           })}
         />
@@ -180,9 +180,9 @@ export const CreateDebtFrom = ({ defaultValues, mode, onSubmit }: Props) => {
           type="number"
           fullWidth
           InputProps={{ readOnly }}
-          error={!!errors.totalAmount}
-          helperText={errors.totalAmount?.message}
-          {...register("totalAmount", {
+          error={!!errors.amount}
+          helperText={errors.amount?.message}
+          {...register("amount", {
             valueAsNumber: true,
             required: "El monto es obligatorio",
             min: {

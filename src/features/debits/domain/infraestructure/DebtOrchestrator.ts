@@ -1,4 +1,4 @@
-import type { Result } from "../../../../core/helpers/ResultC";
+import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
 import { FirebaseCostumerRepository } from "../../../costumers/repository/FirebaseCostumerRepository";
@@ -9,6 +9,7 @@ import { GetDebstByCostumerDocumentCase, type GetDebstByCostumerDocumentInput, t
 import { GetDebtsCase, type GetDebtsInput, type GetDebtsOutput } from "../business/useCases/debt/GetDebtsCase";
 import { SimulateDebtCase, type SimulateDebtError, type SimulateDebtInput, type SimulateDebtOutput } from "../business/useCases/debt/SimulateDebtCase";
 import { UpdateDebtUseCase, type UpdateDebitInput, type UpdateDebitOutput } from "../business/useCases/debt/UpdateDebtUseCase";
+import { UpdateDebtStatusUseCase, type UpdateDebtStatusInput, type UpdateDebtStatusOutput, type UpdateDebtStatusError } from "../business/useCases/debt/UpdateDebtStatusUseCase";
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
 import { UpdateInstallmentByDebtCase, type UpdateInstallmentByDebtInput, type UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import { GetDebtsValidByCollectorUseCase, type GetDebtsValidByCollectorInput, type GetDebtsValidByCollectorOutput } from "../business/useCases/debt/GetDebtsValidByCollectorUseCase";
@@ -18,6 +19,7 @@ import { GetSumRenewalPaymentUseCase, type GetSumRenewalPaymentInput, type GetSu
 import { ConfirmDebtDeliveryUseCase, type ConfirmDebtDeliveryInput } from "../business/useCases/debt/ConfirmDebtDeliveryUseCase";
 import { CreateDebtFromExcelCase, type CreateDebtFromExcelInput } from "../business/useCases/debt/createDebtFromExcel";
 import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
+import { SimulateDebtVariableCase } from "../business/useCases/debt/SimulateDebtVariableCase";
 
 export default class DebtOrchestrator {
 
@@ -27,8 +29,10 @@ export default class DebtOrchestrator {
     private getDebitByIdCase: GetDebitByIdCase
     private getDebstByCostumerDocumentCase: GetDebstByCostumerDocumentCase
     private updateDebtUseCase: UpdateDebtUseCase
+    private updateDebtStatusUseCase: UpdateDebtStatusUseCase
     private debtGateway: DebtGateway
     private simulateDebtCase: SimulateDebtCase
+    private simulateDebtVariableCase: SimulateDebtVariableCase
     private getDebtsValidByCollectorUseCase: GetDebtsValidByCollectorUseCase
     private getDebtsByRouteUseCase: GetDebtsByRouteUseCase
     private getTotalDeliveredCapitalUseCase: GetTotalDeliveredCapitalUseCase
@@ -45,6 +49,7 @@ export default class DebtOrchestrator {
         this.debtGateway = new FirebaseDebtRepository()
 
         this.simulateDebtCase = new SimulateDebtCase()
+        this.simulateDebtVariableCase = new SimulateDebtVariableCase()
         this.installmentGateway = new FirebaseInstallmentRepository()
         const costumerGateway = new FirebaseCostumerRepository()
         this.createDebtCase = new CreateDebtUseCase(this.debtGateway, costumerGateway, this.installmentGateway)
@@ -53,6 +58,7 @@ export default class DebtOrchestrator {
         this.getDebtsCase = new GetDebtsCase(this.debtGateway)
         this.getDebstByCostumerDocumentCase = new GetDebstByCostumerDocumentCase(this.debtGateway)
         this.updateDebtUseCase = new UpdateDebtUseCase(this.debtGateway, this.installmentGateway, costumerGateway)
+        this.updateDebtStatusUseCase = new UpdateDebtStatusUseCase(this.debtGateway)
         this.getInstallmentsByDebtCase = new GetInstallmentsByDebtCase(this.installmentGateway)
         this.updateInstallmentByDebtCase = new UpdateInstallmentByDebtCase(this.installmentGateway)
         this.getDebtsValidByCollectorUseCase = new GetDebtsValidByCollectorUseCase(this.debtGateway)
@@ -76,7 +82,37 @@ export default class DebtOrchestrator {
     }
 
     async simulateDebt(input: SimulateDebtInput): Promise<Result<SimulateDebtOutput, SimulateDebtError>> {
-        return this.simulateDebtCase.execute(input)
+        switch (input.debt.type) {
+            case "fijo":
+                return this.simulateDebtCase.execute(input);
+
+            case "variable": {
+                const result = await this.simulateDebtVariableCase.execute(input);
+                if (!result.ok) {
+                    if (result.error.code === "CAPITAL_MINIMO_1000") {
+                        return fail({ code: "el capital debe ser mayor a 1000" });
+                    }
+                    return fail({ code: "STATE_INVALID" });
+                }
+
+                const mappedOutput: SimulateDebtOutput = {
+                    valueOfInstallments: result.value.valueOfInstallments,
+                    totalAmount: input.debt.capital,
+                    capital: input.debt.capital,
+                    totalInstallments: result.value.installments.length,
+                    cuotasCompletas: 0,
+                    pago_ultima_cuota: result.value.valueOfInstallments,
+                    pago_cuota_reound: result.value.valueOfInstallments,
+                    installments: result.value.installments,
+                };
+                console.log(mappedOutput)
+
+                return ok(mappedOutput);
+            }
+
+            default:
+                return this.simulateDebtCase.execute(input);
+        }
     }
 
 
@@ -100,6 +136,10 @@ export default class DebtOrchestrator {
         return this.updateDebtUseCase.execute(input)
     }
 
+    async updateDebtStatus(input: UpdateDebtStatusInput): Promise<Result<UpdateDebtStatusOutput, UpdateDebtStatusError>> {
+        return this.updateDebtStatusUseCase.execute(input)
+    }
+
 
     async getInstallmentsByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput> {
         return this.getInstallmentsByDebtCase.execute(input)
@@ -120,7 +160,7 @@ export default class DebtOrchestrator {
     async getTotalDeliveredCapital(input: GetTotalDeliveredCapitalInput): Promise<Result<GetTotalDeliveredCapitalOutput, GetTotalDeliveredCapitalError>> {
         return this.getTotalDeliveredCapitalUseCase.execute(input);
     }
-    
+
     async getSumRenewalPayment(input: GetSumRenewalPaymentInput): Promise<Result<GetSumRenewalPaymentOutput, GetSumRenewalPaymentError>> {
         return this.getSumRenewalPaymentUseCase.execute(input);
     }

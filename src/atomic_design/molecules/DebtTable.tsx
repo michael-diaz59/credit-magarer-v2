@@ -33,7 +33,7 @@ const calculateTotalDays = (debt: Debt) => {
 
 const calculateInstallmentValue = (debt: Debt) => {
     if (debt.installmentCount === 0) return 0;
-    return debt.totalAmount / debt.installmentCount;
+    return debt.amount / debt.installmentCount;
 };
 
 
@@ -80,7 +80,7 @@ export default function DebtTable({ debts, onClick }: Props) {
 
                                 </TableCell>
 
-                                <TableCell>{debt.costumerName}</TableCell>
+                                <TableCell>{debt.clientName}</TableCell>
 
                                 <TableCell>{formatISOToInputDate(debt.startDate)}</TableCell>
 
@@ -98,9 +98,9 @@ export default function DebtTable({ debts, onClick }: Props) {
 
                                 <TableCell>{debt.status}</TableCell>
 
-                                <TableCell>{FormatNumberToMoney(debt.totalPaid)}</TableCell>
+                                <TableCell>{FormatNumberToMoney(debt.amountPaid)}</TableCell>
 
-                                <TableCell>{formatISOToInputDate(debt.dateLastPayment) || "-"}</TableCell>
+                                <TableCell>{formatISOToInputDate(debt.dateLastPayment || "") || "-"}</TableCell>
 
                                 <TableCell>
                                     {debt.installmentsPaid ?? 0}/{debt.installmentCount}
@@ -153,7 +153,7 @@ export function DebtTableAccountant({ debts, onClick }: Props) {
                                     <Typography fontWeight={600}>{"crdt-" + debt.name}</Typography>
                                 </TableCell>
 
-                                <TableCell>{debt.costumerName}</TableCell>
+                                <TableCell>{debt.clientName}</TableCell>
 
                                 <TableCell>{FormatNumberToMoney(debt.capital)}</TableCell>
 
@@ -169,10 +169,10 @@ export function DebtTableAccountant({ debts, onClick }: Props) {
 
                                 <TableCell>{debt.status}</TableCell>
 
-                                <TableCell>{FormatNumberToMoney(debt.totalPaid)}</TableCell>
-                                <TableCell>{FormatNumberToMoney(debt.totalAmount - debt.totalPaid)}</TableCell>
+                                <TableCell>{FormatNumberToMoney(debt.amountPaid)}</TableCell>
+                                <TableCell>{FormatNumberToMoney(debt.amount - debt.amountPaid)}</TableCell>
 
-                                <TableCell>{formatISOToInputDate(debt.dateLastPayment) || "-"}</TableCell>
+                                <TableCell>{formatISOToInputDate(debt.dateLastPayment || "") || "-"}</TableCell>
 
                                 <TableCell>
                                     {debt.installmentsPaid ?? 0}/{debt.installmentCount}

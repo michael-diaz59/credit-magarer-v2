@@ -15,7 +15,9 @@ import {
     orderBy,
     getAggregateFromServer,
     sum,
-    writeBatch
+    writeBatch,
+    QueryConstraint,
+    Timestamp,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import type { DebtGateway } from "../../domain/infraestructure/DebtGatweay";
@@ -28,6 +30,7 @@ import type { GetDebstByCostumerDocumentInput, GetDebstByCostumerDocumentOutput 
 import type { Debt, DebtStatus } from "../../domain/business/entities/Debt";
 import type { GetDebtsInput, GetDebtsOutput } from "../../domain/business/useCases/debt/GetDebtsCase";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../../domain/business/useCases/debt/GetByFiltersCase";
+import type { UpdateDebtStatusInput, UpdateDebtStatusOutput, UpdateDebtStatusError } from "../../domain/business/useCases/debt/UpdateDebtStatusUseCase";
 import { DebtToDocumentData, documentToDebt } from "./mapDocumentToDebt";
 import { calculateDatesOfDebts } from "../../scripts/createDebtExcel";
 import { InstallmentToDocument } from "./FirebaseInstallmentRepository";
@@ -455,6 +458,37 @@ export class FirebaseDebtRepository implements DebtGateway {
         }
     }
 
+    async updateStatus(
+        input: UpdateDebtStatusInput
+    ): Promise<Result<UpdateDebtStatusOutput, UpdateDebtStatusError>> {
+        try {
+            const { companyId, idDebt, debtStatus } = input;
+
+            const ref = doc(
+                firestore,
+                "companies",
+                companyId,
+                "debts",
+                idDebt
+            );
+
+            console.log("ref", ref)
+            console.log("debtStatus", debtStatus)
+
+            await updateDoc(ref, {
+                status: debtStatus
+            });
+
+            return ok({ success: true });
+        } catch (error) {
+            console.error("[updateStatus]", error);
+            if (error instanceof FirebaseError) {
+                return fail({ code: "NETWORK_ERROR" });
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
     async migrateDeliveredStatus(
         companyId: string
     ) {
@@ -570,24 +604,24 @@ export class FirebaseDebtRepository implements DebtGateway {
 
                     batch.update(ref, {
                         totalInterest:
-                            updatedDebt.totalInterest,
+                            updatedDebt.interest,
 
                         totalAmount:
-                            updatedDebt.totalAmount,
+                            updatedDebt.amount,
 
                         remainingToCompleteCredit:
-                            updatedDebt.remainingToCompleteCredit,
+                            updatedDebt.remainingAmountToPay,
 
                         capitalPaid:
-                            updatedDebt.capitalPaid,
+                            updatedDebt.percentageOfCapitalPaid,
 
                         interestPaid:
-                            updatedDebt.interestPaid,
+                            updatedDebt.percentageOfInteresPaid,
 
                         creditPaid:
-                            updatedDebt.creditPaid,
+                            updatedDebt.percentageOfAmountPaid,
                         totalPaymentForLate:
-                            updatedDebt.totalPaymentForLate,
+                            updatedDebt.arrearsPaid,
                     });
                     totalUpdated++;
                 }
@@ -675,35 +709,86 @@ export class FirebaseDebtRepository implements DebtGateway {
         }
     }
 
-    async getDebtsByCollectorAndStatus(input: {
+    /**
+     * 
+     * @param input esta funcion devuelve debts con fecha menor o igual a la actual
+     * @returns 
+     */
+    async getDebtsByRouteAndStatus(input: {
         companyId: string;
-        collectorId: string;
+        routeIds: string[];
         statuses: DebtStatus[];
         dateLimit?: string;
     }): Promise<Result<GetDebtsOutput, any>> {
         try {
-            const { companyId, collectorId, statuses, dateLimit } = input;
-            const ref = collection(firestore, "companies", companyId, "debts");
+            const { companyId, routeIds, statuses, dateLimit } = input;
 
-            const constraints = [
-                where("collectorId", "==", collectorId),
-                where("status", "in", statuses),
-                where("type", "==", "preparacion")
-            ];
+            console.log("[getDebtsByRouteAndStatus] companyId", companyId);
+            console.log("[getDebtsByRouteAndStatus] routeIds", routeIds);
+            console.log("[getDebtsByRouteAndStatus] statuses", statuses);
+            console.log("[getDebtsByRouteAndStatus] dateLimit", dateLimit);
 
-            if (dateLimit) {
-                constraints.push(where("nextPaymentDue", "<=", dateLimit));
+            if (routeIds.length === 0) {
+                return ok({ state: ok([]) });
             }
 
-            const q = query(ref, ...constraints);
-            const snapshot = await getDocs(q);
+            const ref = collection(firestore, "companies", companyId, "debts");
 
-            const debts: Debt[] = snapshot.docs.map(doc => documentToDebt(doc));
+            // Firestore permite máximo 30 elementos en un "in"
+            const chunkSize = 30;
+            const routeChunks: string[][] = [];
 
-            return ok({ state: ok(debts) });
+            for (let i = 0; i < routeIds.length; i += chunkSize) {
+                routeChunks.push(routeIds.slice(i, i + chunkSize));
+            }
+
+            const snapshots = await Promise.all(
+                routeChunks.map(async (routes) => {
+                    const constraints: QueryConstraint[] = [
+                        where("delivered", "==", true),
+                    ];
+                    if (statuses.length > 0) {
+                        constraints.push(where("status", "==", statuses[0]));
+                    } else {
+                        constraints.push(where("status", "in", statuses));
+                    }
+
+                    if (routes.length === 1) {
+                        constraints.push(where("routeId", "==", routes[0]));
+                    } else {
+                        constraints.push(where("routeId", "in", routes));
+                    }
+
+                    if (dateLimit) {
+                        //const [month, day, year] = dateLimit.split("/").map(Number);
+
+                        //const date = new Date(year, month - 1, day);
+
+                        //const dateLimitFormatted = Timestamp.fromDate(date);
+                        const timestampActual: Timestamp = Timestamp.now();
+                        constraints.push(where("nextPaymentDue", "<=", timestampActual));
+                    }
+                    console.log("[getDebtsByRouteAndStatus] constraints", constraints);
+
+                    const q = query(ref, ...constraints);
+                    return getDocs(q);
+                })
+            );
+
+            const debts = snapshots.flatMap(snapshot =>
+                snapshot.docs.map((doc) => documentToDebt(doc))
+            );
+            console.log("[getDebtsByRouteAndStatus] debts", debts);
+
+            return ok({
+                state: ok(debts)
+            });
+
         } catch (error) {
-            console.error("[getDebtsByCollectorAndStatus]", error);
-            return fail({ code: "UNKNOWN_ERROR" });
+            console.error("[getDebtsByRouteAndStatus]", error);
+            return fail({
+                code: "UNKNOWN_ERROR"
+            });
         }
     }
 

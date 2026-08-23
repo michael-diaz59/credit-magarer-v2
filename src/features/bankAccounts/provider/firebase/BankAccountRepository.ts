@@ -61,6 +61,7 @@ export class FirebaseBankAccountRepository implements BankAccountGateway {
 
             const bankAccounts: BankAccount[] = snapshot.docs.map(doc => {
                 const data = doc.data();
+                console.log("bankAccounts data: ", data);
                 return {
                     id: doc.id,
                     name: data.name ?? "",

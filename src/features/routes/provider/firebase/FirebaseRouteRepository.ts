@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, setDoc, increment, getDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, increment, getDoc, type DocumentData } from "firebase/firestore";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { firestore } from "../../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
@@ -8,6 +8,36 @@ import type { RouteError } from "../../domain/business/entities/routeErrors";
 
 export class FirebaseRouteRepository implements RouteGateway {
 
+  private documentToRoute(id: string, data: DocumentData): Route {
+    return {
+      id: id,
+      name: data.name,
+      description: data.description,
+      companyId: data.companyId,
+      startDisabled: data.startDisabled ?? undefined,
+      endDisabled: data.endDisabled ?? undefined,
+      cobradorId: data.cobradorId ?? undefined,
+      totalCash: data.totalCollected ?? 0,
+      totalCash2: data.totalCash2 ?? [],
+      totalDeposit: data.totalDeposit ?? [],
+    } as Route;
+  }
+
+  private routeToDocument(route: Route): DocumentData {
+    const data: DocumentData = {};
+    data.name = route.name;
+    data.description = route.description;
+    data.companyId = route.companyId;
+    data.startDisabled = route.startDisabled ?? null;
+    data.endDisabled = route.endDisabled ?? null;
+    data.cobradorId = route.cobradorId ?? null;
+    data.totalCollected = route.totalCash ?? 0;
+    data.totalCash2 = route.totalCash2 ?? [];
+    data.totalDeposit = route.totalDeposit ?? [];
+
+    return data;
+  }
+
   async createRoute(input: CreateRouteGatewayInput): Promise<Result<void, RouteError>> {
     try {
       const companyId = input.route.companyId;
@@ -15,16 +45,12 @@ export class FirebaseRouteRepository implements RouteGateway {
       const refRoutesColl = collection(firestore, "companies", companyId, "routes");
       const refRoute = input.route.id ? doc(refRoutesColl, input.route.id) : doc(refRoutesColl);
 
-      await setDoc(refRoute, {
+      const routeData = this.routeToDocument({
+        ...input.route,
         id: refRoute.id,
-        name: input.route.name,
-        description: input.route.description,
-        companyId: companyId,
-        startDisabled: input.route.startDisabled ?? null,
-        endDisabled: input.route.endDisabled ?? null,
-        cobradorId: input.route.cobradorId ?? null,
-        totalCollected: input.route.totalCash ?? 0,
-      }, { merge: true });
+      });
+
+      await setDoc(refRoute, routeData, { merge: true });
 
       return ok(undefined);
     } catch (error) {
@@ -46,21 +72,8 @@ export class FirebaseRouteRepository implements RouteGateway {
       const routesQuery = query(refRoutes);
       const snapshot = await getDocs(routesQuery);
 
-      const routes: Route[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name,
-          description: data.description,
-          companyId: data.companyId,
-          startDisabled: data.startDisabled ?? undefined,
-          endDisabled: data.endDisabled ?? undefined,
-          cobradorId: data.cobradorId ?? undefined,
-          totalCash: data.totalCollected ?? 0,
-          totalCash2: data.totalCash2 ?? [],
-          totalDeposit: data.totalDeposit ?? [],
-        } as Route;
-      });
+      const routes: Route[] = snapshot.docs.map((doc) => this.documentToRoute(doc.id, doc.data()));
+      console.log("routes", routes);
 
       return ok(routes);
     } catch (error) {
@@ -80,13 +93,17 @@ export class FirebaseRouteRepository implements RouteGateway {
       const companyId = input.route.companyId;
       const refRoute = doc(firestore, "companies", companyId, "routes", input.route.id);
 
-      await setDoc(refRoute, {
+      const routeData = this.routeToDocument({
+        companyId: input.route.companyId,
+        id: input.route.id,
         name: input.route.name,
         description: input.route.description,
-        startDisabled: input.route.startDisabled ?? null,
-        endDisabled: input.route.endDisabled ?? null,
-        cobradorId: input.route.cobradorId ?? null,
-      }, { merge: true });
+        startDisabled: input.route.startDisabled,
+        endDisabled: input.route.endDisabled,
+        cobradorId: input.route.cobradorId,
+      });
+
+      await setDoc(refRoute, routeData, { merge: true });
 
       return ok(undefined);
     } catch (error) {

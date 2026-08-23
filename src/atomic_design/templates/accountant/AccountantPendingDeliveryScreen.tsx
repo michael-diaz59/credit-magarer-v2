@@ -168,7 +168,7 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
                   </ListItemIcon>
                   <ListItemText
                     primary={debt.name || debt.id}
-                    secondary={`Cliente: ${debt.costumerName} | Monto: ${debt.capital} | Estado: ${debt.status}`}
+                    secondary={`Cliente: ${debt.clientName} | Monto: ${debt.capital} | Estado: ${debt.status}`}
                   />
                 </ListItem>
               ))}

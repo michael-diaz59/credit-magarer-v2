@@ -24,22 +24,8 @@ import {
 } from "../../organisms/ToCollectHomeBody";
 
 import { RouteManagementDialog } from "../../organisms/RouteManagementDialog";
+import { IsFutureOrToday, IsPastDate } from "../../../core/helpers/dates/calculateDays";
 
-/** indica si una fecha es menor a la actual */
-export function IsPastDate(dateStr: string): boolean {
-  const inputDate = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return inputDate < today;
-}
-
-/** indica si la fecha es igual o mayor a la actual */
-export function IsFutureOrToday(dateStr: string): boolean {
-  const inputDate = new Date(`${dateStr}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return inputDate >= today;
-}
 
 export const RecolectorHome = () => {
   const dispatch = useAppDispatch();
@@ -49,6 +35,7 @@ export const RecolectorHome = () => {
   const companyId = useAppSelector((state) => state.user.user?.companyId ?? "");
   const user = useAppSelector((state) => state.user.user);
   const idRoutes = useAppSelector((state) => state.user.user?.idRoutes ?? "");
+  console.log("idRoutes", idRoutes);
 
   const BOTTOM_BAR_HEIGHT = 56;
 
@@ -66,7 +53,7 @@ export const RecolectorHome = () => {
   );
 
   /* =======================
-     CARGAR DESEMBOLSOS
+     CARGAR DESEMBOLSOS pendientes por entregar a clientes
      ======================= */
   useEffect(() => {
     if (
@@ -112,14 +99,18 @@ export const RecolectorHome = () => {
       try {
         setLoading(true);
         const orchestrator = new InstallmentsOrchestrator();
+        console.log("idRoutes[0]", idRoutes[0]);
+        console.log("companyId", companyId);
+        console.log("today", new Date().toISOString().split("T")[0]);
 
-        const result = await orchestrator.getManagementInstallments({
+        const result = await orchestrator.getManagementInstallmentsByRoutes({
           companyId,
-          routeId: idRoutes[0],
+          routeIds: idRoutes,
           today: new Date().toISOString().split("T")[0],
         });
 
         if (result.ok) {
+          console.log("result", result.value);
           setItems(result.value);
         }
       } catch (error) {
@@ -132,9 +123,9 @@ export const RecolectorHome = () => {
     fetchInstallments();
   }, [collectorId, companyId]);
 
-  /* =======================
-     DERIVADOS
-     ======================= */
+  /**
+   * obtiene los ids de los intentos de cobro
+   */
   const debtIdsWithAttempt = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
     const ids = new Set<string>();
@@ -146,10 +137,19 @@ export const RecolectorHome = () => {
     return ids;
   }, [items]);
 
+  /**
+   * obtiene las cuotas que no tienen intentos de cobro
+   */
   const filteredItems = useMemo(() => {
     return items.filter((i) => !debtIdsWithAttempt.has(i.debtId));
   }, [items, debtIdsWithAttempt]);
 
+  /**
+   * obtiene las cuotas pendientes, en mora y pagadas
+   * pending: cuotas pendientes con fecha futura o actual
+   * overdue: cuotas pendientes con fecha pasada
+   * paid: cuotas pagadas
+   */
   const { pending, overdue, paid } = useMemo(() => {
     return {
       pending: filteredItems.filter(
@@ -164,17 +164,18 @@ export const RecolectorHome = () => {
       ),
       paid: items.filter((i) => i.status === "pagada"), // Paid items should stay
     };
+
   }, [filteredItems, items]);
 
   const allCustomers = useMemo(() => {
     const seen = new Set<string>();
 
     return items.reduce<{ id: string; name: string }[]>((acc, i) => {
-      if (!seen.has(i.costumerId)) {
-        seen.add(i.costumerId);
+      if (!seen.has(i.clientId)) {
+        seen.add(i.clientId);
         acc.push({
-          id: i.costumerId,
-          name: i.costumerName,
+          id: i.clientId,
+          name: i.clientName,
         });
       }
       return acc;

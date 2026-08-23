@@ -49,6 +49,7 @@ export class FirebaseUserRepository implements UserGateway {
 
         // Convertir objeto plano a Map para collectorRoutes si existe
         let collectorRoutes: Map<string, string[]> | undefined;
+        console.log("collectorRoutes", data);
         if (data.collectorRoutes) {
           try {
             collectorRoutes = new Map(Object.entries(data.collectorRoutes));

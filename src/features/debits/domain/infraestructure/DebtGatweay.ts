@@ -12,6 +12,7 @@ import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from ".
 import type { GetByCollectorError, GetByCollectorInput, GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
 import type { GetByIdError, GetByIdInput, GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
 import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
+import type { UpdateDebtStatusInput, UpdateDebtStatusOutput, UpdateDebtStatusError } from "../business/useCases/debt/UpdateDebtStatusUseCase";
 import type { Debt, DebtStatus } from "../business/entities/Debt";
 import type { Installment } from "../business/entities/Installment";
 import type { GetManagementInstallmentsInput } from "../business/useCases/installment/GetManagementInstallmentsUseCase";
@@ -26,6 +27,10 @@ export interface DebtGateway {
     UpdateDebitInput
   ): Promise<UpdateDebitOutput>;
 
+  updateStatus(
+    input: UpdateDebtStatusInput
+  ): Promise<Result<UpdateDebtStatusOutput, UpdateDebtStatusError>>;
+
   getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>>
 
   confirmDebtsDelivery(input: { companyId: string, debtIds: string[] }): Promise<Result<null, any>>;
@@ -37,9 +42,9 @@ export interface DebtGateway {
   getBycostumerDocument(input: GetDebstByCostumerDocumentInput): Promise<GetDebstByCostumerDocumentOutput>;
   createWithInstallments(input: createWithInstallmentsInput): Promise<Result<CreateDebtUOutput, CreateDebtError>>;
 
-  getDebtsByCollectorAndStatus(input: {
+  getDebtsByRouteAndStatus(input: {
     companyId: string;
-    collectorId: string;
+    routeIds: string[];
     statuses: DebtStatus[];
     dateLimit?: string;
   }): Promise<Result<GetDebtsOutput, any>>;
@@ -101,6 +106,10 @@ export interface InstallmentGateway {
   }, any>>;
 
   getPendingInstallmentsForCollector(input: GetManagementInstallmentsInput): Promise<Result<Installment[], any>>;
+
+  getPendingInstallmentsForCollectorByRoutes(
+    input: import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesInput
+  ): Promise<Result<Installment[], import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesError>>;
 
 }
 

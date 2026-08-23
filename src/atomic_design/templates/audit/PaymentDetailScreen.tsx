@@ -85,7 +85,7 @@ export const PaymentDetailScreen = () => {
       {/* INFO GENERAL */}
       <Stack spacing={1}>
         <Typography>
-          Cliente: <strong>{payment.costumerName}</strong>
+          Cliente: <strong>{payment.clientName}</strong>
         </Typography>
 
         <Typography>
@@ -122,8 +122,8 @@ export const PaymentDetailScreen = () => {
           </Typography>
 
           <MiniMap
-            latitude={payment.location.latitude}
-            longitude={payment.location.longitude}
+            latitude={payment.location.latitude || 0}
+            longitude={payment.location.longitude || 0}
           />
         </>
       )}

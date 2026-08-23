@@ -56,7 +56,7 @@ export const InstallmentItem = ({ installment }: Props) => {
       >
         <Typography fontWeight={500}>
           Cuota #{installment.installmentNumber} — $
-          {installment.amount + installment.latepayment}
+          {installment.amount + installment.arrears}
         </Typography>
 
         <Chip
@@ -70,21 +70,21 @@ export const InstallmentItem = ({ installment }: Props) => {
         Vence: {formatISOToInputDate(installment.dueDate)}
       </Typography>
 
-      {installment.lateDueDate && (
+      {installment.arrearsDueDate && (
         <Typography variant="body2" color="text.secondary">
           la cuota se registra con retrazo para fecha de :
-          {" "}{installment.lateDueDate}
+          {" "}{installment.arrearsDueDate}
         </Typography>
       )}
 
       <Typography variant="body2" color="text.secondary">
         valor base a cobrar:{" "}
-        {installment.amount - installment.paidAmount}
+        {installment.amount - installment.amountPaid}
       </Typography>
 
-      {installment.latepayment > 0 && (
+      {installment.arrears > 0 && (
         <Typography variant="body2" color="text.secondary">
-          valor de retraso a cobrar: {installment.latepayment}
+          valor de retraso a cobrar: {installment.arrears}
         </Typography>
       )}
 

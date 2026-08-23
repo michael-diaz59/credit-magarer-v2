@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { diasDelMesPorTermino } from "../../../core/helpers/debts/diasPorTermino";
 import type { Route } from "../../../features/routes/domain/business/entities/Route";
-import type { adelanto, Debt, DebtStatus, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
+import type { Prepayment, Debt, DebtStatus, DebtTerms, DebtType } from "../../../features/debits/domain/business/entities/Debt";
 import type { CalculationMode } from "./form/constsForm";
 import { mergeDefined } from "../../sub_atomic_particles/helpers";
 import { MoneyTypography } from "../../atoms/MoneyTypography";
@@ -33,19 +33,19 @@ export type DebtFormValues = {
   months?: number;
   routeId: string;
   calculationMode: CalculationMode;
-  costumerDocument: string;
+  clientDocument: string;
   status: DebtStatus;
   type: DebtType;
-  adelanto: adelanto;
-  prenda: boolean;
+  prepayment: Prepayment;
+  pledge: boolean;
   capital: number;
   debtTerms: DebtTerms;
-  prendaDescription: string
-  prendaValue: number
+  pledgeDescription?: string
+  pledgeValue?: number
   interestRate: number;
   installmentCount: number;
   startDate: string;
-  diasMes: number;
+  daysPerMonth: number;
 };
 
 /**
@@ -62,12 +62,12 @@ const debtFormDefaults = {
 const baseDefaults: DebtFormValues = {
   routeId: "",
   status: "tentativa",
-  prenda: false,
-  adelanto: "no",
-  prendaDescription: "",
-  prendaValue: 0,
+  pledge: false,
+  prepayment: "no",
+  pledgeDescription: "",
+  pledgeValue: 0,
   calculationMode: debtFormDefaults.calculationMode,
-  costumerDocument: "",
+  clientDocument: "",
   months: undefined,
   type: "fijo",
   capital: 0,
@@ -75,7 +75,7 @@ const baseDefaults: DebtFormValues = {
   interestRate: 0,
   installmentCount: 1,
   startDate: "",
-  diasMes: diasDelMesPorTermino[debtFormDefaults.debtTerms],
+  daysPerMonth: diasDelMesPorTermino[debtFormDefaults.debtTerms],
 };
 
 /**
@@ -155,11 +155,16 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       getValues,
       resetField,
       setValue,
+      reset,
       formState: { errors },
     } = useForm<DebtFormValues>({
       defaultValues: formDefaults,
       shouldUnregister: true,
     });
+
+    useEffect(() => {
+      reset(formDefaults);
+    }, [formDefaults, reset]);
 
 
 
@@ -180,11 +185,12 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
 
     const hasDiscount = useWatch({
       control,
-      name: "prenda",
+      name: "pledge",
     });
     useEffect(() => {
       if (!hasDiscount) {
-        resetField("prendaDescription");
+        resetField("pledgeDescription");
+        resetField("pledgeValue")
       }
     }, [hasDiscount, resetField]);
 
@@ -245,22 +251,22 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 )}
               </>
             )}
-            <Controller name="prenda" control={control} rules={{
+            <Controller name="pledge" control={control} rules={{
               required: "Debes marcar esta opción"
             }}
-              render={({ field }) => (<FormControl error={!!errors.prenda}>
+              render={({ field }) => (<FormControl error={!!errors.pledge}>
                 <FormControlLabel control={
-                  <Checkbox checked={field.value ?? false} onChange={(e) => field.onChange(e.target.checked)} />
-                } label="Activo" />
+                  <Checkbox checked={field.value ?? false} disabled={!isEditable("pledge")} onChange={(e) => field.onChange(e.target.checked)} />
+                } label="¿Se entrega prenda?" />
                 <FormHelperText>
-                  {errors.prenda?.message}
+                  {errors.pledge?.message}
                 </FormHelperText>
               </FormControl>
               )} />
             {/* Mostrar siguiente campo si prenda es true */}
             {hasDiscount && (
               <Controller
-                name="prendaDescription"
+                name="pledgeDescription"
                 control={control}
                 rules={{
                 }}
@@ -271,37 +277,37 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     fullWidth
                     multiline
                     rows={3}
-                    disabled={!isEditable("prendaDescription")}
-                    error={!!errors.prendaDescription}
-                    helperText={errors.prendaDescription?.message}
+                    disabled={!isEditable("pledgeDescription")}
+                    error={!!errors.pledgeDescription}
+                    helperText={errors.pledgeDescription?.message}
                   />
                 )}
               />
 
             )}
             {hasDiscount && (
-              <Controller name="prendaValue" control={control} rules={{
+              <Controller name="pledgeValue" control={control} rules={{
               }} render={({ field }) => (
                 <TextField
                   {...field}
                   label="Valor de la prenda"
                   fullWidth
-                  disabled={!isEditable("prendaValue")}
-                  error={!!errors.prendaValue}
-                  helperText={errors.prendaValue?.message}
+                  disabled={!isEditable("pledgeValue")}
+                  error={!!errors.pledgeValue}
+                  helperText={errors.pledgeValue?.message}
                 />
               )} />
 
             )}
 
             {/* CÉDULA */}
-            {isVisible("costumerDocument") &&
+            {isVisible("clientDocument") &&
 
               (<Controller
-                name="costumerDocument"
+                name="clientDocument"
                 control={control}
                 rules={{
-                  required: isRequired("costumerDocument")
+                  required: isRequired("clientDocument")
                     ? "La cédula es obligatoria"
                     : false,
                 }}
@@ -310,9 +316,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     {...field}
                     label="Cédula del cliente"
                     fullWidth
-                    disabled={!isEditable("costumerDocument")}
-                    error={!!errors.costumerDocument}
-                    helperText={errors.costumerDocument?.message}
+                    disabled={!isEditable("clientDocument")}
+                    error={!!errors.clientDocument}
+                    helperText={errors.clientDocument?.message}
                   />
                 )}
               />
@@ -354,10 +360,10 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             )}
             {(type == "variable") && (
               <Controller
-                name="adelanto"
+                name="prepayment"
                 control={control}
                 rules={{
-                  required: isRequired("adelanto")
+                  required: isRequired("prepayment")
                     ? "El adelanto es obligatorio"
                     : false,
                 }}
@@ -367,9 +373,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     select
                     label="Adelanto en el credito"
                     fullWidth
-                    disabled={!isEditable("adelanto")}
-                    error={!!errors.adelanto}
-                    helperText={errors.adelanto?.message}
+                    disabled={!isEditable("prepayment")}
+                    error={!!errors.prepayment}
+                    helperText={errors.prepayment?.message}
                     value={field.value || ""}
                   >
                     <MenuItem value="si">si</MenuItem>
@@ -417,26 +423,12 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     : false,
                 }}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    select
-                    label="Estado de la deuda"
-                    fullWidth
-                    disabled={!isEditable("status")}
-                    error={!!errors.status}
-                    helperText={errors.status?.message}
-                    value={field.value || ""}
-                  >
-                    <MenuItem value="tentativa">Tentativa</MenuItem>
-                    <MenuItem value="preAprobada">Pre-Aprobada</MenuItem>
-                    <MenuItem value="preparacion">Preparación</MenuItem>
-                    <MenuItem value="activa">Activa</MenuItem>
-                    <MenuItem value="corregir">Corregir</MenuItem>
-                    <MenuItem value="pagada">Pagada</MenuItem>
-                    <MenuItem value="en_mora">En Mora</MenuItem>
-                    <MenuItem value="inactivo">Inactivo</MenuItem>
-                    <MenuItem value="anulado">Anulado</MenuItem>
-                  </TextField>
+                  <Stack direction="row" spacing={2}>
+                    <Typography>Estado de la deuda: </Typography>
+                    <Typography>{field.value}</Typography>
+                  </Stack>
+
+
                 )}
               />
             )}
@@ -466,7 +458,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                       const value = e.target.value as DebtFormValues["debtTerms"];
                       field.onChange(value);
 
-                      setValue("diasMes", diasDelMesPorTermino[value]);
+                      setValue("daysPerMonth", diasDelMesPorTermino[value]);
                     }}
                   >
                     <MenuItem value="diario">Diario</MenuItem>
@@ -487,10 +479,10 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             {/* dias para 1 mes */}
             {selectedDebtTerm === "diario" && (
               <><Controller
-                name="diasMes"
+                name="daysPerMonth"
                 control={control}
                 rules={{
-                  required: isRequired("diasMes")
+                  required: isRequired("daysPerMonth")
                     ? "La cantidad de días es obligatoria"
                     : false,
                 }}
@@ -501,10 +493,10 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     select
                     label="Cantidad de días del mes"
                     fullWidth
-                    disabled={!isEditable("diasMes")}
+                    disabled={!isEditable("daysPerMonth")}
                     value={field.value || ""}
-                    error={!!errors.diasMes}
-                    helperText={errors.diasMes?.message}
+                    error={!!errors.daysPerMonth}
+                    helperText={errors.daysPerMonth?.message}
                   >
                     <MenuItem value={24}>24 días</MenuItem>
                     <MenuItem value={30}>30 días</MenuItem>
@@ -513,7 +505,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
               />
                 {renewalProposal && (
                   <Typography>
-                    Cantidad de días del mes original: {renewalProposal.diasMes}
+                    Cantidad de días del mes original: {renewalProposal.daysPerMonth}
                   </Typography>
                 )}
               </>
@@ -559,24 +551,27 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             {isVisible("calculationMode") && <Controller
               name="calculationMode"
               control={control}
+
               rules={{
                 required: isRequired("calculationMode")
                   ? "El modo de cálculo es obligatorio"
                   : false,
               }}
               render={({ field }) => (
-                <RadioGroup row {...field}>
-                  <FormControlLabel
-                    value="installments"
-                    control={<Radio />}
-                    label="Por número de cuotas"
-                  />
-                  <FormControlLabel
-                    value="months"
-                    control={<Radio />}
-                    label="Por número de meses"
-                  />
-                </RadioGroup>
+                <FormControl disabled={!isEditable("calculationMode")}>
+                  <RadioGroup row {...field}>
+                    <FormControlLabel
+                      value="installments"
+                      control={<Radio />}
+                      label="Por número de cuotas"
+                    />
+                    <FormControlLabel
+                      value="months"
+                      control={<Radio />}
+                      label="Por número de meses"
+                    />
+                  </RadioGroup>
+                </FormControl>
               )}
             />
             }
@@ -697,21 +692,21 @@ function normalizeDebtForm(values: DebtFormValues): DebtFormValues {
 
 export function mapDebtToForm(debt: Debt): DebtFormValues {
   return {
-    adelanto: debt.adelanto || "no",
+    prepayment: debt.prepayment || "no",
     calculationMode: "installments",
     routeId: debt.routeId,
     status: debt.status,
-    costumerDocument: debt.costumerDocument,
+    clientDocument: debt.clientDocument,
     type: debt.type,
     capital: debt.capital,
     debtTerms: debt.debtTerms,
     interestRate: debt.interestRate,
     installmentCount: debt.installmentCount,
     startDate: debt.startDate,
-    diasMes: debt.diasMes,
-    prenda: debt.prenda,
-    prendaDescription: debt.prendaDescription,
-    prendaValue: debt.prendaValue,
+    daysPerMonth: debt.daysPerMonth,
+    pledge: debt.pledge,
+    pledgeDescription: debt.pledgeDescription,
+    pledgeValue: debt.pledgeValue,
   };
 }
 
@@ -747,17 +742,17 @@ export function mergeDebtWithForm(
     // Campos que vienen del formulario
     routeId: formValues.routeId,
     status: formValues.status,
-    costumerDocument: formValues.costumerDocument,
+    clientDocument: formValues.clientDocument,
     type: formValues.type,
     capital: formValues.capital,
     debtTerms: formValues.debtTerms,
     interestRate: formValues.interestRate,
     installmentCount: formValues.installmentCount,
     startDate: formValues.startDate,
-    diasMes: formValues.diasMes,
+    daysPerMonth: formValues.daysPerMonth,
 
     // la suma del capital mas intereses se hace en el caso de uso
-    totalAmount: 0,
+    amount: 0,
   };
 }
 

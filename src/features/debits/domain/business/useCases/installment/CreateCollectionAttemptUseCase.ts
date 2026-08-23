@@ -4,7 +4,7 @@ import type { CollectionAttemptGateway } from "../../../infraestructure/Collecti
 import type { CollectionAttempt } from "../../entities/CollectionAttempt";
 import { ok, fail } from "../../../../../../core/helpers/ResultC";
 import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
-import type { GeoLocation } from "../../entities/Payment";
+import type { LocationGPS } from "../../../../../costumers/domain/business/entities/Address";
 
 export interface CreateCollectionAttemptInput {
     companyId: string;
@@ -12,7 +12,7 @@ export interface CreateCollectionAttemptInput {
     routeId: string;
     installmentId: string;
     collectorId: string;
-    location?: GeoLocation;
+    location?: LocationGPS;
 }
 
 export type CreateCollectionAttemptError =
@@ -68,7 +68,7 @@ export class CreateCollectionAttemptUseCase {
             collectorId,
             installmentId,
             debtId: installment.debtId,
-            customerId: installment.costumerId,
+            customerId: installment.clientId,
             routeId,
             colletorDescription: description,
             date,

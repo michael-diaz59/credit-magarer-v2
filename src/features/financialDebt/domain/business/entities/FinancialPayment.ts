@@ -1,4 +1,5 @@
-import type { GeoLocation, PaymentMethod } from "../../../../debits/domain/business/entities/Payment";
+import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
+import type { PaymentMethod } from "../../../../debits/domain/business/entities/Payment";
 
 
 
@@ -10,7 +11,7 @@ export interface FinancialPayment {
     method: PaymentMethod;
     collectorId: string; // User ID
     idProofOfPayment: string; // Storage URL or filename
-    location?: GeoLocation;
+    location?: LocationGPS;
     bankAccountId?: string;
     collectorName: string;
 }

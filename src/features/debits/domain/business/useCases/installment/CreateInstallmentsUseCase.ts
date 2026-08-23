@@ -3,9 +3,10 @@ import type { Customer } from "../../../../../costumers/domain/business/entities
 import type { PersonalInfo } from "../../../../../costumers/domain/business/entities/PersonalInfo";
 import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt, DebtTerms } from "../../entities/Debt";
-import type {
-  Installment,
-  InstallmentAddress,
+import {
+  defaultInstallment,
+  type Installment,
+  type InstallmentAddress,
 } from "../../entities/Installment";
 
 export type CreateInstallmentsError =
@@ -52,15 +53,16 @@ export class CreateInstallmentsUseCase {
       const installments: Omit<Installment, "id">[] =
         this.generateInstallmentsFromDebt(
           debt,
-          costumerInstallmentData.costumerAddres,
+          costumerInstallmentData.clientAddres,
           costumer,
           companyId
         ).map((installment) => ({
           ...installment,
-          costumerId: costumerInstallmentData.costumerId,
-          costumerNumber: costumerInstallmentData.costumerNumber,
-          costumerDocument: costumerInstallmentData.costumerDocument,
-          costumerName: costumerInstallmentData.costumerName,
+          clientId: costumerInstallmentData.clientId,
+          clientNumber: costumerInstallmentData.clientNumber,
+          clientDocument: costumerInstallmentData.clientDocument,
+          clientName: costumerInstallmentData.clientName,
+
         }));
 
       // 3️⃣ Persistir (batch / update por debt)
@@ -79,16 +81,16 @@ export class CreateInstallmentsUseCase {
     personalInfo: PersonalInfo;
   }): Pick<
     Installment,
-    "costumerId" | "costumerDocument" | "costumerName" | "costumerAddres" | "costumerNumber"
+    "clientId" | "clientDocument" | "clientName" | "clientAddres" | "clientNumber"
   > {
     const { costumerId, personalInfo } = input;
 
     return {
-      costumerId,
-      costumerDocument: personalInfo.idNumber,
-      costumerName: personalInfo.fullName,
-      costumerNumber: personalInfo.phone,
-      costumerAddres: {
+      clientId: costumerId,
+      clientDocument: personalInfo.idNumber,
+      clientName: personalInfo.fullName,
+      clientNumber: personalInfo.phone,
+      clientAddres: {
         address: personalInfo.address.address,
         neighborhood: personalInfo.address.neighborhood,
         stratum: personalInfo.address.stratum,
@@ -138,9 +140,9 @@ export class CreateInstallmentsUseCase {
   ): Omit<Installment, "id">[] {
     const startNumber = options?.startNumber ?? 1;
     const count = options?.installmentCount ?? debt.installmentCount;
-    const firstDueDateStr = options?.firstDueDate ?? debt.firstDueDate;
+    const firstDueDateStr = options?.firstDueDate ?? debt.startDate;
 
-    const totalWithInterest = debt.totalAmount * (1 + debt.interestRate / 100);
+    const totalWithInterest = debt.amount * (1 + debt.interestRate / 100);
 
     const installmentAmount = Number(
       (totalWithInterest / debt.installmentCount).toFixed(2),
@@ -149,35 +151,36 @@ export class CreateInstallmentsUseCase {
     const installments: Omit<Installment, "id">[] = [];
 
     let dueDate = new Date(firstDueDateStr);
+    const capitalPerInstallment = debt.capital / debt.installmentCount;
+    let capitalToInstallment;
+    let interesToInstallment;
+    if (installmentAmount <= capitalPerInstallment) {
+      capitalToInstallment = installmentAmount;
+      interesToInstallment = 0
+    } else {
+      capitalToInstallment = capitalPerInstallment;
+      interesToInstallment = installmentAmount - capitalPerInstallment;
+    }
+
 
     for (let i = 0; i < count; i++) {
       const currentInstallmentNumber = startNumber + i;
       installments.push({
-        basePaidRatio: 0,
-        latePaidRatio: 0,
+        ...defaultInstallment(),
+        capital: capitalToInstallment,
+        interest: interesToInstallment,
         installmentTotalNumber: debt.installmentCount,
-        lateDueDate: "",
-        lateInterestRate: 0,
-        aplazado: false,
+        deferred: false,
         companyId: companyId,
-
-        latepayment: 0,
-        paidAmount: 0,
-        paidAt: "",
         routeId: debt.routeId,
         attemptedCollection: false,
-        dateAttemptedPayment: "",
-        descriptionAttemptedPayment: "",
         debtId: debt.id,
         interestRate: debt.interestRate,
-
-        costumerId: debt.clientId,
-        costumerDocument: debt.costumerDocument,
-        costumerName: debt.costumerName,
-        costumerAddres: costumerAddress,
-        payments: [],
-        paidLatePayment: 0,
-        costumerNumber: customer.applicant.phone,
+        clientId: debt.clientId,
+        clientDocument: debt.clientDocument,
+        clientName: debt.clientName,
+        clientAddres: costumerAddress,
+        clientNumber: customer.applicant.phone,
         installmentNumber: currentInstallmentNumber,
         amount: installmentAmount,
         dueDate: this.formatDate(dueDate),

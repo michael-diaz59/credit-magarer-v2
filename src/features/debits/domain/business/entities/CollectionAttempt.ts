@@ -1,4 +1,5 @@
-import type { GeoLocation } from "./Payment";
+import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
+
 
 export interface CollectionAttempt {
     id: string;
@@ -11,6 +12,6 @@ export interface CollectionAttempt {
     auditorDescription?: string;
     colletorDescription: string;
     date: string; // ISO String
-    location?: GeoLocation;
+    location?: LocationGPS;
     name: string;
 }

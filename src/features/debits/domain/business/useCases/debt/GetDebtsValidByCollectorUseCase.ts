@@ -25,9 +25,9 @@ export class GetDebtsValidByCollectorUseCase {
 
     async execute(input: GetDebtsValidByCollectorInput): Promise<Result<GetDebtsValidByCollectorOutput, GetDebtsValidByCollectorError>> {
         try {
-            const result = await this.debtGateway.getDebtsByCollectorAndStatus({
+            const result = await this.debtGateway.getDebtsByRouteAndStatus({
                 companyId: input.companyId,
-                collectorId: input.collectorId,
+                routeIds: [input.collectorId],
                 statuses: ["activa", "en_mora"]
             });
 

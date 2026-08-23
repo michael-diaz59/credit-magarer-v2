@@ -163,12 +163,12 @@ export class UpdateSimpleDebtCase {
 
 
                             /**valor del credito que queda por pagarse */
-                            const remainingValue = originalDebtEntity.totalAmount - originalDebtEntity.totalPaid;
+                            const remainingValue = originalDebtEntity.amount - originalDebtEntity.amountPaid;
                             let updateNeeded = false;
 
                             //marca como ganancias a la deuda original
-                            if (originalDebtEntity.creditPaid > 100) {
-                                originalDebtEntity.creditPaid = 100;
+                            if (originalDebtEntity.percentageOfAmountPaid > 100) {
+                                originalDebtEntity.percentageOfAmountPaid = 100;
                                 updateNeeded = true;
                             }
 

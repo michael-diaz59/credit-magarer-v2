@@ -116,10 +116,6 @@ export const pathAccountForecasts = pathAccountant + "/forecasts"
 const pathAdmin = "/admin"
 
 
-export const baseAppBar: RoutNav[] = [
-  { label: "configuracion", path: pathConfiguration },
-];
-
 export const nameRoutesMap = new Map([
   ["/configuration", "configuracion"],
 ]);
@@ -242,6 +238,11 @@ export const officeAdvisorAppBar: RoutNav[] = [
 ];
 
 export const basphatsAppBar: RoutNav[] = [
+  { label: "configuracion", path: ScreenPaths.Configuration.home },
+  { label: "inicio", path: ScreenPaths.home },
+];
+
+export const baseAppBar: RoutNav[] = [
   { label: "configuracion", path: ScreenPaths.Configuration.home },
   { label: "inicio", path: ScreenPaths.home },
 ];

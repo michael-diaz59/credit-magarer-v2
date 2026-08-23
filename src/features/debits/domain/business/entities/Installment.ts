@@ -1,13 +1,13 @@
-
+import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
 
 
 /**
- * el estado de una cuota:
- * pendiente: la cuota no se ha pagado |
- * pagada: el cobrador registro la cuota como pagada |
- * incompleto: el conbrador recibio un pago parcial de la deuda |
- * cancelada: la deuda se cancelo
- * liquidada: el contador avalo todos los pagos que completan el total de la cuota
+ * el estado de una cuota: \
+ * pendiente: la cuota no se ha pagado  \
+ * pagada: el cobrador registro la cuota como pagada  \
+ * incompleto: el conbrador recibio un pago parcial de la deuda  \
+ * cancelada: la deuda se cancelo \
+ * liquidada: el contador avalo todos los pagos que completan el total de la cuota\
 */
 export type InstallmentStatus =
   | 'pendiente'
@@ -18,59 +18,49 @@ export type InstallmentStatus =
   | 'cancelada';
 
 
-//mantener sincronizado con costumer.address
+/**
+ * representa la direccion de la casa del cliente, se mantiene sincronizado con costumer.address
+ */
 export interface InstallmentAddress {
-  //direccion
+  /**direccion */
   address: string;
-
-  //barrio
+  /**barrio */
   neighborhood: string;
-  //estrato
+  /**estrato */
   stratum: number;
-  //ciudad
+  /**ciudad */
   city: string;
+  /**ubicacion de la direccion */
+  locationGPS?: LocationGPS
 }
 
+
+/**
+ * genera uan copia de un installment independiente a la original
+ * @param original valor de tipo Installment 
+ * @returns una copia exacta de la cuota proporcionada
+ */
 export function cloneInstallment(original: Installment): Installment {
   return structuredClone(original);
 }
 
-import type { GeoLocation } from "./Payment";
-
-/**representa la cuota a pagar, este se usa en el modulo de cobrador para ver las rutas */
+/**representa la cuota a pagar, este se usa en el modulo de cobrador para ver las rutas 
+ * 
+ * los datos como intentos de cobro y tipos de pago se buscan a travez de filtros de payments y attemptCollection
+*/
 export interface Installment {
-
+  // --- IDENTIFICACIÓN Y RUTA ---
+  /**id de la cuota */
   id: string;
 
-  //id de la deuda
+  /**id de la deuda */
   debtId: string;
 
   /**id de la comañia usada para las reglas de seguridad de grupos */
-  companyId: string
-
-  /**tasa de interes*/
-  interestRate: number;
-
-  /**tasa de interes para retraso*/
-  lateInterestRate: number
+  companyId: string;
 
   /**id de la ruta asignada */
   routeId: string;
-
-  /**id del cliente*/
-  costumerId: string;
-
-  /** cedula del cliente */
-  costumerDocument: string;
-
-  /**nombre del cliente */
-  costumerName: string;
-
-  /**celular del cliente */
-  costumerNumber: string;
-
-  /**direccion del cliente */
-  costumerAddres: InstallmentAddress;
 
   /**total de cuotas de la deuda */
   installmentTotalNumber: number; // 6
@@ -78,53 +68,128 @@ export interface Installment {
   /**numero de cuota en la deuda */
   installmentNumber: number; // 1, 2, 3...
 
-  /**valor de la cuota*/
+  // --- INFORMACIÓN DEL CLIENTE ---
+  /**id del cliente*/
+  clientId: string;
+
+  /**nombre del cliente */
+  clientName: string;
+
+  /** cedula del cliente */
+  clientDocument: string;
+
+  /**celular del cliente */
+  clientNumber: string;
+
+  /**direccion del cliente */
+  clientAddres: InstallmentAddress;
+
+  // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+  /**tasa de interes*/
+  interestRate: number;
+
+  /**tasa de interes para retraso*/
+  arrearsInterestRate: number;
+
+  // --- VALORES BASE DE LA CUOTA ---
+  /**capital generado por la cuota */
+  capital: number;
+
+  /**interes generado por la cuota */
+  interest: number;
+
+  /**valor de la cuota generado (capital + interes)*/
   amount: number;
 
-  /**monto pagado de la cuota */
-  paidAmount: number;
+  /**mora generada por la cuota */
+  arrears: number;
 
-  /**porcentaje pagado de la base de cuota */
-  basePaidRatio: number;
+  /**total de la cuota (capital + interes + mora)*/
+  total: number;
 
-  /**porcentaje pagado de los intereses de mora de esta cuota, este porcentaje solo sube despues de haber pagado el total de la base de la cuota*/
-  latePaidRatio: number;
+  // --- SEGUIMIENTO DE PAGOS (MONTO PAGADO) ---
+  /**dinero pagado por capital */
+  capitalPaid: number;
 
-  /**dinero extra que se debe pagar por atraso en el pago */
-  latepayment: number;
+  /**dinero pagado por intereses */
+  interestPaid: number;
 
-  /**dinero total pagado por interes de mora de esta cuota */
-  paidLatePayment: number;
+  /**monto pagado de la cuota (capital + interes)*/
+  amountPaid: number;
 
-  /**fecha de pago de la cuota*/
-  dueDate: string;
+  /**dinero pagado por mora */
+  arrearsPaid: number;
+
+  /**total pagado de la cuota (capital + interes + mora)*/
+  totalPaid: number;
+
+  // --- PORCENTAJES DE PAGO ---
+  /**porcentaje pagado del capital */
+  percentageOfCapitalPaid: number;
+
+  /**porcentaje pagado de los intereses */
+  percentageOfInterestPaid: number;
+
+  /**porcentaje pagado de la cuota (capital + interes)*/
+  percentageOfAmountPaid: number;
+
+  /**porcentaje pagado de la mora */
+  porcentageOfArrearsPaid: number;
+
+  /**porcentaje pagado de la cuota (capital + interes + mora)*/
+  percentageOfTotalPaid: number;
+
+  // --- RESTANTE POR PAGAR ---
+  /**capital restante por pagar */
+  remainingCapitalToPay: number;
+
+  /**interes restante por pagar */
+  remainingInterestToPay: number;
+
+  /**valor de la cuota restante por pagar(capital + interes)*/
+  remainingAmountToPay: number;
+
+  /**mora restante por pagar */
+  remainingArrearsToPay: number;
+
+  /**total restante de la cuota por pagar(capital + interes + mora)*/
+  remainingTotalToPay: number;
+
+  // --- GESTIÓN DE MORA Y RETRASO ---
+  /**cantidad de dias de mora actual*/
+  numberOfArrearsDays: number;
 
   /**fecha de pago de con retraso*/
-  lateDueDate: string;
+  arrearsDueDate?: string;
 
+  // --- ESTADO, FECHAS Y PAGOS ---
   /**estado de la cuota:  "pendiente" | "pagada" | "en_mora" | "conflicto" | "cancelada"*/
   status: InstallmentStatus;
 
-  /**fecha en la que se completo el pago de la cuota */
-  paidAt?: string;
+  /**fecha de corte de la cuota**/
+  dueDate: string;
 
   /**fecha de creacion de cuota */
   createdAt: string;
 
-  /**registro de pagos, es la lista de id de payments */
-  payments?: string[]
+  /**fecha en la que se completo el pago de la cuota */
+  paidAt?: string;
 
+  /**registro de pagos, es la lista de id de payments */
+  payments?: string[];
+
+  // --- GESTIÓN DE COBRO EN CAMPO ---
   /** indica si la cuota fue aplazada */
-  aplazado?: boolean;
+  deferred: boolean;
 
   /** indica si el cobrador ya gestionó la cuota hoy */
-  managed?: boolean;
+  managed: boolean;
 
   /** fecha en la que se marcó como gestionada */
   managementDate?: string;
 
   /** indica si se intentó cobrar la cuota */
-  attemptedCollection?: boolean;
+  attemptedCollection: boolean;
 
   /** fecha del último intento de cobro */
   dateAttemptedPayment?: string;
@@ -133,39 +198,71 @@ export interface Installment {
   descriptionAttemptedPayment?: string;
 
   /** ubicación del último intento de cobro */
-  locationAttemptedPayment?: GeoLocation;
+  locationAttemptedPayment?: LocationGPS;
 }
 
+/**
+ * ubicacion del cliente
+ */
 export const defaultInstallmentAddress: InstallmentAddress = {
   address: "",
   neighborhood: "",
   stratum: 0,
   city: "",
+  locationGPS: {
+    coordinates: "",
+    latitude: 0,
+    longitude: 0,
+  },
+
 };
 
-export const defaultInstallment: Omit<Installment, "id"> = {
-  debtId: "",
-  companyId: "",
-  interestRate: 0,
-  basePaidRatio: 0,
-  latePaidRatio: 0,
-  lateInterestRate: 0,
-  routeId: "",
-  costumerId: "",
-  costumerDocument: "",
-  costumerName: "",
-  costumerNumber: "",
-  costumerAddres: defaultInstallmentAddress,
-  installmentTotalNumber: 0,
-  installmentNumber: 0,
-  amount: 0,
-  paidAmount: 0,
-  latepayment: 0,
-  dueDate: "",
-  lateDueDate: "",
-  status: "pendiente",
-  createdAt: "",
-  payments: [],
-  paidLatePayment: 0,
-  aplazado: false,
-};
+/**
+ * genera un installmnet con valores por defecto
+ * @returns un installment con valores por defecto
+ */
+export function defaultInstallment(): Installment {
+  return {
+    id: "",
+    debtId: "",
+    amount: 0,
+    amountPaid: 0,
+    interest: 0,
+    totalPaid: 0,
+    total: 0,
+    attemptedCollection: false,
+    managed: false,
+    numberOfArrearsDays: 0,
+    percentageOfInterestPaid: 100,
+    percentageOfAmountPaid: 100,
+    percentageOfTotalPaid: 100,
+    percentageOfCapitalPaid: 100,
+    porcentageOfArrearsPaid: 100,
+    remainingAmountToPay: 0,
+    remainingArrearsToPay: 0,
+    remainingCapitalToPay: 0,
+    remainingInterestToPay: 0,
+    remainingTotalToPay: 0,
+    interestPaid: 0,
+    capitalPaid: 0,
+    capital: 0,
+    companyId: "",
+    interestRate: 0,
+    arrearsInterestRate: 0,
+    routeId: "",
+    clientId: "",
+    clientDocument: "",
+    clientName: "defaultInstallment",
+    clientNumber: "",
+    clientAddres: defaultInstallmentAddress,
+    installmentTotalNumber: 0,
+    installmentNumber: 0,
+    arrears: 0,
+    dueDate: "",
+    status: "pendiente",
+    createdAt: "",
+    payments: [],
+    arrearsPaid: 0,
+    deferred: false,
+  }
+}

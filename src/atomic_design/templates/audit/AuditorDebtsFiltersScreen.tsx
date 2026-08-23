@@ -142,12 +142,12 @@ export const AuditorDebtsFiltersScreen = () => {
               </Typography>
 
               <Typography variant="body2">
-                Cliente: {debt.costumerName}
+                Cliente: {debt.clientName}
               </Typography>
 
               <Typography variant="body2">
                 Monto: $
-                {debt.totalAmount.toLocaleString()}
+                {debt.amount.toLocaleString()}
               </Typography>
 
               <Chip label={debt.status} sx={{ mt: 1 }} />

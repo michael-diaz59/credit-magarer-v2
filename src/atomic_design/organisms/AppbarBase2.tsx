@@ -1,4 +1,4 @@
-import { accountantAppBar, basphatsAppBar, collectorAppBar, officeAdvisorAppBar } from "../../core/helpers/name_routes";
+import { accountantAppBar, baseAppBar, basphatsAppBar, collectorAppBar, officeAdvisorAppBar } from "../../core/helpers/name_routes";
 import { AppBarBaseC } from "../molecules/AppBarBaseC";
 
 const AppbarBase2 = () => {
@@ -16,7 +16,7 @@ const CollectorAppBar = () => {
 export { CollectorAppBar };
 
 const EmptyAppBar = () => {
-  return <AppBarBaseC items={[]} />;
+  return <AppBarBaseC items={baseAppBar} />;
 };
 
 export { EmptyAppBar };

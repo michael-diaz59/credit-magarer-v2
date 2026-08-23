@@ -33,8 +33,9 @@ import FinancialDebtOrchestrator from "../../../../features/financialDebt/domain
 import FinancialPaymentOrchestrator from "../../../../features/financialDebt/domain/infraestructure/FinancialPaymentOrchestrator";
 import type { FinancialDebt } from "../../../../features/financialDebt/domain/business/entities/FinancialDebt";
 import type { BankAccount } from "../../../../features/bankAccounts/domain/business/entities/BankAccount";
-import type { PaymentMethod, GeoLocation } from "../../../../features/debits/domain/business/entities/Payment";
+import type { PaymentMethod } from "../../../../features/debits/domain/business/entities/Payment";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
+import type { LocationGPS } from "../../../../features/costumers/domain/business/entities/Address";
 
 export const CreateFinancialPaymentScreen: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -94,7 +95,7 @@ export const CreateFinancialPaymentScreen: React.FC = () => {
     }
   };
 
-  const registerPayment = async (values: { amount: number; bankAccountId?: string }, location?: GeoLocation | null) => {
+  const registerPayment = async (values: { amount: number; bankAccountId?: string }, location?: LocationGPS | null) => {
     setSaving(true);
     try {
       const orchestrator = new FinancialPaymentOrchestrator();

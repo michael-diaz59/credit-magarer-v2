@@ -10,8 +10,8 @@ export type RegisterPaymentError =
   | { code: "INSTALLMENT_NOT_FOUND" }
   | { code: "PAYMENT_CREATION_FAILED" }
   | { code: "FORBIDDEN" };
-  
-  export interface RegisterPaymentInput {
+
+export interface RegisterPaymentInput {
   installment: Installment;
   payment: Payment;
   companyId: string;
@@ -46,21 +46,21 @@ export class RegisterPaymentCase {
 
       // 1️⃣ Crear el pago
       const paymentResult = await this.createPaymentCase.execute({
-             payment:payment,
-             companyId:companyId,
+        payment: payment,
+        companyId: companyId,
       });
 
       if (!paymentResult.ok) {
-        return fail({code:"PAYMENT_CREATION_FAILED"})
+        return fail({ code: "PAYMENT_CREATION_FAILED" })
       }
 
       // 2️⃣ Calcular nuevo monto pagado
-      const currentPaidAmount = installment.paidAmount ?? 0;
+      const currentPaidAmount = installment.amountPaid ?? 0;
       const newPaidAmount = currentPaidAmount + payment.amount;
 
       const updatedInstallment: Installment = {
         ...installment,
-        paidAmount: newPaidAmount,
+        amountPaid: newPaidAmount,
         payments: [
           ...(installment.payments ?? []),
           payment.id,
@@ -75,13 +75,13 @@ export class RegisterPaymentCase {
 
       if (!updateResult.ok) {
         console.log(updateResult.error)
-          return fail({code:"UNKNOWN_ERROR"})
+        return fail({ code: "UNKNOWN_ERROR" })
       }
 
-      return ok({state:null})
+      return ok({ state: null })
     } catch (error) {
       console.error("RegisterPaymentCase error:", error);
-      return fail({code:"UNKNOWN_ERROR"})
+      return fail({ code: "UNKNOWN_ERROR" })
     }
   }
 }

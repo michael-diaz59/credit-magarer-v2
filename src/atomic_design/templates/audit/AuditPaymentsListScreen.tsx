@@ -155,20 +155,20 @@ export const PaymentsListScreen = () => {
 
       const newDebt = calculateDebtFinancialsSimple({
         debtTerms: debt.debtTerms,
-        diasMes: debt.diasMes,
+        diasMes: debt.daysPerMonth,
         installmentCount: debt.installmentCount,
         interestRate: newInterestRate,
-        totalAmount: debt.totalAmount,
+        totalAmount: debt.amount,
         delayDays: diffDays
       })
 
 
       const updatedInstallment: Installment = {
         ...installment,
-        lateDueDate: newDueDate,
-        lateInterestRate: newInterestRate,
-        latepayment: newDebt.pagoCuota,
-        aplazado: true,
+        arrearsDueDate: newDueDate,
+        arrearsInterestRate: newInterestRate,
+        arrears: newDebt.pagoCuota,
+        deferred: true,
       };
 
       const orchestrator = new InstallmentsOrchestrator();
@@ -284,7 +284,7 @@ export const PaymentsListScreen = () => {
               alignItems="center"
             >
               <Typography fontWeight={500}>
-                {payment.costumerName} — ${payment.amount}
+                {payment.clientName} — ${payment.amount}
               </Typography>
 
               <Chip

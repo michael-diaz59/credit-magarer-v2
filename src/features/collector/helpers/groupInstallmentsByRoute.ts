@@ -1,8 +1,7 @@
+import { IsFutureOrToday, IsPastDate } from "../../../core/helpers/dates/calculateDays";
 import type { Installment } from "../../debits/domain/business/entities/Installment";
-import {
-  IsFutureOrToday,
-  IsPastDate,
-} from "../../../atomic_design/templates/recollector/RecolectorHome";
+
+
 
 export interface CustomerGroupData {
   customerId: string;
@@ -67,22 +66,22 @@ export function groupInstallmentsByRoute(
      4. Clasificar cuotas filtradas por Ruta y Cliente
   ========================= */
   for (const installment of oldestInstallmentsByDebt.values()) {
-    const routeName = customerToRoute.get(installment.costumerId);
+    const routeName = customerToRoute.get(installment.clientId);
     const targetRoute =
       routeName && routeGroups.has(routeName)
         ? routeGroups.get(routeName)!
         : unassigned;
 
-    if (!targetRoute.customers.has(installment.costumerId)) {
-      targetRoute.customers.set(installment.costumerId, {
-        customerId: installment.costumerId,
-        customerName: installment.costumerName,
+    if (!targetRoute.customers.has(installment.clientId)) {
+      targetRoute.customers.set(installment.clientId, {
+        customerId: installment.clientId,
+        customerName: installment.clientName,
         pending: [],
         overdue: [],
       });
     }
 
-    const customerGroup = targetRoute.customers.get(installment.costumerId)!;
+    const customerGroup = targetRoute.customers.get(installment.clientId)!;
 
     if (IsFutureOrToday(installment.dueDate)) {
       customerGroup.pending.push(installment);

@@ -2,11 +2,11 @@ import {
   diasDelMesPorTermino,
   diasPorTermino,
 } from "../../../../../core/helpers/debts/diasPorTermino";
+import type { Address } from "../../../../costumers/domain/business/entities/Address";
 import { getValidDueDate } from "../../../../shared/helpers/calcularFestivosColombia";
-import { paidPorcential } from "../../../../shared/helpers/calculate";
 import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../shared/helpers/Days";
 import type { Debt, DebtTerms } from "../entities/Debt";
-import type { Installment, InstallmentAddress } from "../entities/Installment";
+import { defaultInstallment, type Installment, type InstallmentAddress } from "../entities/Installment";
 
 export function addDays(date: Date, days: number) {
   const d = new Date(date);
@@ -36,7 +36,7 @@ export function roundUpToThousand(amount: number): RoundResult {
 
 export interface InstallmentGenerationInput {
   debt: DomainServiceDebt;
-  costumerAddress: Installment["costumerAddres"];
+  costumerAddress: Installment["clientAddres"];
   companyId: string;
   months?: number;
 }
@@ -52,12 +52,12 @@ interface DomainServiceDebt {
 
 export function generateInstallments2(
   debt: Debt,
-  costumerAddress: Installment["costumerAddres"],
+  costumerAddress: Address,
   companyId: string,
   months?: number,
 ): {
   installments: Installment[];
-  firstDueDate: string;
+  expectedEndDate: string;
   nextPaymentDue: string;
   cuotasCompletas: number;
   pago_ultima_cuota: number;
@@ -67,6 +67,17 @@ export function generateInstallments2(
   total_dias_deuda: number;
   total_meses_deuda: number;
 } {
+
+  const installmentAddress: InstallmentAddress = {
+    address: costumerAddress.address,
+    city: costumerAddress.city,
+    neighborhood: costumerAddress.neighborhood,
+    stratum: costumerAddress.stratum,
+    locationGPS: costumerAddress.locationGPS,
+
+  };
+
+
   const installments: Installment[] = [];
 
   const [year, month, day] = debt.startDate.split("-").map(Number);
@@ -131,35 +142,36 @@ export function generateInstallments2(
     //console.log("next payment due ", dueDate.toISOString())
     //const diaSemanaCompleto = dueDate.toLocaleDateString('es-ES', { weekday: 'long' });
     //console.log("dia de la semana: ", diaSemanaCompleto)
+    const capitalPerInstallment = debt.capital / debt.installmentCount;
+    let capitalToInstallment;
+    let interesToInstallment;
+    if (valoresCuotas[i] <= capitalPerInstallment) {
+      capitalToInstallment = valoresCuotas[i];
+      interesToInstallment = 0
+    } else {
+      capitalToInstallment = capitalPerInstallment;
+      interesToInstallment = valoresCuotas[i] - capitalPerInstallment;
+    }
 
     installments.push({
+      ...defaultInstallment(),
       installmentTotalNumber: debt.installmentCount,
-      paidAmount: 0,
-      paidAt: "",
-      costumerNumber: "",
-      payments: [],
-      lateDueDate: "",
-      lateInterestRate: 0,
-      aplazado: false,
-      latepayment: 0,
+      capital: capitalToInstallment,
+      interest: interesToInstallment,
       routeId: debt.routeId,
-      paidLatePayment: 0,
       companyId: companyId,
       id: crypto.randomUUID(),
       debtId: debt.id,
-      costumerId: debt.clientId,
-      costumerDocument: debt.costumerDocument,
-      costumerName: debt.costumerName,
-      costumerAddres: costumerAddress,
+      clientId: debt.clientId,
+      clientDocument: debt.clientDocument,
+      clientName: debt.clientName,
+      clientAddres: installmentAddress,
       installmentNumber: i + 1,
       interestRate: debt.interestRate,
       amount: valoresCuotas[i],
       dueDate: dueDate.toISOString().slice(0, 10),
       status: "pendiente",
       createdAt: new Date().toISOString().slice(0, 10),
-      latePaidRatio: paidPorcential(0, 0),
-      basePaidRatio: paidPorcential(valoresCuotas[i], 0),
-
     });
     switch (debt.debtTerms) {
       case "diario":
@@ -180,7 +192,7 @@ export function generateInstallments2(
   return {
     installments,
     nextPaymentDue: installments[0].dueDate,
-    firstDueDate: installments[installments.length - 1].dueDate,
+    expectedEndDate: installments[installments.length - 1].dueDate,
     cuotasCompletas: cuotasCompletas,
     pago_ultima_cuota: pago_ultima_cuota,
     pago_cuota_reound: pago_cuota_reound,
@@ -222,7 +234,7 @@ export function simulateInstallments(
 export function calculateDebtFinancials(debt: Debt, months?: number) {
   console.log("months:", months)
   if (months) {
-    const duration_in_days = debt.diasMes * months;
+    const duration_in_days = debt.daysPerMonth * months;
     console.log(
       `se calculo que el credito tendra una duracion de ${duration_in_days} dias`,
     );
@@ -234,7 +246,7 @@ export function calculateDebtFinancials(debt: Debt, months?: number) {
 
   console.log(`la deuda tendra un monto capital de ${debt.capital} `);
 
-  console.log(`esta deuda maneja los meses por ${debt.diasMes} dias`);
+  console.log(`esta deuda maneja los meses por ${debt.daysPerMonth} dias`);
 
   const dias_por_cuota = diasPorTermino[debt.debtTerms];
 
@@ -248,7 +260,7 @@ export function calculateDebtFinancials(debt: Debt, months?: number) {
 
   console.log(`la deuda durara : ${total_dias_deuda} dias`);
 
-  let total_meses_deuda = total_dias_deuda / debt.diasMes;
+  let total_meses_deuda = total_dias_deuda / debt.daysPerMonth;
 
   console.log(`la deuda dura ${total_meses_deuda} meses`);
 
@@ -460,33 +472,22 @@ export function diario(debt: Debt, companyId: string, costumerAddress: Installme
     const dueDate = getValidDueDate(rawDueDate);
 
     installments.push({
+      ...defaultInstallment(),
       installmentTotalNumber: debt.installmentCount,
-      paidAmount: 0,
-      paidAt: "",
-      costumerNumber: "",
-      payments: [],
-      lateDueDate: "",
-      lateInterestRate: 0,
-      aplazado: false,
-      latepayment: 0,
       routeId: debt.routeId,
-      paidLatePayment: 0,
       companyId: companyId,
       id: crypto.randomUUID(),
       debtId: debt.id,
-      costumerId: debt.clientId,
-      costumerDocument: debt.costumerDocument,
-      costumerName: debt.costumerName,
-      costumerAddres: costumerAddress,
+      clientId: debt.clientId,
+      clientDocument: debt.clientDocument,
+      clientName: debt.clientName,
+      clientAddres: costumerAddress,
       installmentNumber: i + 1,
       interestRate: debt.interestRate,
       amount: valoresCuotas[i],
       dueDate: dueDate.toISOString().slice(0, 10),
       status: "pendiente",
       createdAt: new Date().toISOString().slice(0, 10),
-      latePaidRatio: paidPorcential(0, 0),
-      basePaidRatio: paidPorcential(valoresCuotas[i], 0),
-
     });
   }
 

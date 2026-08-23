@@ -160,7 +160,7 @@ export const CreateVisit = () => {
       } else {
         setDebt((prev) =>
           prev
-            ? { ...prev, costumerDocument: data.customerDocument }
+            ? { ...prev, clientDocument: data.customerDocument }
             : prev
         );
       }

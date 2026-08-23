@@ -81,10 +81,10 @@ export const CollectorDebtInstallmentsScreen = () => {
             {sortedInstallments.length > 0 && (
                 <Box mb={2} px={1}>
                     <Typography variant="subtitle1" fontWeight="bold">
-                        {sortedInstallments[0].costumerName}
+                        {sortedInstallments[0].clientName}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        CC: {sortedInstallments[0].costumerDocument}
+                        CC: {sortedInstallments[0].clientDocument}
                     </Typography>
                 </Box>
             )}
@@ -142,9 +142,9 @@ export const CollectorDebtInstallmentsScreen = () => {
                                 Vence: {new Date(i.dueDate).toLocaleDateString()}
                             </Typography>
 
-                            {i.paidAmount > 0 && (
+                            {i.amountPaid > 0 && (
                                 <Typography variant="body2" color="success.main">
-                                    Pagado: ${i.paidAmount.toLocaleString()}
+                                    Pagado: ${i.amountPaid.toLocaleString()}
                                 </Typography>
                             )}
                         </Stack>

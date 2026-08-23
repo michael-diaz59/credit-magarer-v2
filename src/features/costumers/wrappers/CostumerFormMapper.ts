@@ -22,10 +22,10 @@ export function normalizeAddress(a?: FormAddress): Address {
     neighborhood: a?.neighborhood ?? "",
     stratum: a?.stratum ?? 1,
     city: a?.city ?? "",
-    location: {
-      latitud: lat,
-      longitud: lng,
-      coordenadas: lat && lng ? `${lat},${lng}` : "",
+    locationGPS: {
+      latitude: lat,
+      longitude: lng,
+      coordinates: lat && lng ? `${lat},${lng}` : "",
     },
   };
 }
@@ -174,10 +174,10 @@ function addressToForm(a?: Address): FormAddress | undefined {
     neighborhood: a.neighborhood,
     stratum: a.stratum,
     city: a.city,
-    location: a.location
+    location: a.locationGPS
       ? {
-        latitud: a.location.latitud,
-        longitud: a.location.longitud,
+        latitud: a.locationGPS.latitude,
+        longitud: a.locationGPS.longitude,
       }
       : undefined,
   };

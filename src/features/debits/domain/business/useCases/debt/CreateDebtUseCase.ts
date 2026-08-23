@@ -2,7 +2,7 @@
 import { fail, type Result } from "../../../../../../core/helpers/ResultC";
 import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
 import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
-import { createBasicDebt, type Debt } from "../../entities/Debt";
+import { createEmptyDebt, type Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { generateInstallments2 } from "../helper";
 
@@ -62,7 +62,7 @@ export class CreateDebtUseCase {
     const costumerResult =
       await this.costumerGateway.getCostumerByIdNumber({
         companyId: input.companyId,
-        documentId: input.debt.costumerDocument,
+        documentId: input.debt.clientDocument,
       });
 
     if (!costumerResult.state.ok) {
@@ -77,37 +77,36 @@ export class CreateDebtUseCase {
 
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
-      ...createBasicDebt(),
+      ...createEmptyDebt(),
       deliveredStatus: input.debt.deliveredStatus,
       delivered: input.debt.delivered,
-      prenda: input.debt.prenda,
-      prendaValue: input.debt.prendaValue,
-      papeleria: input.debt.papeleria,
-      totalInterest: input.debt.totalInterest,
-      prendaDescription: input.debt.prendaDescription,
+      pledge: input.debt.pledge,
+      pledgeValue: input.debt.pledgeValue,
+      processingFee: input.debt.processingFee,
+      interest: input.debt.interest,
+      pledgeDescription: input.debt.pledgeDescription,
       routeId: input.debt.routeId,
       renewedToDebtId: input.debt.renewedToDebtId,
       type: input.debt.type,
       idVisit: input.debt.idVisit,
       debtTerms: input.debt.debtTerms,
       name: input.debt.name || "",
-      diasMes: input.debt.diasMes,
+      daysPerMonth: input.debt.daysPerMonth,
       status: input.debt.status,
       clientId: costumer.id,
-      costumerName: costumer.applicant.fullName,
-      costumerDocument: input.debt.costumerDocument,
-      totalAmount: input.debt.totalAmount,
-      totalPaid: 0,
-      totalPaymentForLate: 0,
+      clientName: costumer.applicant.fullName,
+      clientDocument: input.debt.clientDocument,
+      amount: input.debt.amount,
+      amountPaid: 0,
+      arrearsPaid: 0,
       installmentCount: input.debt.installmentCount,
       interestRate: input.debt.interestRate,
       startDate: input.debt.startDate,
       createdAt: new Date().toISOString().slice(0, 10),
-      firstDueDate: "",
       nextPaymentDue: "",
       dateLastPayment: "",
       installmentsPaid: 0,
-      overdueInstallmentsCount: 0,
+      numberOfArrearsInstallments: 0,
       capital: input.debt.capital,
       originalDebt: input.debt.originalDebt ?? undefined,
     };
@@ -115,27 +114,28 @@ export class CreateDebtUseCase {
     console.log("debt", debt)
 
     /** 4️⃣ Generar cuotas */
-    const { installments, firstDueDate, nextPaymentDue } = generateInstallments2(
+    const { installments, expectedEndDate, nextPaymentDue } = generateInstallments2(
       debt,
       costumer.applicant.address,
       input.companyId,
       input.months,
     );
+    debt.expectedEndDate = expectedEndDate;
 
     //sumamos el total de las cuotas para obtener el total del credito a pagar
     for (const installment of installments) {
       console.log("installment.amount", installment.amount)
-      debt.totalAmount += installment.amount;
-      console.log("debt.totalAmount", debt.totalAmount)
+      debt.amount += installment.amount;
+      console.log("debt.totalAmount", debt.amount)
     }
 
 
 
 
     debt.nextPaymentDue = nextPaymentDue;
-    debt.overdueInstallmentsCount = 0;
+    debt.numberOfArrearsInstallments = 0;
 
-    debt.firstDueDate = firstDueDate;
+    debt.expectedEndDate = expectedEndDate;
 
     console.log("debt", debt)
 

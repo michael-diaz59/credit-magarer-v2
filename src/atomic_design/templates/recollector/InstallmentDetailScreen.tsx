@@ -37,7 +37,6 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import PaymentOrchestrator from "../../../features/debits/domain/infraestructure/PaymentOrchestrator";
 import {
   type Payment,
-  type GeoLocation,
   type PaymentMethod,
 } from "../../../features/debits/domain/business/entities/Payment";
 import { useForm, Controller } from "react-hook-form";
@@ -50,6 +49,8 @@ import { ScreenPaths } from "../../../core/helpers/name_routes";
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
 import { DebtRenewalModule } from "../../organisms/DebtRenewalModule";
+import type { LocationGPS } from "../../../features/costumers/domain/business/entities/Address";
+import { CollectionAttemptOrchestrator } from "../../../features/debits/domain/infraestructure/CollectionAttemptOrchestrator";
 
 interface PartialPaymentForm {
   amount: number;
@@ -92,7 +93,7 @@ export const InstallmentDetailScreen = () => {
 
   const bankAccountOrchestrator = useMemo(() => new BankAccountOrchestrator(), []);
 
-  const emptyInstallment: Installment = { ...defaultInstallment, id: "" }
+  const emptyInstallment: Installment = defaultInstallment()
   const [installment, setInstallment] = useState<Installment>(emptyInstallment);
 
   const paymentOrchestrator = useMemo(() => new PaymentOrchestrator(), []);
@@ -177,7 +178,7 @@ export const InstallmentDetailScreen = () => {
   // Helper to create basic payment object
   const createPaymentObject = (
     amount: number,
-    location?: GeoLocation,
+    location?: LocationGPS,
     paymentId?: string,
     proofUrl?: string,
     method: PaymentMethod = "efectivo",
@@ -185,7 +186,11 @@ export const InstallmentDetailScreen = () => {
 
   ): Payment => {
     return {
+      capitalPaid: installment.capitalPaid,
+      interestPaid: installment.interestPaid,
+      arrearsPaid: installment.arrearsPaid,
       debtId: installment.debtId,
+      clientId: installment.clientId,
       isTight: false,
       idRoute: debt?.routeId || "",
       id: paymentId || "",
@@ -193,7 +198,7 @@ export const InstallmentDetailScreen = () => {
       collectorObservation: "",
       accountantObservation: "",
       installmentId: installment.id,
-      costumerName: installment.costumerName,
+      clientName: installment.clientName,
       collectorName: user?.name || "Desconocido",
       collectorId: collectorId,
       amount: amount,
@@ -207,7 +212,7 @@ export const InstallmentDetailScreen = () => {
 
   const processPayment = async (
     amount: number,
-    location?: GeoLocation,
+    location?: LocationGPS,
     paymentId?: string,
     proofUrl?: string,
     method: PaymentMethod = "efectivo",
@@ -309,7 +314,7 @@ export const InstallmentDetailScreen = () => {
     amount: number,
     method: PaymentMethod,
     file?: File | null,
-    forceLocationData?: GeoLocation | null,
+    forceLocationData?: LocationGPS | null,
   ) => {
     setLoading(true);
 
@@ -411,7 +416,7 @@ export const InstallmentDetailScreen = () => {
 
   const handleFullPayment = () => {
     if (!installmentId) return;
-    const amountToPay = installment.amount - (installment.paidAmount || 0);
+    const amountToPay = installment.amount - (installment.amountPaid || 0);
     initiatePayment("full", amountToPay);
   };
 
@@ -426,14 +431,14 @@ export const InstallmentDetailScreen = () => {
 
     setAttemptLoading(true);
     try {
-      let location: import("../../../features/debits/domain/business/entities/Payment").GeoLocation | undefined;
+      let location: LocationGPS | undefined;
       try {
         location = await getCurrentLocation();
       } catch (error) {
         console.warn("Could not get location for attempt:", error);
       }
 
-      const orchestrator = new (await import("../../../features/debits/domain/infraestructure/CollectionAttemptOrchestrator")).CollectionAttemptOrchestrator();
+      const orchestrator = await new CollectionAttemptOrchestrator();
 
       const result = await orchestrator.createAttempt({
         companyId,
@@ -521,7 +526,7 @@ export const InstallmentDetailScreen = () => {
   }
 
   // Calculate max amount for partial payment
-  const maxPaymentAmount = installment.amount - (installment.paidAmount || 0);
+  const maxPaymentAmount = installment.amount - (installment.amountPaid || 0);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -778,9 +783,9 @@ export const InstallmentDetailScreen = () => {
                 color={getStatusColor(installment.status)}
               />
 
-              {installment.paidAmount && installment.paidAmount > 0 ? (
+              {installment.amountPaid && installment.amountPaid > 0 ? (
                 <Typography variant="caption" color="text.secondary">
-                  Pagado: ${installment.paidAmount.toLocaleString()} / $
+                  Pagado: ${installment.amountPaid.toLocaleString()} / $
                   {installment.amount.toLocaleString()}
                 </Typography>
               ) : null}
@@ -789,10 +794,10 @@ export const InstallmentDetailScreen = () => {
             {/* CLIENTE */}
             <Box>
               <Typography fontWeight="bold">
-                {installment.costumerName}
+                {installment.clientName}
               </Typography>
               <Typography variant="body2">
-                📄 {installment.costumerDocument}
+                📄 {installment.clientDocument}
               </Typography>
             </Box>
 
@@ -800,16 +805,16 @@ export const InstallmentDetailScreen = () => {
             <Box>
               <Typography variant="subtitle2">Dirección</Typography>
               <Typography variant="body2">
-                📍 {installment.costumerAddres.address}
+                📍 {installment.clientAddres.address}
               </Typography>
               <Typography variant="body2">
-                {installment.costumerAddres.neighborhood} –{" "}
-                {installment.costumerAddres.city}
+                {installment.clientAddres.neighborhood} –{" "}
+                {installment.clientAddres.city}
               </Typography>
             </Box>
 
             {/* CONTACTO */}
-            {installment.costumerNumber && (
+            {installment.clientNumber && (
               <Box>
                 <Typography variant="subtitle2" mb={1}>
                   Contactar cliente
@@ -822,7 +827,7 @@ export const InstallmentDetailScreen = () => {
                     startIcon={<PhoneIcon />}
                     onClick={() =>
                       openPhoneCall(
-                        getPhoneWithCountryCode(installment.costumerNumber),
+                        getPhoneWithCountryCode(installment.clientNumber),
                       )
                     }
                   >
@@ -835,7 +840,7 @@ export const InstallmentDetailScreen = () => {
                     startIcon={<WhatsAppIcon />}
                     onClick={() =>
                       openWhatsApp(
-                        getPhoneWithCountryCode(installment.costumerNumber),
+                        getPhoneWithCountryCode(installment.clientNumber),
                       )
                     }
                   >
@@ -936,8 +941,8 @@ export const InstallmentDetailScreen = () => {
                       companyId={companyId}
                       currentDebt={debt}
                       context="collector"
-                      totalPaid={installmentsOfDebt.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0)}
-                      remainingBalance={debt.totalAmount - installmentsOfDebt.reduce((acc, curr) => acc + (curr.paidAmount || 0), 0)}
+                      totalPaid={installmentsOfDebt.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0)}
+                      remainingBalance={debt.amount - installmentsOfDebt.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0)}
                       buttonVariant="contained"
                       buttonColor="secondary"
                       buttonText="Renovar Deuda"

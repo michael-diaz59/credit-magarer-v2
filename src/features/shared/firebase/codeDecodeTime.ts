@@ -1,5 +1,10 @@
 import { Timestamp } from "firebase/firestore";
 
+/**
+ * decodifica fecha de firebase
+ * @param val fecha en formato any
+ * @returns string en formato yyyy-MM-dd
+ */
 export function decodeDate(val: any): string {
     if (!val) return "";
     if (val instanceof Timestamp) {
@@ -15,7 +20,13 @@ export function decodeDate(val: any): string {
     return String(val);
 }
 
-/**funcion para codificar fechas a timestamp */
+/**
+ * funcion para codificar fechas a timestamp
+ * si ubo un problema en la funcion retorna por defecto la fecha actual\n
+ * @param date fecha en formato string\n
+ * @param isNew si es fecha nueva devuelve la fecha actual\n
+ * @returns Timestamp
+ */
 export function encodeDate(date: string | null | undefined, isNew: boolean = false): Timestamp {
     if (isNew || !date) {
         if (!date) {

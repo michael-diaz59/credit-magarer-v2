@@ -18,7 +18,7 @@ export interface User {
    */
   collectorRoutes?: Record<string, string[]>
 
-  /** IDs de las rutas (Route) asignadas a este cobrador/usuario */
+  /** IDs de las rutas (Route) asignadas a este cobrador/usuario, se deberian limitar las rutas de un cobrador a max 10 */
   idRoutes?: string[];
 }
 

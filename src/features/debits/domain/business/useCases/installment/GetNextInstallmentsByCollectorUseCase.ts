@@ -3,20 +3,20 @@ import { ok, fail } from "../../../../../../core/helpers/ResultC";
 import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
 import type { Installment } from "../../entities/Installment";
 
-export interface GetNextInstallmentsByCollectorInput {
+export interface GetNextInstallmentsByRouteInput {
     companyId: string;
-    collectorId: string;
+    routeIds: string[];
 }
 
-export interface GetNextInstallmentsByCollectorOutput {
+export interface GetNextInstallmentsByRouteOutput {
     state: Installment[];
 }
 
-export type GetNextInstallmentsByCollectorError =
+export type GetNextInstallmentsByRouteError =
     | { code: "UNKNOWN_ERROR" }
     | { code: "NETWORK_ERROR" };
 
-export class GetNextInstallmentsByCollectorUseCase {
+export class GetNextInstallmentsByRouteUseCase {
     private readonly debtGateway: DebtGateway;
     private readonly installmentGateway: InstallmentGateway;
 
@@ -28,14 +28,14 @@ export class GetNextInstallmentsByCollectorUseCase {
         this.installmentGateway = installmentGateway;
     }
 
-    async execute(input: GetNextInstallmentsByCollectorInput): Promise<Result<GetNextInstallmentsByCollectorOutput, GetNextInstallmentsByCollectorError>> {
+    async execute(input: GetNextInstallmentsByRouteInput): Promise<Result<GetNextInstallmentsByRouteOutput, GetNextInstallmentsByRouteError>> {
         try {
-            const today = new Date().toISOString().split("T")[0];
+            const today = new Date().toLocaleDateString().split("T")[0];
 
             // 1. Obtener deudas activas o en mora con nextPaymentDue <= today
-            const debtsResult = await this.debtGateway.getDebtsByCollectorAndStatus({
+            const debtsResult = await this.debtGateway.getDebtsByRouteAndStatus({
                 companyId: input.companyId,
-                collectorId: input.collectorId,
+                routeIds: input.routeIds,
                 statuses: ["activa", "en_mora"],
                 dateLimit: today
             });

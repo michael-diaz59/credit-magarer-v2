@@ -79,11 +79,11 @@ export const DebtCard = ({ debt, onClick }: Props) => {
 
           {/* Cliente */}
           <Typography variant="body2" fontWeight={500} noWrap>
-            {debt.costumerName}
+            {debt.clientName}
           </Typography>
 
           <Typography variant="caption" color="text.secondary">
-            Cédula: {debt.costumerDocument}
+            Cédula: {debt.clientDocument}
           </Typography>
 
           {/* Monto */}
@@ -93,7 +93,7 @@ export const DebtCard = ({ debt, onClick }: Props) => {
             textAlign="right"
             fontWeight={700}
           >
-            ${debt.totalAmount.toLocaleString()}
+            ${debt.amount.toLocaleString()}
           </Typography>
         </Stack>
       </CardContent>

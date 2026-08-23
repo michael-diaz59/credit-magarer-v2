@@ -29,12 +29,15 @@ export const useRoutesBalance = () => {
         ]);
 
         if (routeResult.ok) {
+            console.log("routeResult", routeResult.value);
             setRoutes(routeResult.value);
         }
 
         if (bankResult.ok) {
             setBankAccounts(bankResult.value.bankAccounts);
         }
+
+        console.log("userResult", userResult?.state);
 
         if (userResult.state.ok) {
             setCollectors(userResult.state.value);
@@ -59,7 +62,7 @@ export const useRoutesBalance = () => {
         return routes
             .map(route => {
                 const total = (route.totalCash2 || []).reduce((sum, c) => sum + (c.amount || 0), 0) +
-                             (route.totalDeposit || []).reduce((sum, d) => sum + (d.amount || 0), 0);
+                    (route.totalDeposit || []).reduce((sum, d) => sum + (d.amount || 0), 0);
                 return {
                     id: route.id,
                     label: route.name || "Sin Nombre",

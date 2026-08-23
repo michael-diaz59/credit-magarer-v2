@@ -9,6 +9,7 @@ interface SectionProps {
   onClick: (installment: Installment) => void;
 }
 export const SectionInstallments = ({ title, color, installments, onClick }: SectionProps) => {
+  console.log("installments", installments)
 
   return (
     <Box>
@@ -21,6 +22,7 @@ export const SectionInstallments = ({ title, color, installments, onClick }: Sec
       </Typography>)}
 
       <Stack spacing={2}>
+
         {installments.map((i) => (
           <InstallmentCard key={i.id} installment={i} onClick={onClick} />
         ))}

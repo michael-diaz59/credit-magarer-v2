@@ -75,8 +75,8 @@ export const AuditorInstallmentsScreen = () => {
       .length >=
     installments.length / 2;
 
-  const totalPaid = installments.reduce((acc, curr) => acc + curr.paidAmount, 0);
-  const totalDebtAmount = debt?.totalAmount || 0;
+  const totalPaid = installments.reduce((acc, curr) => acc + curr.amountPaid, 0);
+  const totalDebtAmount = debt?.amount || 0;
   const remainingBalance = Math.max(0, totalDebtAmount - totalPaid);
 
   return (

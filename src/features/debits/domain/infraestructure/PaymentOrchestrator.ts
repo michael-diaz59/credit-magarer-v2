@@ -1,5 +1,4 @@
 import type { Result } from "../../../../core/helpers/ResultC";
-import { CreatePaymentCase, type CreatePaymentError, type CreatePaymentInput, type CreatePaymentOutput } from "../business/useCases/payment/CreatePayment";
 import { FirebasePaymentRepository } from "../../provider/firebase/FirebasePaymentRepository";
 import type { Payment } from "../business/entities/Payment";
 import type { PaymentGateway } from "./PaymentGateway";
@@ -21,7 +20,6 @@ import { GetSumPaymentsUseCase, type GetSumPaymentsInput, type GetSumPaymentsOut
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
-    private readonly createPaymentCase: CreatePaymentCase;
     private readonly deletePaymentCase: DeletePaymentCase;
     private readonly getPaymentById: GetPaymentByIdCase;
     private readonly uploadProofCase: UploadProofCase;
@@ -35,7 +33,6 @@ export default class PaymentOrchestrator {
 
     constructor() {
         this.paymentGateway = new FirebasePaymentRepository();
-        this.createPaymentCase = new CreatePaymentCase(this.paymentGateway);
         this.deletePaymentCase = new DeletePaymentCase(this.paymentGateway);
         this.getPaymentById = new GetPaymentByIdCase(this.paymentGateway)
         this.uploadProofCase = new UploadProofCase(this.paymentGateway);
@@ -57,10 +54,7 @@ export default class PaymentOrchestrator {
         return this.registerPaymentCase.execute(input);
     }
 
-    //no usado
-    async createPayment(input: CreatePaymentInput): Promise<Result<CreatePaymentOutput, CreatePaymentError>> {
-        return this.createPaymentCase.execute(input);
-    }
+
 
     async deletePayment(input: DeletePaymentInput): Promise<Result<DeletePaymentOutput, DeletePaymentError>> {
         return this.deletePaymentCase.execute(input);

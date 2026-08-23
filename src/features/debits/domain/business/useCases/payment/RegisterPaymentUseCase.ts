@@ -99,11 +99,11 @@ export class RegisterPaymentUseCase {
             /**
              * valor a pagar por retraso
              */
-            const currentPendingLate = currentInstallment.latepayment - (currentInstallment.paidLatePayment ?? 0);
+            const currentPendingLate = currentInstallment.arrears - (currentInstallment.arrearsPaid ?? 0);
             /**
              * valor a pagar por base de la cuota
              */
-            const currentPendingBase = currentInstallment.amount - currentInstallment.paidAmount;
+            const currentPendingBase = currentInstallment.amount - currentInstallment.amountPaid;
 
             console.log("currentPendingLate", currentPendingLate)
             console.log("currentPendingBase", currentPendingBase)
@@ -125,8 +125,8 @@ export class RegisterPaymentUseCase {
             for (const installment of installmentsToPay) {
                 if (remainingAmount <= 0) break;
 
-                const pendingBase = (installment.amount ?? 0) - (installment.paidAmount ?? 0);
-                const pendingLate = (installment.latepayment ?? 0) - (installment.paidLatePayment ?? 0);
+                const pendingBase = (installment.amount ?? 0) - (installment.amountPaid ?? 0);
+                const pendingLate = (installment.arrears ?? 0) - (installment.arrearsPaid ?? 0);
 
                 const paidToBase = calculateAmountToPay(remainingAmount, pendingBase);
                 totalPaidToBase += paidToBase;
@@ -141,11 +141,11 @@ export class RegisterPaymentUseCase {
                 }
                 const updatedInst: Installment = {
                     ...installment,
-                    paidAmount: (installment.paidAmount ?? 0) + paidToBase,
-                    paidLatePayment: (installment.paidLatePayment ?? 0) + paidToLate,
+                    amountPaid: (installment.amountPaid ?? 0) + paidToBase,
+                    arrearsPaid: (installment.arrearsPaid ?? 0) + paidToLate,
                     payments: [...(installment.payments ?? []), payment.id],
-                    basePaidRatio: paidPorcential((installment.paidAmount ?? 0), installment.amount),
-                    latePaidRatio: paidPorcential((installment.paidLatePayment ?? 0), installment.latepayment)
+                    percentageOfCapitalPaid: paidPorcential((installment.amountPaid ?? 0), installment.amount),
+                    porcentageOfArrearsPaid: paidPorcential((installment.arrearsPaid ?? 0), installment.arrears)
                 };
                 this.updateInstallmentStatus(updatedInst);
                 updatedInstallments.push(updatedInst);
@@ -157,15 +157,15 @@ export class RegisterPaymentUseCase {
                 return updated || inst;
             });
 
-            const installmentsPaidCount = allUpdatedInstallments.filter(inst => inst.paidAmount >= inst.amount).length;
+            const installmentsPaidCount = allUpdatedInstallments.filter(inst => inst.amountPaid >= inst.amount).length;
 
             const updatedDebt: Debt = {
                 ...debt,
-                totalPaid: (debt.totalPaid ?? 0) + totalPaidToBase,
-                totalPaymentForLate: (debt.totalPaymentForLate ?? 0) + totalPaidToLate,
-                capitalPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.capital),
-                interestPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.totalInterest),
-                creditPaid: paidPorcential(((debt.totalPaid ?? 0) + (debt.totalPaymentForLate ?? 0) + (debt.renewalPayment ?? 0)), debt.totalAmount),
+                amountPaid: (debt.amountPaid ?? 0) + totalPaidToBase,
+                arrearsPaid: (debt.arrearsPaid ?? 0) + totalPaidToLate,
+                percentageOfCapitalPaid: paidPorcential(((debt.amountPaid ?? 0) + (debt.arrearsPaid ?? 0) + (debt.renewalPayment ?? 0)), debt.capital),
+                percentageOfInteresPaid: paidPorcential(((debt.amountPaid ?? 0) + (debt.arrearsPaid ?? 0) + (debt.renewalPayment ?? 0)), debt.interest),
+                percentageOfAmountPaid: paidPorcential(((debt.amountPaid ?? 0) + (debt.arrearsPaid ?? 0) + (debt.renewalPayment ?? 0)), debt.amount),
                 dateLastPayment: payment.paidAt,
                 installmentsPaid: installmentsPaidCount,
             };
@@ -200,8 +200,8 @@ export class RegisterPaymentUseCase {
     }
 
     private updateInstallmentStatus(installment: Installment) {
-        const totalDue = installment.amount + (installment.latepayment ?? 0);
-        const totalPaid = installment.paidAmount + (installment.paidLatePayment ?? 0);
+        const totalDue = installment.amount + (installment.arrears ?? 0);
+        const totalPaid = installment.amountPaid + (installment.arrearsPaid ?? 0);
 
         if (totalPaid >= totalDue) {
             installment.status = "pagada";

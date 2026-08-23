@@ -87,7 +87,7 @@ export class UpdateDebtUseCase {
 
     // 2. Detectar cambios financieros
     const financialChanged =
-      currentDebt.totalAmount !== input.debt.totalAmount ||
+      currentDebt.amount !== input.debt.amount ||
       currentDebt.installmentCount !== input.debt.installmentCount ||
       currentDebt.interestRate !== input.debt.interestRate ||
       currentDebt.debtTerms !== input.debt.debtTerms;
@@ -187,12 +187,12 @@ export class UpdateDebtUseCase {
 
 
               /**valor del credito que queda por pagarse */
-              const remainingValue = originalDebtEntity.totalAmount - originalDebtEntity.totalPaid;
+              const remainingValue = originalDebtEntity.amount - originalDebtEntity.amountPaid;
               let updateNeeded = false;
 
               //marca como ganancias a la deuda original
-              if (originalDebtEntity.creditPaid > 100) {
-                originalDebtEntity.creditPaid = 100;
+              if (originalDebtEntity.percentageOfAmountPaid > 100) {
+                originalDebtEntity.percentageOfAmountPaid = 100;
                 updateNeeded = true;
               }
 
@@ -254,11 +254,11 @@ export class UpdateDebtUseCase {
 
     if (!installmentsResult.state.ok) return fail(null);
 
-    const allInstallments = installmentsResult.state.value;
-    const paidInstallments = allInstallments.filter(
+    const allInstallments: Installment[] = installmentsResult.state.value;
+    const paidInstallments: Installment[] = allInstallments.filter(
       (i) => i.status === "pagada",
     );
-    const unpaidInstallments = allInstallments.filter(
+    const unpaidInstallments: Installment[] = allInstallments.filter(
       (i) => i.status !== "pagada",
     );
 
@@ -276,8 +276,9 @@ export class UpdateDebtUseCase {
       input.debt.installmentCount - paidInstallments.length;
     if (remainingCount <= 0) return ok(null);
 
+
     // Determinar fecha inicial para las nuevas cuotas
-    let nextDueDate = input.debt.firstDueDate;
+    let nextDueDate = allInstallments[(allInstallments.length - 1) - (paidInstallments.length)].dueDate;
     if (paidInstallments.length > 0) {
       // Si hay pagadas, la siguiente sigue la secuencia de la última pagada
       const lastPaid = [...paidInstallments]
@@ -308,8 +309,8 @@ export class UpdateDebtUseCase {
       vehicle: [],
       familyReference: [],
       applicant: {
-        fullName: input.debt.costumerName,
-        idNumber: input.debt.costumerDocument,
+        fullName: input.debt.clientName,
+        idNumber: input.debt.clientDocument,
         phone: "", // No lo tenemos en Debt, se podría añadir o dejar vacío
         address: {
           address: "", // Igual

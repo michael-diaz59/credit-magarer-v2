@@ -1,21 +1,36 @@
+/**
+ * representa la direccion de la casa del cliente
+ */
 export interface Address {
-  //direccion
+  /**direcion de la casa del cliente */
   address: string;
-
-  //barrio
+  /**barrio de la casa del cliente */
   neighborhood: string;
-  //estrato
+  /**estrato de la casa del cliente */
   stratum: number;
-  //ciudad
+  /**ciudad de la casa del cliente */
   city: string;
-
-  //ubicacion
-  location?:LocationA
+  /**ubicacion de la casa del cliente */
+  locationGPS?: LocationGPS
 }
 
-export interface LocationA {
-    coordenadas?: string;
-    latitud?: number;
-    longitud?:number;
+/**
+ * representa una ubicacion geografica con coordenadas 
+ */
+export interface LocationGPS {
+  /**coordenadas de la ubicacion de la casa del cliente */
+  coordinates?: string;
+  /**latitud de la ubicacion de la casa del cliente */
+  latitude?: number;
+  /**longitud de la ubicacion de la casa del cliente */
+  longitude?: number;
+  /**precision de la ubicacion de la casa del cliente con un radio en metros */
+  accuracy?: number;
+
+  /**fuente de la ubicacion de la casa del cliente
+   * GPS 
+   * MANUAL
+   */
+  provider?: string
 }
 

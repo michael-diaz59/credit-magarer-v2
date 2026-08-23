@@ -56,7 +56,7 @@ export const PaymentItem = ({ payment, checked, toggleSelection, handleCardClick
                 >
                     <Box>
                         <Typography variant="subtitle1" fontWeight="bold">
-                            Cliente: {payment.costumerName}
+                            Cliente: {payment.clientName}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                             Cobrador: {payment.collectorName}

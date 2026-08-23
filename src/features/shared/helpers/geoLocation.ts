@@ -1,6 +1,7 @@
-import type { GeoLocation } from "../../debits/domain/business/entities/Payment";
+import type { LocationGPS } from "../../costumers/domain/business/entities/Address";
 
-export const getCurrentLocation = (): Promise<GeoLocation> => {
+
+export const getCurrentLocation = (): Promise<LocationGPS> => {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error("Geolocation is not supported by this browser."));

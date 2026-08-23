@@ -1,18 +1,17 @@
 import * as XLSX from "xlsx";
-import { createBasicDebt, type Debt, type DebtStatus, type DebtTerms } from "../domain/business/entities/Debt";
+import { createEmptyDebt, type Debt, type DebtStatus, type DebtTerms } from "../domain/business/entities/Debt";
 import { FirebaseCostumerRepository } from "../../costumers/repository/FirebaseCostumerRepository";
 import { CreateDebtFromExcelCase } from "../domain/business/useCases/debt/createDebtFromExcel";
 import { FirebaseDebtRepository } from "../provider/firebase/DebtRepository";
 import { diasPorTermino } from "../../../core/helpers/debts/diasPorTermino";
 import { addDays, descontarMonto, calcularCuotasPagadas } from "../domain/business/useCases/helper";
-import type { Installment, InstallmentStatus } from "../domain/business/entities/Installment";
+import { defaultInstallment, type Installment, type InstallmentStatus } from "../domain/business/entities/Installment";
 import type { Customer } from "../../costumers/domain/business/entities/Customer";
-import { FirebaseInstallmentRepository } from "../provider/firebase/FirebaseInstallmentRepository";
+import { DocumentToInstallment, FirebaseInstallmentRepository } from "../provider/firebase/FirebaseInstallmentRepository";
 import { FirebasePaymentRepository } from "../provider/firebase/FirebasePaymentRepository";
-import type { Payment } from "../domain/business/entities/Payment";
-import { collection, getDocs, type DocumentData } from "firebase/firestore";
+import { emptyPayment, type Payment } from "../domain/business/entities/Payment";
+import { collection, getDocs } from "firebase/firestore";
 import { firestore } from "../../../store/firebase/firebase";
-import { decodeDate } from "../../shared/firebase/codeDecodeTime";
 import { paidPorcential } from "../../shared/helpers/calculate";
 import { getValidDueDate } from "../../shared/helpers/calcularFestivosColombia";
 
@@ -49,19 +48,19 @@ export function calculateDatesOfDebts(debt: Debt) {
 
     console.log("debt", debt);
 
-    debt.totalInterest = debt.capital * (debt.interestRate / 100);
+    debt.interest = debt.capital * (debt.interestRate / 100);
 
-    debt.totalAmount = debt.capital + debt.totalInterest;
+    debt.amount = debt.capital + debt.interest;
 
-    debt.interestPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.totalInterest);
+    debt.percentageOfInteresPaid = paidPorcential(debt.amountPaid + debt.renewalPayment, debt.interest);
 
-    debt.capitalPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.capital);
+    debt.percentageOfCapitalPaid = paidPorcential(debt.amountPaid + debt.renewalPayment, debt.capital);
 
-    debt.totalPaymentForLate = 0
+    debt.arrearsPaid = 0
 
-    debt.remainingToCompleteCredit = debt.totalAmount - (debt.totalPaid + debt.renewalPayment);
+    debt.remainingAmountToPay = debt.amount - (debt.amountPaid + debt.renewalPayment);
 
-    debt.creditPaid = paidPorcential(debt.totalPaid + debt.renewalPayment, debt.totalAmount);
+    debt.percentageOfAmountPaid = paidPorcential(debt.amountPaid + debt.renewalPayment, debt.amount);
 
 
 }
@@ -186,22 +185,22 @@ export async function importDebtFromExcel(
 
             // Crear la deuda
             const debt: Debt = {
-                ...createBasicDebt(),
+                ...createEmptyDebt(),
                 capital: capital,
-                totalInterest: totalInterest,
+                interest: totalInterest,
                 //mora
-                totalPaymentForLate: 0,
+                arrearsPaid: 0,
 
 
-                totalAmount: totalAmount,
-                totalPaid: totalPaid,
+                amount: totalAmount,
+                amountPaid: totalPaid,
 
                 renewalPayment: renewalPayment,
-                remainingToCompleteCredit: totalAmount - (totalPaid + renewalPayment),
-                creditPaid: paidPorcential(totalPaid + renewalPayment, capital + totalInterest),
+                remainingAmountToPay: totalAmount - (totalPaid + renewalPayment),
+                percentageOfAmountPaid: paidPorcential(totalPaid + renewalPayment, capital + totalInterest),
                 installmentsPaid: calcularCuotasPagadas(totalPaid + renewalPayment, totalAmount, installmentCount),
-                capitalPaid: paidPorcential(totalPaid + renewalPayment, capital),
-                interestPaid: paidPorcential(totalPaid + renewalPayment, totalInterest),
+                percentageOfCapitalPaid: paidPorcential(totalPaid + renewalPayment, capital),
+                percentageOfInteresPaid: paidPorcential(totalPaid + renewalPayment, totalInterest),
                 routeId: config.idRoute,
                 type: "fijo",
                 idVisit: "",
@@ -215,13 +214,11 @@ export async function importDebtFromExcel(
 
                 interestRate: interestRate,
 
-                papeleria: papeleria,
+                processingFee: papeleria,
 
                 startDate: startDate,
 
                 createdAt: today,
-
-                firstDueDate: today,
 
                 nextPaymentDue: today,
 
@@ -229,9 +226,9 @@ export async function importDebtFromExcel(
 
                 clientId: cursatomersForDocument?.id || "cedula no encontrada en excel",
 
-                costumerName: costumerName,
+                clientName: costumerName,
 
-                costumerDocument: document,
+                clientDocument: document,
             };
 
             debts.push(debt);
@@ -281,7 +278,7 @@ export async function importDebtFromExcel(
 function calcularCounterDebtsToCostumeres(debts: Debt[], costumers: Map<string, Customer>) {
 
     for (const debt of debts) {
-        const costumer = costumers.get(debt.costumerDocument);
+        const costumer = costumers.get(debt.clientDocument);
         if (costumer && debt.status === "pagada") {
             costumer.debtCounter++;
         }
@@ -351,15 +348,15 @@ async function createInstallments(
     const payments: Payment[] = [];
 
     for (const debt of debts) {
-        const costumer = costumers.get(debt.costumerDocument);
+        const costumer = costumers.get(debt.clientDocument);
         const [year, month, day] = debt.startDate.split("-").map(Number);
         const start = new Date(year, month - 1, day);
         console.log("start date:", start);
         const stepDays = diasPorTermino[debt.debtTerms];
         console.log("stepDays:", stepDays);
 
-        let pagado = debt.totalPaid + debt.renewalPayment;
-        const installmentAmount = debt.totalAmount / debt.installmentCount;
+        let pagado = debt.amountPaid + debt.renewalPayment;
+        const installmentAmount = debt.amount / debt.installmentCount;
 
         for (let i = 0; i < debt.installmentCount; i++) {
             const rawDueDate = addDays(start, stepDays * (i + 1));
@@ -374,37 +371,59 @@ async function createInstallments(
                 status = "incompleto";
             }
 
-
+            const capitalPerInstallment = debt.capital / debt.installmentCount;
+            let capitalToInstallment: number;
+            let interesToInstallment: number;
+            if (installmentAmount <= capitalPerInstallment) {
+                capitalToInstallment = installmentAmount;
+                interesToInstallment = 0
+            } else {
+                capitalToInstallment = capitalPerInstallment;
+                interesToInstallment = installmentAmount - capitalPerInstallment;
+            }
+            let capitalPayed: number;
+            let interesToPay: number;
+            if (restado <= capitalToInstallment) {
+                capitalPayed = restado;
+                interesToPay = 0
+            } else {
+                capitalPayed = capitalToInstallment;
+                interesToPay = restado - capitalToInstallment;
+            }
 
             installments.push({
+                ...defaultInstallment(),
                 installmentTotalNumber: debt.installmentCount,
-                paidAmount: restado,
+                amount: installmentAmount,
+                amountPaid: restado,
+                capital: capitalToInstallment,
+                capitalPaid: capitalPayed,
+                interestPaid: interesToPay,
+                interest: interesToInstallment,
                 paidAt: restado >= installmentAmount ? new Date().toISOString().slice(0, 10) : "",
-                costumerNumber: costumer?.applicant.phone || "",
-                payments: [],
-                basePaidRatio: paidPorcential(restado, installmentAmount),
-                latePaidRatio: 100,
-                lateDueDate: "",
-                lateInterestRate: 0,
-                aplazado: false,
-                latepayment: 0,
+                clientNumber: costumer?.applicant.phone || "",
+                percentageOfCapitalPaid: paidPorcential(restado, installmentAmount),
                 routeId: debt.routeId,
-                paidLatePayment: 0,
                 companyId: companyId,
-                id: "",
                 debtId: debt.id,
-                costumerId: costumer?.id || "",
-                costumerDocument: debt.costumerDocument,
-                costumerName: debt.costumerName,
-                costumerAddres: {
+                clientId: costumer?.id || "",
+                clientDocument: debt.clientDocument,
+                clientName: debt.clientName,
+                clientAddres: {
                     address: costumer?.applicant.address?.address || "",
                     neighborhood: costumer?.applicant.address?.neighborhood || "",
                     stratum: costumer?.applicant.address?.stratum || 0,
                     city: costumer?.applicant.address?.city || "",
+                    locationGPS: {
+                        latitude: costumer?.applicant.address?.locationGPS?.latitude || 0,
+                        longitude: costumer?.applicant.address?.locationGPS?.longitude || 0,
+                        accuracy: costumer?.applicant.address?.locationGPS?.accuracy || 0,
+                        coordinates: costumer?.applicant.address?.locationGPS?.coordinates,
+                        provider: costumer?.applicant.address?.locationGPS?.provider,
+                    }
                 },
                 installmentNumber: i + 1,
                 interestRate: debt.interestRate,
-                amount: installmentAmount,
                 dueDate: dueDate.toISOString().slice(0, 10),
                 status: status,
                 createdAt: new Date().toISOString().slice(0, 10),
@@ -413,15 +432,17 @@ async function createInstallments(
             if (restado > 0) {
 
                 payments.push({
+                    ...emptyPayment(),
+                    capitalPaid: capitalPayed,
+                    interestPaid: interesToPay,
+                    clientId: costumer?.id || "",
                     debtId: debt.id,
-                    idProofOfPayment: "",
-                    id: "",
                     idRoute: debt.routeId,
                     isTight: true,
                     collectorObservation: "Pago migrado de Excel",
                     accountantObservation: "Confirmado desde migración masiva",
                     installmentId: i.toString(),
-                    costumerName: debt.costumerName,
+                    clientName: debt.clientName,
                     collectorName: "Sistema",
                     collectorId: collectorId,
                     amount: restado,
@@ -512,8 +533,8 @@ async function migratePaymentsFromInstallments(input: {
 
                 // Ignorar cuotas sin pago
                 if (
-                    !installment.paidAmount ||
-                    installment.paidAmount <= 0
+                    !installment.amountPaid ||
+                    installment.amountPaid <= 0
                 ) {
                     skipped++;
                     return;
@@ -521,6 +542,11 @@ async function migratePaymentsFromInstallments(input: {
 
 
                 const payment: Payment = {
+                    amount: installment.amountPaid,
+                    capitalPaid: installment.capitalPaid,
+                    interestPaid: installment.interestPaid,
+                    arrearsPaid: 0,
+                    clientId: installment.clientId,
                     debtId: installment.debtId,
                     idProofOfPayment: "",
                     id: "",
@@ -538,16 +564,13 @@ async function migratePaymentsFromInstallments(input: {
                     installmentId:
                         installment.id,
 
-                    costumerName:
-                        installment.costumerName,
+                    clientName:
+                        installment.clientName,
 
                     collectorName: "Sistema",
 
                     collectorId:
                         input.collectorId,
-
-                    amount:
-                        installment.paidAmount,
 
                     method: "efectivo",
 
@@ -631,47 +654,3 @@ async function migratePaymentsFromInstallments(input: {
 
 
 
-function DocumentToInstallment(id: string, data: DocumentData): Installment {
-    return {
-        id,
-        basePaidRatio: data.basePaidRatio ?? 0,
-        latePaidRatio: data.latePaidRatio ?? 0,
-        companyId: data.companyId ?? "",
-        debtId: data.debtId ?? "",
-        interestRate: data.interestRate ?? 0,
-        lateInterestRate: data.lateInterestRate ?? 0,
-        routeId: data.routeId ?? "",
-        costumerId: data.costumerId ?? "",
-        costumerDocument: data.costumerDocument ?? "",
-        costumerName: data.costumerName ?? "",
-        costumerNumber: data.costumerNumber ?? "",
-
-        costumerAddres: {
-            address: data.costumerAddres?.address ?? "",
-            neighborhood: data.costumerAddres?.neighborhood ?? "",
-            stratum: data.costumerAddres?.stratum ?? 0,
-            city: data.costumerAddres?.city ?? "",
-        },
-        managed: data.managed ?? false,
-        managementDate: data.managementDate ? decodeDate(data.managementDate) : "",
-
-        attemptedCollection: data.attemptedCollection ?? false,
-        dateAttemptedPayment: data.dateAttemptedPayment ? decodeDate(data.dateAttemptedPayment) : "",
-        descriptionAttemptedPayment: data.descriptionAttemptedPayment ?? "",
-        locationAttemptedPayment: data.locationAttemptedPayment,
-
-        installmentTotalNumber: data.installmentTotalNumber ?? 0,
-        installmentNumber: data.installmentNumber ?? 0,
-        amount: data.amount ?? 0,
-        paidAmount: data.paidAmount ?? 0,
-        latepayment: data.latepayment ?? 0,
-        dueDate: data.dueDate ? decodeDate(data.dueDate) : "",
-        lateDueDate: data.lateDueDate ? decodeDate(data.lateDueDate) : "",
-        status: data.status ?? "pendiente",
-        paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
-        createdAt: data.createdAt ? decodeDate(data.createdAt) : "",
-        payments: data.payments ?? [],
-        paidLatePayment: data.paidLatePayment ?? 0,
-        aplazado: data.aplazado ?? false,
-    };
-}

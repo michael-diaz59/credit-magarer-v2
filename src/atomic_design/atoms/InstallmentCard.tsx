@@ -24,7 +24,7 @@ export const InstallmentCard = ({
         <Stack spacing={1}>
           <Stack direction="row" justifyContent="space-between">
             <Typography fontWeight="bold">
-              {installment.costumerName}
+              {installment.clientName}
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               {installment.managed && installment.managementDate === new Date().toISOString().split("T")[0] && (
@@ -56,12 +56,12 @@ export const InstallmentCard = ({
           </Stack>
 
           <Typography variant="body2">
-            📄 {installment.costumerDocument}
+            📄 {installment.clientDocument}
           </Typography>
 
           <Typography variant="body2">
-            📍 {installment.costumerAddres.address},{" "}
-            {installment.costumerAddres.neighborhood}
+            📍 {installment.clientAddres.address},{" "}
+            {installment.clientAddres.neighborhood}
           </Typography>
 
           <Typography variant="body2">

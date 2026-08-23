@@ -68,8 +68,8 @@ export const DebtFormT = ({
         <TextField
           label="Cédula"
           fullWidth
-          {...register("costumerDocument", { required: "Obligatorio" })}
-          error={!!errors.costumerDocument}
+          {...register("clientDocument", { required: "Obligatorio" })}
+          error={!!errors.clientDocument}
         />
 
 
@@ -103,9 +103,9 @@ export const DebtFormT = ({
           type="number"
           disabled={mode === "view" || mode == "audit"}
           fullWidth
-          error={!!errors.totalAmount}
-          helperText={errors.totalAmount?.message}
-          {...register("totalAmount", {
+          error={!!errors.amount}
+          helperText={errors.amount?.message}
+          {...register("amount", {
             valueAsNumber: true,
             required: "Monto obligatorio",
             min: { value: 10001, message: "debe ser mayor a 10000" },

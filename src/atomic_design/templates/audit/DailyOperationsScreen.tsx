@@ -64,14 +64,14 @@ export const DailyOperationsScreen = () => {
 
                 const paymentOrch = new PaymentOrchestrator();
                 const attemptOrch = new CollectionAttemptOrchestrator();
-                const instOrch = new InstallmentsOrchestrator();
+                const installmentOrchestrator = new InstallmentsOrchestrator();
                 const routeOrch = new RouteOrchestrator();
 
                 const userOrch = new UserOrchestrator({} as any);
 
-                const usersRes = await userOrch.getUsersByCompany({
+                const companyColectors = await userOrch.getUsersByCompany({
                     id: companyId,
-                    rol: "COLLECTOR" as any
+                    rol: "COLLECTOR"
                 });
 
                 const routesRes = await routeOrch.getRoutesUseCase.execute({ companyId });
@@ -82,15 +82,15 @@ export const DailyOperationsScreen = () => {
 
                 const grouped: GroupedOperations = {};
 
-                if (usersRes.state.ok) {
+                if (companyColectors.state.ok) {
 
-                    const collectors = usersRes.state.value;
+                    const collectors = companyColectors.state.value;
 
-                    collectors.forEach(c => {
+                    collectors.forEach(collector => {
 
-                        grouped[c.id] = {
-                            collectorName: c.name,
-                            routeIds: c.idRoutes ?? [],
+                        grouped[collector.id] = {
+                            collectorName: collector.name,
+                            routeIds: collector.idRoutes ?? [],
                             payments: [],
                             attempts: [],
                             unmanagedInstallments: []
@@ -106,20 +106,20 @@ export const DailyOperationsScreen = () => {
 
                 if (paymentsRes.ok) {
 
-                    paymentsRes.value.forEach(p => {
+                    paymentsRes.value.forEach(payment => {
 
-                        const colId = p.collectorId;
+                        const collectorId = payment.collectorId;
 
-                        if (grouped[colId]) {
+                        if (grouped[collectorId]) {
 
-                            grouped[colId].payments.push(p);
+                            grouped[collectorId].payments.push(payment);
 
                         } else {
 
-                            grouped[colId] = {
-                                collectorName: p.collectorName || "Desconocido",
+                            grouped[collectorId] = {
+                                collectorName: payment.collectorName || "Desconocido",
                                 routeIds: [],
-                                payments: [p],
+                                payments: [payment],
                                 attempts: [],
                                 unmanagedInstallments: []
                             };
@@ -131,35 +131,34 @@ export const DailyOperationsScreen = () => {
 
                 if (attemptsRes.ok) {
 
-                    attemptsRes.value.forEach(a => {
+                    attemptsRes.value.forEach(attempt => {
 
-                        const colId = a.collectorId;
+                        const collectorId = attempt.collectorId;
 
-                        if (grouped[colId]) {
+                        if (grouped[collectorId]) {
 
-                            grouped[colId].attempts.push(a);
+                            grouped[collectorId].attempts.push(attempt);
 
                         } else {
 
-                            grouped[colId] = {
+                            grouped[collectorId] = {
                                 collectorName: "Desconocido",
                                 routeIds: [],
                                 payments: [],
-                                attempts: [a],
+                                attempts: [attempt],
                                 unmanagedInstallments: []
                             };
-
                         }
 
                     });
 
                 }
 
-                const collectorProcessPromises = Object.keys(grouped).map(async (colId) => {
+                const collectorProcessPromises = Object.keys(grouped).map(async (collectorId) => {
 
-                    const nextInstRes = await instOrch.getNextByCollector({
+                    const nextInstRes = await installmentOrchestrator.getNextByRoute({
                         companyId,
-                        collectorId: colId
+                        routeIds: grouped[collectorId].routeIds ?? []
                     });
 
                     if (nextInstRes.ok && nextInstRes.value.state.length > 0) {
@@ -169,16 +168,16 @@ export const DailyOperationsScreen = () => {
                         const unmanaged = pendingToday.filter(inst => {
 
                             const hasPaymentToday =
-                                grouped[colId].payments.some(p => p.installmentId === inst.id);
+                                grouped[collectorId].payments.some(p => p.installmentId === inst.id);
 
                             const hasAttemptToday =
-                                grouped[colId].attempts.some(a => a.installmentId === inst.id);
+                                grouped[collectorId].attempts.some(a => a.installmentId === inst.id);
 
                             return !hasPaymentToday && !hasAttemptToday && inst.status !== "pagada";
 
                         });
 
-                        grouped[colId].unmanagedInstallments = unmanaged;
+                        grouped[collectorId].unmanagedInstallments = unmanaged;
 
                     }
 
@@ -363,7 +362,7 @@ export const DailyOperationsScreen = () => {
                                     >
 
                                         <ListItemText
-                                            primary={`Pago: ${p.costumerName}`}
+                                            primary={`Pago: ${p.clientName}`}
                                             secondary={`Monto: $${p.amount} | Hora: ${p.paidAt.split("T")[1]?.slice(0, 5) || p.paidAt}`}
                                         />
 
@@ -409,7 +408,7 @@ export const DailyOperationsScreen = () => {
                                     >
 
                                         <ListItemText
-                                            primary={`Sin Gestión: ${inst.costumerName}`}
+                                            primary={`Sin Gestión: ${inst.clientName}`}
                                             secondary={`Vencimiento: ${inst.dueDate} | Monto: $${inst.amount}`}
                                         />
 

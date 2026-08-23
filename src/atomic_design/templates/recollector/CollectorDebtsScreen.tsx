@@ -60,7 +60,7 @@ export const CollectorDebtsScreen = () => {
             const key = debt.clientId || "unknown";
             if (!groups[key]) {
                 groups[key] = {
-                    customerName: debt.costumerName || "Cliente Desconocido",
+                    customerName: debt.clientName || "Cliente Desconocido",
                     debts: [],
                 };
             }
@@ -117,7 +117,7 @@ export const CollectorDebtsScreen = () => {
                                                 secondary={
                                                     <Box component="span" display="flex" flexDirection="column">
                                                         <Typography variant="body2" component="span">
-                                                            Monto Total: ${debt.totalAmount.toLocaleString()}
+                                                            Monto Total: ${debt.amount.toLocaleString()}
                                                         </Typography>
                                                         <Typography variant="body2" component="span" color={debt.status === 'en_mora' ? 'error.main' : 'primary.main'}>
                                                             Estado: {debt.status === 'activa' ? 'Activa' : 'En Mora'}

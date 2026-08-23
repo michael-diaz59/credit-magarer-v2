@@ -5,19 +5,21 @@ import { GetByIdCase, type GetByIdError, type GetByIdInput, type GetByIdOutput }
 import { UpdateByIdCase, type UpdateByIdError, type UpdateByIdInput, type UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
 import type { InstallmentGateway, DebtGateway } from "./DebtGatweay";
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
-import { GetNextInstallmentsByCollectorUseCase, type GetNextInstallmentsByCollectorError, type GetNextInstallmentsByCollectorInput, type GetNextInstallmentsByCollectorOutput } from "../business/useCases/installment/GetNextInstallmentsByCollectorUseCase";
+import { GetNextInstallmentsByRouteUseCase, type GetNextInstallmentsByRouteError, type GetNextInstallmentsByRouteInput, type GetNextInstallmentsByRouteOutput } from "../business/useCases/installment/GetNextInstallmentsByCollectorUseCase";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 
 import { GetInstallmentsSummaryUseCase, type GetInstallmentsSummaryError, type GetInstallmentsSummaryInput, type GetInstallmentsSummaryOutput } from "../business/useCases/installment/GetInstallmentsSummaryUseCase";
 import { GetManagementInstallmentsUseCase, type GetManagementInstallmentsError, type GetManagementInstallmentsInput, type GetManagementInstallmentsOutput } from "../business/useCases/installment/GetManagementInstallmentsUseCase";
+import { GetManagementInstallmentsByRoutesUseCase, type GetManagementInstallmentsByRoutesError, type GetManagementInstallmentsByRoutesInput, type GetManagementInstallmentsByRoutesOutput } from "../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase";
 
 export default class InstallmentsOrchestrator {
 
   private readonly getByCollectorCase: GetByCollectorCase
   private readonly getByIdCase: GetByIdCase
+  private readonly getManagementInstallmentsByRoutesUseCase: GetManagementInstallmentsByRoutesUseCase
   private readonly updateByIdCase: UpdateByIdCase
   private readonly getByDebtCase: GetInstallmentsByDebtCase
-  private readonly getNextByCollectorCase: GetNextInstallmentsByCollectorUseCase
+  private readonly getNextByRouteCase: GetNextInstallmentsByRouteUseCase
   private readonly getInstallmentsSummaryCase: GetInstallmentsSummaryUseCase
   private readonly getManagementInstallmentsCase: GetManagementInstallmentsUseCase
 
@@ -25,11 +27,14 @@ export default class InstallmentsOrchestrator {
   constructor() {
     const installmentsGateway: InstallmentGateway = new FirebaseInstallmentRepository()
     const debtGateway: DebtGateway = new FirebaseDebtRepository()
+
+
+    this.getManagementInstallmentsByRoutesUseCase = new GetManagementInstallmentsByRoutesUseCase(installmentsGateway)
     this.getByCollectorCase = new GetByCollectorCase(installmentsGateway)
     this.getByIdCase = new GetByIdCase(installmentsGateway)
     this.updateByIdCase = new UpdateByIdCase(installmentsGateway)
     this.getByDebtCase = new GetInstallmentsByDebtCase(installmentsGateway)
-    this.getNextByCollectorCase = new GetNextInstallmentsByCollectorUseCase(debtGateway, installmentsGateway)
+    this.getNextByRouteCase = new GetNextInstallmentsByRouteUseCase(debtGateway, installmentsGateway)
     this.getInstallmentsSummaryCase = new GetInstallmentsSummaryUseCase(installmentsGateway)
     this.getManagementInstallmentsCase = new GetManagementInstallmentsUseCase(installmentsGateway)
   }
@@ -41,6 +46,11 @@ export default class InstallmentsOrchestrator {
   async updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
     return this.updateByIdCase.execute(input)
   }
+
+  async getManagementInstallmentsByRoutes(input: GetManagementInstallmentsByRoutesInput): Promise<Result<GetManagementInstallmentsByRoutesOutput, GetManagementInstallmentsByRoutesError>> {
+    return this.getManagementInstallmentsByRoutesUseCase.execute(input);
+  }
+
 
 
   async getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>> {
@@ -55,8 +65,8 @@ export default class InstallmentsOrchestrator {
     return this.getByDebtCase.execute(input);
   }
 
-  async getNextByCollector(input: GetNextInstallmentsByCollectorInput): Promise<Result<GetNextInstallmentsByCollectorOutput, GetNextInstallmentsByCollectorError>> {
-    return this.getNextByCollectorCase.execute(input);
+  async getNextByRoute(input: GetNextInstallmentsByRouteInput): Promise<Result<GetNextInstallmentsByRouteOutput, GetNextInstallmentsByRouteError>> {
+    return this.getNextByRouteCase.execute(input);
   }
 
   async getManagementInstallments(input: GetManagementInstallmentsInput): Promise<Result<GetManagementInstallmentsOutput, GetManagementInstallmentsError>> {

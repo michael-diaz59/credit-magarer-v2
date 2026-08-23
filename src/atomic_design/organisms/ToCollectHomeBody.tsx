@@ -24,6 +24,8 @@ export const ToCollectBody = ({
 }: ToCollectBodyProps) => {
   const [expandedRoutes, setExpandedRoutes] = useState<Map<string, boolean>>(new Map());
   const [expandedUnassigned, setExpandedUnassigned] = useState<Map<string, boolean>>(new Map());
+  console.log("atrasadas");
+  console.log(overdue);
 
   // Agrupar cuotas
   const allInstallments = [...pending, ...overdue];
@@ -115,10 +117,10 @@ export const CollectedBody = ({ paid, onClick }: CollectedBodyProps) => {
   const customers = new Map<string, { customerName: string; installments: Installment[] }>();
 
   paid.forEach(i => {
-    if (!customers.has(i.costumerId)) {
-      customers.set(i.costumerId, { customerName: i.costumerName, installments: [] });
+    if (!customers.has(i.clientId)) {
+      customers.set(i.clientId, { customerName: i.clientName, installments: [] });
     }
-    customers.get(i.costumerId)!.installments.push(i);
+    customers.get(i.clientId)!.installments.push(i);
   });
 
   const toggleCustomer = (customerId: string, isExpanded: boolean) => {
