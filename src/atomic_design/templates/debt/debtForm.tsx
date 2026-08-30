@@ -143,6 +143,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       return config?.requiredFields?.includes(field) ?? false;
     };
 
+
     const formDefaults = useMemo(
       () => mergeDefined(baseDefaults, defaultValues),
       [defaultValues]
@@ -159,7 +160,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
       formState: { errors },
     } = useForm<DebtFormValues>({
       defaultValues: formDefaults,
-      shouldUnregister: true,
+      shouldUnregister: false,
     });
 
     useEffect(() => {
@@ -252,7 +253,9 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
               </>
             )}
             <Controller name="pledge" control={control} rules={{
-              required: "Debes marcar esta opción"
+              required: isRequired("pledge")
+                ? "Debe seleccionar una prenda"
+                : false,
             }}
               render={({ field }) => (<FormControl error={!!errors.pledge}>
                 <FormControlLabel control={
@@ -457,7 +460,6 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                     onChange={(e) => {
                       const value = e.target.value as DebtFormValues["debtTerms"];
                       field.onChange(value);
-
                       setValue("daysPerMonth", diasDelMesPorTermino[value]);
                     }}
                   >
@@ -653,9 +655,10 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    value={field.value ? formatISOToInputDate(field.value) : ""}
+                    value={field.value ? field.value : ""}
                     label="Fecha de inicio"
                     type="date"
+
                     fullWidth
                     disabled={!isEditable("startDate")}
                     InputLabelProps={{ shrink: true }}

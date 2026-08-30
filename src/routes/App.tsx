@@ -36,7 +36,7 @@ import { AuditorDebtsFiltersScreen } from "../atomic_design/templates/audit/Audi
 import { AuditDebtScreen } from "../atomic_design/templates/debt/debts/AuditDebtScreen.tsx";
 import Collector_layout from "./collector/Collector_layout.tsx";
 import { RecolectorHome } from "../atomic_design/templates/recollector/RecolectorHome.tsx";
-import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetailScreen.tsx";
+import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetail/InstallmentDetailScreen2.tsx";
 import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileScreen.tsx";
 import { RouteAdministrationScreen } from "../atomic_design/templates/configuration/RouteAdministrationScreen.tsx";
 import { CreateRouteScreen } from "../atomic_design/templates/configuration/CreateRouteScreen.tsx";

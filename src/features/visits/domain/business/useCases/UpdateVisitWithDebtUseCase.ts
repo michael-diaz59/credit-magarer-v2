@@ -2,11 +2,12 @@ import { ok, type Result } from "../../../../../core/helpers/ResultC";
 import type Visit from "../entities/Visit";
 import type { Debt } from "../../../../debits/domain/business/entities/Debt";
 import type VisitGateway from "../../infraestructure/VisitGateway";
-import type { DebtGateway, InstallmentGateway } from "../../../../debits/domain/infraestructure/DebtGatweay";
+import type { DebtGateway } from "../../../../debits/domain/infraestructure/DebtGatweay";
 import EditVisitCase from "./EditVisitCase";
 import { UpdateDebtUseCase } from "../../../../debits/domain/business/useCases/debt/UpdateDebtUseCase";
 import type { visitErros } from "../entities/types";
 import type CostumerGateway from "../../../../costumers/domain/infraestructure/CostumerGateway";
+import type { InstallmentGateway } from "../../../../debits/domain/infraestructure/InstallmentGateway";
 
 export interface UpdateVisitWithDebtInput {
     idCompany: string;

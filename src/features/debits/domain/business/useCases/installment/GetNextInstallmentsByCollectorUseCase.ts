@@ -1,6 +1,7 @@
 import type { Result } from "../../../../../../core/helpers/ResultC";
 import { ok, fail } from "../../../../../../core/helpers/ResultC";
-import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 import type { Installment } from "../../entities/Installment";
 
 export interface GetNextInstallmentsByRouteInput {

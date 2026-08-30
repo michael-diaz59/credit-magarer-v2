@@ -12,8 +12,8 @@ import { FirebasePaymentRepository } from "../provider/firebase/FirebasePaymentR
 import { emptyPayment, type Payment } from "../domain/business/entities/Payment";
 import { collection, getDocs } from "firebase/firestore";
 import { firestore } from "../../../store/firebase/firebase";
-import { paidPorcential } from "../../shared/helpers/calculate";
-import { getValidDueDate } from "../../shared/helpers/calcularFestivosColombia";
+import { paidPorcential } from "../../../core/shared/helpers/calculate";
+import { getValidDueDate } from "../../../core/shared/helpers/calcularFestivosColombia";
 
 
 

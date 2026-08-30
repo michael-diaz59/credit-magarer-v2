@@ -1,5 +1,4 @@
 import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
-
 /**los estados de un pago realizado: \
  * registrado: el cobrador registro un pago  \
  * conflicto: el contador indica que hay un problema con el pago  \
@@ -87,6 +86,9 @@ export interface Payment {
 
   /**indica si el pago esta cuadrado*/
   isTight: boolean;
+
+  /**indica la fecha en la que el pago fue cuadrado*/
+  tightDate?: string;
 
   // --- OBSERVACIONES ---
   /**observaciones del cobrador */

@@ -1,5 +1,5 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 
 export interface GetInstallmentsSummaryInput {
     companyId: string;

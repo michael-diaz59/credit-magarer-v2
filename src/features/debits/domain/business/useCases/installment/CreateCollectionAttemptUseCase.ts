@@ -1,5 +1,5 @@
 import type { Result } from "../../../../../../core/helpers/ResultC";
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 import type { CollectionAttemptGateway } from "../../../infraestructure/CollectionAttemptGateway";
 import type { CollectionAttempt } from "../../entities/CollectionAttempt";
 import { ok, fail } from "../../../../../../core/helpers/ResultC";

@@ -1,5 +1,5 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC"
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay"
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway"
 import type { Installment } from "../../entities/Installment"
 
 export type GetByIdError =

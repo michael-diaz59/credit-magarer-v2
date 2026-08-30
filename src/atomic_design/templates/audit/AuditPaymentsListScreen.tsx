@@ -165,7 +165,7 @@ export const PaymentsListScreen = () => {
 
       const updatedInstallment: Installment = {
         ...installment,
-        arrearsDueDate: newDueDate,
+        defermentDueDate: newDueDate,
         arrearsInterestRate: newInterestRate,
         arrears: newDebt.pagoCuota,
         deferred: true,

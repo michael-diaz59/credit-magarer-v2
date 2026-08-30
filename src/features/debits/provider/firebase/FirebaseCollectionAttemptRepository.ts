@@ -7,7 +7,7 @@ import type {
     CreateCollectionAttemptInput
 } from "../../domain/infraestructure/CollectionAttemptGateway";
 import { FirebaseError } from "firebase/app";
-import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseCollectionAttemptRepository implements CollectionAttemptGateway {

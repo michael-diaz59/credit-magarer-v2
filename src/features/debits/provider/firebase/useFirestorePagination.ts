@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import type { Debt } from "../../domain/business/entities/Debt";
-import { documentToDebt } from "./mapDocumentToDebt";
+import { documentToDebt } from "./DebtRepository";
 
 type OrderBy = {
     field: string;

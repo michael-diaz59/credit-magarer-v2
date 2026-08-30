@@ -1,5 +1,5 @@
 import type { Result } from "../../../../../../core/helpers/ResultC"
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay"
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway"
 import type { Installment, InstallmentStatus } from "../../entities/Installment"
 
 export type GetByCollectorError =
@@ -8,8 +8,8 @@ export type GetByCollectorError =
 
 
 export interface GetByCollectorInput {
-    collectorId:string
-    companyId:string
+    collectorId: string
+    companyId: string
     status?: InstallmentStatus[];
 }
 
@@ -26,7 +26,7 @@ export class GetByCollectorCase {
         this.installmentGateway = installmentGateway
     }
     /** su funcion es obtener varios installmentes asociados a un collector*/
-    async execute(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput,GetByCollectorError>> {
-         return this.installmentGateway.getByCollector(input)
+    async execute(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>> {
+        return this.installmentGateway.getByCollector(input)
     }
 }

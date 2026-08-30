@@ -1,4 +1,4 @@
-import type { LocationGPS } from "../../costumers/domain/business/entities/Address";
+import type { LocationGPS } from "../../../features/costumers/domain/business/entities/Address";
 
 
 export const getCurrentLocation = (): Promise<LocationGPS> => {

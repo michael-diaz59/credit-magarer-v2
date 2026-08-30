@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import { getLocalDate } from "../../helpers/dates/calculateDays";
 
 /**
  * decodifica fecha de firebase
@@ -8,7 +9,7 @@ import { Timestamp } from "firebase/firestore";
 export function decodeDate(val: any): string {
     if (!val) return "";
     if (val instanceof Timestamp) {
-        return val.toDate().toISOString();
+        return getLocalDate(val.toDate())
     }
     if (typeof val === "string") {
         // If already ISO or has a date, return it
@@ -30,10 +31,7 @@ export function decodeDate(val: any): string {
 export function encodeDate(date: string | null | undefined, isNew: boolean = false): Timestamp {
     if (isNew || !date) {
         if (!date) {
-            console.log("no hay fecha");
         } else {
-
-            console.log("es fecha nueva");
         }
         return Timestamp.now();
     }
@@ -41,11 +39,8 @@ export function encodeDate(date: string | null | undefined, isNew: boolean = fal
     try {
         const [year, month, day] = date.split("-").map(Number);
         const parsedDate = new Date(year, month - 1, day);
-        console.log(date);
-        console.log(parsedDate);
         if (!isNaN(parsedDate.getTime())) {
-            let time = Timestamp.fromDate(parsedDate);
-            console.log(time);
+            let time = Timestamp.fromDate(parsedDate); 46
             return time;
         } else {
             const parsedDate = new Date(date);

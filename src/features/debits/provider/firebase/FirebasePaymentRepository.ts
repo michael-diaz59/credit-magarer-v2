@@ -24,71 +24,12 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../../domain/business/useCases/payment/UpdatePaymentStatusUseCase";
 import type { UpdateMultiplePaymentsIsTightError } from "../../domain/business/useCases/payment/UpdateMultiplePaymentsIsTight";
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../domain/business/useCases/payment/GetPaymentsByStatusUseCase";
-import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import type { DocumentData } from "firebase/firestore";
+import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 /**corregir any y removeUndefined con variable no usada */
 export class FirebasePaymentRepository implements PaymentGateway {
-
-
-    private paymentToFirestore(payment: Omit<Payment, "id">): DocumentData {
-
-        const result: any = payment;
-
-        if (payment.paidAt !== undefined) result.paidAt = encodeDate(payment.paidAt);
-
-        return {
-            clientId: payment.clientId,
-            capitalPaid: payment.capitalPaid,
-            interestPaid: payment.interestPaid,
-            arrearsPaid: payment.arrearsPaid,
-            debtId: payment.debtId,
-            idRoute: payment.idRoute,
-            isTight: payment.isTight,
-            collectorObservation: payment.collectorObservation,
-            accountantObservation: payment.accountantObservation,
-            installmentId: payment.installmentId,
-            clientName: payment.clientName,
-            collectorName: payment.collectorName,
-            collectorId: payment.collectorId,
-            amount: payment.amount,
-            method: payment.method,
-            status: payment.status,
-            paidAt: encodeDate(payment.paidAt),
-            location: payment.location,
-            bankAccountId: payment.bankAccountId,
-            idProofOfPayment: payment.idProofOfPayment,
-        }
-    }
-
-    private documentToPayment(id: string, data: DocumentData): Payment {
-        return {
-            id: id,
-            clientId: data.clientId ?? "",
-            capitalPaid: data.capitalPaid ?? 0,
-            interestPaid: data.interestPaid ?? 0,
-            arrearsPaid: data.arrearsPaid ?? 0,
-            debtId: data.debtId ?? "",
-            idRoute: data.idRoute ?? "",
-            isTight: data.isTight ?? false,
-            collectorObservation: data.collectorObservation ?? "",
-            accountantObservation: data.accountantObservation ?? "",
-            installmentId: data.installmentId ?? "",
-            clientName: data.clientName ?? "",
-            collectorName: data.collectorName ?? "",
-            collectorId: data.collectorId ?? "",
-            amount: data.amount ?? 0,
-            method: data.method ?? "efectivo",
-            status: data.status ?? "registrado",
-            paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
-            location: data.location,
-            bankAccountId: data.bankAccountId,
-            idProofOfPayment: data.idProofOfPayment ?? "",
-        };
-    }
-
-
-
     generateId(companyId: string): string {
         const refCollection = collection(
             firestore,
@@ -136,9 +77,9 @@ export class FirebasePaymentRepository implements PaymentGateway {
             );
             const refDoc = doc(refCollection);
 
-            await setDoc(refDoc, this.paymentToFirestore(payment));
+            await setDoc(refDoc, paymentToFirestore(payment));
 
-            return ok({ payment: this.documentToPayment(refDoc.id, this.paymentToFirestore(payment)) });
+            return ok({ payment: documentToPayment(refDoc.id, paymentToFirestore(payment)) });
 
         } catch (error) {
             console.error("Error creating payment:", error);
@@ -196,7 +137,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
             const snapshot = await getDocs(q)
 
             const payments: Payment[] = snapshot.docs.map((doc) => {
-                return this.documentToPayment(doc.id, doc.data());
+                return documentToPayment(doc.id, doc.data());
             })
 
             return {
@@ -219,7 +160,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
             const snapshot = await getDocs(q)
 
             const payments: Payment[] = snapshot.docs.map((doc) => {
-                return this.documentToPayment(doc.id, doc.data());
+                return documentToPayment(doc.id, doc.data());
             })
 
             return {
@@ -246,10 +187,10 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 payment.id
             );
 
-            const dataToUpdate = this.paymentToFirestore(payment);
+            const dataToUpdate = paymentToFirestore(payment);
             await setDoc(refDoc, dataToUpdate, { merge: true });
 
-            return ok({ payment: this.documentToPayment(payment.id, dataToUpdate) });
+            return ok({ payment: documentToPayment(payment.id, dataToUpdate) });
 
         } catch (error) {
             console.error("Error updating payment:", error);
@@ -283,7 +224,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
                 return ok({ payment: null });
             }
 
-            const paymentData = this.documentToPayment(snapshot.id, snapshot.data());
+            const paymentData = documentToPayment(snapshot.id, snapshot.data());
             return ok({ payment: paymentData });
 
         } catch (error) {
@@ -315,7 +256,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
 
             const snapshot = await getDocs(q);
 
-            const payments: Payment[] = snapshot.docs.map(doc => this.documentToPayment(doc.id, doc.data()));
+            const payments: Payment[] = snapshot.docs.map(doc => documentToPayment(doc.id, doc.data()));
 
             console.log("[FirebasePaymentRepository.getAllByDate]", payments);
 
@@ -391,7 +332,7 @@ export class FirebasePaymentRepository implements PaymentGateway {
                     // Asignamos el id generado en Firestore al objeto original en memoria
                     payment.id = docRef.id;
 
-                    batch.set(docRef, this.paymentToFirestore(payment));
+                    batch.set(docRef, paymentToFirestore(payment));
                 }
 
                 await batch.commit();
@@ -411,4 +352,59 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
+}
+
+export function paymentToFirestore(payment: Omit<Payment, "id">): DocumentData {
+
+    const result2 = {
+        clientId: payment.clientId,
+        capitalPaid: payment.capitalPaid,
+        interestPaid: payment.interestPaid,
+        arrearsPaid: payment.arrearsPaid,
+        debtId: payment.debtId,
+        idRoute: payment.idRoute,
+        isTight: payment.isTight,
+        collectorObservation: payment.collectorObservation,
+        accountantObservation: payment.accountantObservation,
+        installmentId: payment.installmentId,
+        clientName: payment.clientName,
+        collectorName: payment.collectorName,
+        collectorId: payment.collectorId,
+        amount: payment.amount,
+        method: payment.method,
+        status: payment.status,
+        tightDate: payment.tightDate ? encodeDate(payment.tightDate) : null,
+        paidAt: encodeDate(payment.paidAt),
+        location: payment.location,
+        bankAccountId: payment.bankAccountId,
+        idProofOfPayment: payment.idProofOfPayment,
+    }
+    return removeUndefined(result2)
+}
+
+export function documentToPayment(id: string, data: DocumentData): Payment {
+    return {
+        id: id,
+        clientId: data.clientId ?? "",
+        capitalPaid: data.capitalPaid ?? 0,
+        interestPaid: data.interestPaid ?? 0,
+        arrearsPaid: data.arrearsPaid ?? 0,
+        debtId: data.debtId ?? "",
+        idRoute: data.idRoute ?? "",
+        isTight: data.isTight ?? false,
+        collectorObservation: data.collectorObservation ?? "",
+        accountantObservation: data.accountantObservation ?? "",
+        installmentId: data.installmentId ?? "",
+        clientName: data.clientName ?? "",
+        collectorName: data.collectorName ?? "",
+        collectorId: data.collectorId ?? "",
+        amount: data.amount ?? 0,
+        method: data.method ?? "efectivo",
+        status: data.status ?? "registrado",
+        tightDate: data.tightDate ? decodeDate(data.tightDate) : undefined,
+        paidAt: data.paidAt ? decodeDate(data.paidAt) : "",
+        location: data.location,
+        bankAccountId: data.bankAccountId,
+        idProofOfPayment: data.idProofOfPayment ?? "",
+    };
 }

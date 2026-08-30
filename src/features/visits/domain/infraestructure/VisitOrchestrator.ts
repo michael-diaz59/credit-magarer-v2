@@ -12,11 +12,12 @@ import GetVisitsCase, { type GetVisitsInput, type GetVisitsOutput } from "../bus
 import type VisitGateway from "./VisitGateway"
 import { CreateVisitWithDebtUseCase, type CreateVisitWithDebtInput } from "../business/useCases/CreateVisitWithDebtUseCase"
 import { FirebaseDebtRepository } from "../../../debits/provider/firebase/DebtRepository"
-import type { DebtGateway, InstallmentGateway } from "../../../debits/domain/infraestructure/DebtGatweay"
+import type { InstallmentGateway } from "../../../debits/domain/infraestructure/InstallmentGateway"
 import { FirebaseInstallmentRepository } from "../../../debits/provider/firebase/FirebaseInstallmentRepository"
 import { UpdateVisitWithDebtUseCase, type UpdateVisitWithDebtInput } from "../business/useCases/UpdateVisitWithDebtUseCase"
 import type CostumerGateway from "../../../costumers/domain/infraestructure/CostumerGateway"
 import { FirebaseCostumerRepository } from "../../../costumers/repository/FirebaseCostumerRepository"
+import type { DebtGateway } from "../../../debits/domain/infraestructure/DebtGatweay"
 
 
 

@@ -3,7 +3,7 @@ import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, runTransactio
 import { ref, uploadBytes } from "firebase/storage";
 import { firestore, storage } from "../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../core/helpers/ResultC";
-import { encodeDate, decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
 import type { FinancialDebt } from "../domain/business/entities/FinancialDebt";
 import type FinancialDebtGateway from "../domain/infraestructure/FinancialDebtGateway";
 import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";

@@ -1,5 +1,5 @@
 import type { Result } from "../../../../../../core/helpers/ResultC"
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay"
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway"
 import type { Installment } from "../../entities/Installment"
 
 export type UpdateByIdError =
@@ -10,8 +10,8 @@ export type UpdateByIdError =
 
 
 export interface UpdateByIdInput {
-    installment:Installment
-    companyId:string
+    installment: Installment
+    companyId: string
 }
 
 export interface UpdateByIdOutput {
@@ -28,6 +28,6 @@ export class UpdateByIdCase {
     }
     /** su funcion es actualizar varios installmentes*/
     async execute(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
-         return this.installmentGateway.updateById(input)
+        return this.installmentGateway.updateById(input)
     }
 }

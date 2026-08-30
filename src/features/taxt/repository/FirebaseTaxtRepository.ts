@@ -2,13 +2,13 @@ import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, deleteDoc, ty
 import { ref, uploadBytes } from "firebase/storage";
 import { firestore, storage } from "../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../core/helpers/ResultC";
-import { encodeDate, decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
 import type { TaxtPayment } from "../domain/business/entities/TaxtPayment";
 import type TaxtGateway from "../domain/infraestructure/TaxtGateway";
 import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseTaxtRepository implements TaxtGateway {
-    
+
     private taxtPaymentToFirestore(payment: Omit<TaxtPayment, "id">): DocumentData {
         return removeUndefined({
             ...payment,
@@ -58,7 +58,7 @@ export class FirebaseTaxtRepository implements TaxtGateway {
     async update(companyId: string, payment: TaxtPayment, file?: File): Promise<Result<void, Error>> {
         try {
             const docRef = doc(firestore, "companies", companyId, "taxtPayments", payment.id);
-            
+
             let idProofOfPayment = payment.idProofOfPayment;
 
             if (file) {

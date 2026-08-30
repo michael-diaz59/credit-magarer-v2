@@ -1,7 +1,10 @@
 
+import { getLocalDate } from "../../../../../../core/helpers/dates/calculateDays";
 import { fail, type Result } from "../../../../../../core/helpers/ResultC";
+import type { Customer } from "../../../../../costumers/domain/business/entities/Customer";
 import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
-import type { DebtGateway, InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 import { createEmptyDebt, type Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { generateInstallments2 } from "../helper";
@@ -59,68 +62,84 @@ export class CreateDebtUseCase {
     }
 
     /** 2️⃣ Buscar cliente */
-    const costumerResult =
+    const clientResult =
       await this.costumerGateway.getCostumerByIdNumber({
         companyId: input.companyId,
         documentId: input.debt.clientDocument,
       });
 
-    if (!costumerResult.state.ok) {
+    if (!clientResult.state.ok) {
       return fail({ code: "CUSTOMER_NOT_FOUND" });
     }
 
-    if (!costumerResult.state.value) {
+    if (!clientResult.state.value) {
       return fail({ code: "CUSTOMER_NOT_FOUND" });
     }
 
-    const costumer = costumerResult.state.value;
+    const costumer: Customer = clientResult.state.value;
 
     /** 3️⃣ Debt FINAL */
     const debt: Debt = {
       ...createEmptyDebt(),
-      deliveredStatus: input.debt.deliveredStatus,
-      delivered: input.debt.delivered,
-      pledge: input.debt.pledge,
-      pledgeValue: input.debt.pledgeValue,
-      processingFee: input.debt.processingFee,
-      interest: input.debt.interest,
-      pledgeDescription: input.debt.pledgeDescription,
-      routeId: input.debt.routeId,
-      renewedToDebtId: input.debt.renewedToDebtId,
+
+      //--- datos de la deuda---
+      lateInterestRate: input.debt.lateInterestRate,
       type: input.debt.type,
-      idVisit: input.debt.idVisit,
-      debtTerms: input.debt.debtTerms,
-      name: input.debt.name || "",
-      daysPerMonth: input.debt.daysPerMonth,
       status: input.debt.status,
+      routeId: input.debt.routeId,
+      prepayment: input.debt.prepayment,
+
+      //---  cliente ---
       clientId: costumer.id,
       clientName: costumer.applicant.fullName,
-      clientDocument: input.debt.clientDocument,
-      amount: input.debt.amount,
-      amountPaid: 0,
-      arrearsPaid: 0,
-      installmentCount: input.debt.installmentCount,
+      clientDocument: costumer.applicant.idNumber,
+
+      // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+      debtTerms: input.debt.debtTerms,
+      daysPerMonth: input.debt.daysPerMonth,
       interestRate: input.debt.interestRate,
-      startDate: input.debt.startDate,
-      createdAt: new Date().toISOString().slice(0, 10),
-      nextPaymentDue: "",
-      dateLastPayment: "",
-      installmentsPaid: 0,
-      numberOfArrearsInstallments: 0,
+      installmentCount: input.debt.installmentCount,
+
+      //dinero
       capital: input.debt.capital,
-      originalDebt: input.debt.originalDebt ?? undefined,
+      interest: input.debt.interest,
+      amount: input.debt.capital + input.debt.interest,
+      total: input.debt.capital + input.debt.interest,
+
+      processingFee: input.debt.processingFee,
+
+      // --- GARANTÍAS Y PRENDA ---
+      pledge: input.debt.pledge,
+      pledgeDescription: input.debt.pledgeDescription,
+      pledgeValue: input.debt.pledgeValue,
+
+      // --- SEGUIMIENTO DE PAGOS Y SALDOS ---
+
+      //restante por pagar
+      remainingCapitalToPay: input.debt.capital,
+      //pocentaje pagado
+      percentageOfCapitalPaid: 0,
+      percentageOfInteresPaid: 0,
+      percentageOfAmountPaid: 0,
+      percentageOfTotalPaid: 0,
+
+      // --- CUOTAS Y FECHAS (yyyy-mm-dd) ---
+      createdAt: getLocalDate(new Date()),
+      startDate: input.debt.startDate,
     };
 
     console.log("debt", debt)
 
     /** 4️⃣ Generar cuotas */
-    const { installments, expectedEndDate, nextPaymentDue } = generateInstallments2(
+    const { installments, expectedEndDate, nextPaymentDue, total_deuda_a_pagar } = generateInstallments2(
       debt,
       costumer.applicant.address,
       input.companyId,
       input.months,
     );
     debt.expectedEndDate = expectedEndDate;
+    debt.nextPaymentDue = nextPaymentDue;
+    debt.installmentCount = installments.length;
 
     //sumamos el total de las cuotas para obtener el total del credito a pagar
     for (const installment of installments) {
@@ -129,16 +148,13 @@ export class CreateDebtUseCase {
       console.log("debt.totalAmount", debt.amount)
     }
 
-
-
-
     debt.nextPaymentDue = nextPaymentDue;
-    debt.numberOfArrearsInstallments = 0;
-
     debt.expectedEndDate = expectedEndDate;
+    debt.amount = total_deuda_a_pagar
+    debt.total = total_deuda_a_pagar
+    debt.interest = total_deuda_a_pagar - debt.capital
 
     console.log("debt", debt)
-
 
     /** 5️⃣ Persistir TODO */
     const result = await this.debtGateway.createWithInstallments({

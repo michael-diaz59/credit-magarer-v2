@@ -4,11 +4,11 @@ import { firestore } from "../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../core/helpers/ResultC";
 import type { Roster } from "../domain/business/entities/Roster";
 import type { RosterGateway } from "../domain/infraestructure/RosterGateway";
-import { encodeDate, decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseRosterRepository implements RosterGateway {
-    
+
     private rosterToFirestore(roster: Omit<Roster, "id">): DocumentData {
         const result: any = { ...roster };
         if (roster.startDate) result.startDate = encodeDate(roster.startDate);

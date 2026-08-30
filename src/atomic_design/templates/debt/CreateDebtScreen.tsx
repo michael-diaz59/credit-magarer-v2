@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../../../store/redux/coreRedux";
-import { createEmptyDebt, type Debt } from "../../../features/debits/domain/business/entities/Debt";
+import { cloneDebt, createEmptyDebt, type Debt } from "../../../features/debits/domain/business/entities/Debt";
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { BaseDialog } from "../../atoms/BaseDialog";
@@ -46,6 +46,7 @@ export const CreateDebtScreen = () => {
     )
     let isValid: boolean = false;
     const formValues: DebtFormValues | undefined = formRef.current?.getValues();
+    console.log("dias por mes" + formRef.current?.getValues().daysPerMonth)
     if (!formValues) return;
     console.log("capital", formValues.capital)
 
@@ -67,6 +68,8 @@ export const CreateDebtScreen = () => {
     }
     if (!isValid) return;
 
+    console.log(formValues)
+
 
     const debtForVreate: Debt = mergeDebtWithForm(createEmptyDebt(), formValues);
 
@@ -74,7 +77,7 @@ export const CreateDebtScreen = () => {
       formValues?.calculationMode === "months" ? formValues.months : undefined;
 
     console.log("se toma por meses?:", formValues?.calculationMode === "months")
-    console.log("debtForVreate.capital", debtForVreate.capital)
+    console.log("debtForVreate", debtForVreate)
 
     switch (submitType) {
       case "crear": {
@@ -132,7 +135,7 @@ export const CreateDebtScreen = () => {
     console.log("months:", months)
 
     const result = await orchestrator.simulateDebt({
-      debt: data,
+      debt: cloneDebt(data),
       months: months,
     });
 

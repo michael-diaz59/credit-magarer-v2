@@ -94,6 +94,21 @@ export const renewalComparisonConfig: DebtFormConfig = {
     ]))
 };
 
+export const preaprovarCredito: DebtFormConfig = {
+    visibleFields: allDebtFormFields,
+    editableFields: [],
+    requiredFields: [
+        "routeId",
+        "clientDocument",
+        "capital",
+        "debtTerms",
+        "installmentCount",
+        "startDate",
+        "daysPerMonth",
+        "calculationMode",
+    ]
+}
+
 export const debtComparisonConfig: DebtFormConfig = {
     visibleFields: [
         "clientDocument",
@@ -176,6 +191,7 @@ export const confirmPaymentConfig: DebtFormConfig = {
         "calculationMode",
     ],
 };
+
 
 export const CREATE_DEBT_CONFIG: DebtFormConfig = {
     visibleFields: allDebtFormFields,

@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, where, type DocumentData } from "firebase/firestore";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import type { User } from "../../domain/business/entities/User";
 import type { getUserError, setUserError } from "../../domain/business/entities/userErrors";
@@ -11,6 +11,50 @@ import type { GetUsersByRouteInput, GetUsersByRouteOutput } from "../../domain/b
 export interface Globaluser {
   id: string
   companyId: string
+}
+
+export function DocumentToUser(id: string, data: DocumentData, companyId: string = ""): User {
+  let collectorRoutes: Record<string, string[]> | undefined;
+  if (data.collectorRoutes && typeof data.collectorRoutes === "object") {
+    if (data.collectorRoutes instanceof Map) {
+      collectorRoutes = Object.fromEntries(data.collectorRoutes);
+    } else {
+      collectorRoutes = data.collectorRoutes;
+    }
+  }
+
+  return {
+    id: id,
+    companyId: companyId || data.companyId || "",
+    email: data.email ?? "",
+    name: data.name ?? "",
+    roles: data.roles ?? [],
+    totalAmount: data.totalAmount ?? 0,
+    capital: data.capital ?? 0,
+    interest: data.interest ?? 0,
+    arrears: data.arrears ?? 0,
+    funding: data.funding ?? 0,
+    totalDebt: data.totalDebt ?? 0,
+    idRoutes: data.idRoutes || [],
+    collectorRoutes: collectorRoutes
+  };
+}
+
+export function UserToDocument(user: Partial<User>): DocumentData {
+  const result: DocumentData = {};
+  if (user.name !== undefined) result.name = user.name;
+  if (user.email !== undefined) result.email = user.email;
+  if (user.companyId !== undefined) result.companyId = user.companyId;
+  if (user.roles !== undefined) result.roles = user.roles;
+  if (user.idRoutes !== undefined) result.idRoutes = user.idRoutes;
+  if (user.collectorRoutes !== undefined) result.collectorRoutes = user.collectorRoutes;
+  if (user.totalAmount !== undefined) result.totalAmount = user.totalAmount;
+  if (user.capital !== undefined) result.capital = user.capital;
+  if (user.interest !== undefined) result.interest = user.interest;
+  if (user.arrears !== undefined) result.arrears = user.arrears;
+  if (user.funding !== undefined) result.funding = user.funding;
+  if (user.totalDebt !== undefined) result.totalDebt = user.totalDebt;
+  return result;
 }
 
 export class FirebaseUserRepository implements UserGateway {
@@ -45,27 +89,7 @@ export class FirebaseUserRepository implements UserGateway {
       const snapshotUsersCompany = await getDocs(usersQuery);
 
       const users: User[] = snapshotUsersCompany.docs.map((doc) => {
-        const data = doc.data();
-
-        // Convertir objeto plano a Map para collectorRoutes si existe
-        let collectorRoutes: Map<string, string[]> | undefined;
-        console.log("collectorRoutes", data);
-        if (data.collectorRoutes) {
-          try {
-            collectorRoutes = new Map(Object.entries(data.collectorRoutes));
-          } catch (e) {
-            console.error("Error parsing collectorRoutes", e);
-          }
-        }
-
-        console.log("user totalAmount: ", data.totalAmount);
-
-        return {
-          id: doc.id,
-          ...data,
-          collectorRoutes,
-          idRoutes: data.idRoutes || []
-        } as User;
+        return DocumentToUser(doc.id, doc.data(), input.id);
       });
 
       return {
@@ -110,28 +134,7 @@ export class FirebaseUserRepository implements UserGateway {
         ? snapshotUserCompany.data()
         : {};
 
-      /* =========================
-         collectorRoutes como Record
-      ========================= */
-      const collectorRoutes: Record<string, string[]> | undefined =
-        dataUserCompany.collectorRoutes &&
-          typeof dataUserCompany.collectorRoutes === "object"
-          ? dataUserCompany.collectorRoutes
-          : undefined;
-
-      /* =========================
-         Construcción final del usuario
-      ========================= */
-      const userCompany: User = {
-        totalAmount: dataUserCompany.totalAmount ?? 0,
-        id: userId,
-        companyId: companyId,
-        email: dataUserCompany.email,
-        name: dataUserCompany.name,
-        roles: dataUserCompany.roles,
-        collectorRoutes,
-        idRoutes: dataUserCompany.idRoutes || [],
-      };
+      const userCompany = DocumentToUser(userId, dataUserCompany, companyId);
 
       console.log("usuario encontrado", userCompany);
       return ok(userCompany);
@@ -195,28 +198,7 @@ export class FirebaseUserRepository implements UserGateway {
 
       const dataUserCompany = snapshotUserCompany.data()
 
-      /* =========================
-         collectorRoutes como Record
-      ========================= */
-      const collectorRoutes: Record<string, string[]> | undefined =
-        dataUserCompany.collectorRoutes &&
-          typeof dataUserCompany.collectorRoutes === "object"
-          ? dataUserCompany.collectorRoutes
-          : undefined;
-
-      /* =========================
-         Construcción final del usuario
-      ========================= */
-      const userCompany: User = {
-        totalAmount: dataUserCompany.totalAmount ?? 0,
-        id: globalUser.id,
-        companyId: globalUser.companyId,
-        email: dataUserCompany.email ?? dataGlobalUser.email,
-        name: dataUserCompany.name ?? dataGlobalUser.name,
-        roles: dataUserCompany.roles,
-        collectorRoutes,
-        idRoutes: dataUserCompany.idRoutes || [],
-      };
+      const userCompany = DocumentToUser(globalUser.id, { ...dataGlobalUser, ...dataUserCompany }, globalUser.companyId);
 
       console.log("usuario encontrado", userCompany);
       return ok(userCompany);
@@ -395,23 +377,7 @@ export class FirebaseUserRepository implements UserGateway {
       const snapshot = await getDocs(usersQuery);
 
       const users: User[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-
-        let collectorRoutes: Map<string, string[]> | undefined;
-        if (data.collectorRoutes) {
-          try {
-            collectorRoutes = new Map(Object.entries(data.collectorRoutes));
-          } catch (e) {
-            console.error("Error parsing collectorRoutes", e);
-          }
-        }
-
-        return {
-          id: doc.id,
-          ...data,
-          collectorRoutes,
-          idRoutes: data.idRoutes || []
-        } as User;
+        return DocumentToUser(doc.id, doc.data(), input.companyId);
       });
 
       return {
@@ -445,7 +411,7 @@ export class FirebaseUserRepository implements UserGateway {
 
       await setDoc(
         refUserCompany,
-        userWithoutRoles,
+        UserToDocument(userWithoutRoles),
         { merge: true }
       );
 

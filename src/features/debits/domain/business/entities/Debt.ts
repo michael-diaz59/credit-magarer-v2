@@ -1,3 +1,5 @@
+import type { requiredArrearsState } from "./core";
+
 /**
  * DebtType representa el tipo de deuda \
  * fijo: el valor de la cuota se calcula el mismo dia de creacion y no cambia \
@@ -97,6 +99,13 @@ export interface Debt {
   */
   status: DebtStatus;
 
+  // --- DESEMBOLSO Y ENTREGA ---
+  /**indica si el credito sigue vivo
+   * false: cuando el credito esta anulado, pagado, tentativa, preAprobada, preparacion, corregir
+   * true: cuando el credito esta activo
+   */
+  isLife: boolean;
+
   /*id de la ruta a la que esta enlazada la deuda* */
   routeId: string;
 
@@ -122,7 +131,7 @@ export interface Debt {
   */
   debtTerms: DebtTerms;
 
-  /**representa el numero de dias que tiene un mes para creditos diarios, por defecto 30 */
+  /**representa el numero de dias que tiene un mes para el credito */
   daysPerMonth: number;
 
   /**tasa de interes */
@@ -154,7 +163,7 @@ export interface Debt {
   deliveredStatus: delivered_status;
 
   // --- GARANTÍAS Y PRENDA ---
-  /**indica si ha alguna prenda relacioado con el credito*/
+  /**indica si ha alguna prenda relacionada con el credito*/
   pledge: boolean;
 
   /**descripcion de la prenda*/
@@ -165,7 +174,7 @@ export interface Debt {
 
   // --- SEGUIMIENTO DE PAGOS Y SALDOS ---
 
-  //pagado
+  //pagados
 
   /**capital pagado hasta el momento*/
   capitalPaid: number;
@@ -223,6 +232,15 @@ export interface Debt {
   /**cantidad de dias de mora actual*/
   numberOfArrearsDays: number;
 
+  /**indica si es obligatorio el pago de algun tipo de mora para marcar en automatico como pagada */
+  requiredArrears: requiredArrearsState;
+
+  /**indica si hay o no que pagar algun tipo de mora para marcar en automatico como pagada \
+   * true: es necesario algun tipo de pago de mora \
+   * false: no es encesario ningun tipo de pago por mora
+  */
+  requiredState: boolean;
+
   /**maximo de dias de mora que se registro en la deuda*/
   maxNumberOfArrearsDays: number;
 
@@ -248,6 +266,12 @@ export interface Debt {
   /**fecha del ultimo pago depositado*/
   dateLastPayment?: string;
 
+  /**tasa de interes de mora 
+   * indica cuanto se le cobra de interes a la deuda por cada dia en mora
+   * es un valor porcentual
+   * */
+  arrearsInterestRate: number;
+
   /**fecha estimada de finalizacion del pago de la deuda*/
   expectedEndDate: string;
 
@@ -269,7 +293,7 @@ export interface Debt {
   collectorNotes?: string;
 
   /**observaciones del auditor*/
-  AuditorNotes?: string;
+  auditorNotes?: string;
 
   /**observaciones del contador*/
   accountantNotes?: string;
@@ -283,9 +307,13 @@ export function createEmptyDebt(): Debt {
 
   return {
     id: "",
+    requiredArrears: "no",
+    requiredState: false,
+    isLife: true,
     lateInterestRate: 0,
     numberOfArrearsDays: 0,
     maxNumberOfArrearsDays: 0,
+    arrearsInterestRate: 0,
     numberOfArrearsInstallments: 0,
     expectedEndDate: today,
     nextPaymentDue: today,
@@ -346,6 +374,17 @@ export const debtStatusDelivered: DebtStatus[] = [
   "inactivo",
 ];
 
-export function isDebtStatusDelivered(status: DebtStatus) {
-  return debtStatusDelivered.includes(status);
-}
+/**
+ * realiza una copia profunda de la deuda la cual es indpeendiente del objeto pasado
+ */
+export const cloneDebt = (debt: Debt): Debt => {
+  // Utiliza structuredClone si el entorno lo soporta (Nativo en navegadores modernos y Node.js 17+)
+  if (typeof structuredClone === "function") {
+    return structuredClone(debt);
+  }
+
+  // Copia profunda manual en caso de entornos legacy
+  return {
+    ...debt,
+  }
+};

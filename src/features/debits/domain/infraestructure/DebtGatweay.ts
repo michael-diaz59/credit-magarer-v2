@@ -1,27 +1,28 @@
 import type { CollectorRoute } from "../business/entities/CollectorRoute";
 import type { UpdateDebitInput, UpdateDebitOutput } from "../business/useCases/debt/UpdateDebtUseCase";
 import type { CreateDebtError, CreateDebtUInput, CreateDebtUOutput, createWithInstallmentsInput } from "../business/useCases/debt/CreateDebtUseCase";
-import type { GetInstallmentsByDebtInput, GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
-import type { UpdateInstallmentByDebtInput, UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import type { GetDebitByIdInput, GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
 import type { GetDebstByCostumerDocumentInput, GetDebstByCostumerDocumentOutput } from "../business/useCases/debt/GetDebstByCostumerDocumentCase";
-import type { CreateInstallmentsGatewayInput, CreateInstallmentsOutput, CreateInstallmentsError } from "../business/useCases/installment/CreateInstallmentsUseCase";
 import type { GetDebtsInput, GetDebtsOutput } from "../business/useCases/debt/GetDebtsCase";
 import type { Result } from "../../../../core/helpers/ResultC";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../business/useCases/debt/GetByFiltersCase";
-import type { GetByCollectorError, GetByCollectorInput, GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
-import type { GetByIdError, GetByIdInput, GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
-import type { UpdateByIdError, UpdateByIdInput, UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
 import type { UpdateDebtStatusInput, UpdateDebtStatusOutput, UpdateDebtStatusError } from "../business/useCases/debt/UpdateDebtStatusUseCase";
 import type { Debt, DebtStatus } from "../business/entities/Debt";
-import type { Installment } from "../business/entities/Installment";
-import type { GetManagementInstallmentsInput } from "../business/useCases/installment/GetManagementInstallmentsUseCase";
+import type { MarkAsPaidError, MarkAsPaidOutput } from "../business/useCases/debt/MarkAsPaidUseCase";
 
+export interface MarkAsPaidGateInput {
+  debtId: string;
+  companyId: string;
+  auditorNotes: string;
+  newStatus: DebtStatus;
+}
 
 export interface DebtGateway {
   create(debt:
     CreateDebtUInput
   ): Promise<Result<CreateDebtUOutput, CreateDebtError>>;
+
+  markAsPaid(input: MarkAsPaidGateInput): Promise<Result<MarkAsPaidOutput, MarkAsPaidError>>
 
   update(debt:
     UpdateDebitInput
@@ -61,56 +62,6 @@ export interface DebtGateway {
     companyId: string;
     debts: Debt[];
   }): Promise<Result<void, CreateDebtError>>;
-}
-
-export interface InstallmentGateway {
-
-  createForNewDebt(input: CreateInstallmentsGatewayInput): Promise<CreateInstallmentsOutput>
-
-  createMany(input: {
-    companyId: string;
-    installments: Installment[];
-  }): Promise<Result<void, CreateInstallmentsError>>;
-
-  getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>>
-
-  updateByDebt(input: UpdateInstallmentByDebtInput): Promise<UpdateInstallmentByDebtOutput>;
-
-  updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>>
-
-
-  getByDebt(input: GetInstallmentsByDebtInput): Promise<GetInstallmentsByDebtOutput>;
-  getById(input: GetByIdInput): Promise<Result<GetByIdOutput, GetByIdError>>
-  /**
-   * Obtiene una cuota por id de deuda y numero de cuota
-   * @param input 
-   * @returns 
-   */
-  getByDebtAndNumber(input: {
-    companyId: string;
-    debtId: string;
-    installmentNumber: number;
-  }): Promise<Result<Installment | null, any>>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deleteBatch(companyId: string, installmentIds: string[]): Promise<Result<null, any>>;
-
-  getInstallmentsSummaryByDateRange(input: {
-    companyId: string;
-    startDate: string;
-    endDate: string;
-  }): Promise<Result<{
-    totalAmount: number;
-    totalPaidAmount: number;
-    totalPaidLatePayment: number;
-    totalLatePayment: number;
-  }, any>>;
-
-  getPendingInstallmentsForCollector(input: GetManagementInstallmentsInput): Promise<Result<Installment[], any>>;
-
-  getPendingInstallmentsForCollectorByRoutes(
-    input: import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesInput
-  ): Promise<Result<Installment[], import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesError>>;
-
 }
 
 export interface CollectionAssignmentGateway {

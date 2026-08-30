@@ -3,7 +3,7 @@ import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseI
 import { GetByCollectorCase, type GetByCollectorError, type GetByCollectorInput, type GetByCollectorOutput } from "../business/useCases/installment/GetByCollectorCase";
 import { GetByIdCase, type GetByIdError, type GetByIdInput, type GetByIdOutput } from "../business/useCases/installment/GetByIdCase";
 import { UpdateByIdCase, type UpdateByIdError, type UpdateByIdInput, type UpdateByIdOutput } from "../business/useCases/installment/UpdateByIdCase";
-import type { InstallmentGateway, DebtGateway } from "./DebtGatweay";
+import type { DebtGateway } from "./DebtGatweay";
 import { GetInstallmentsByDebtCase, type GetInstallmentsByDebtInput, type GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
 import { GetNextInstallmentsByRouteUseCase, type GetNextInstallmentsByRouteError, type GetNextInstallmentsByRouteInput, type GetNextInstallmentsByRouteOutput } from "../business/useCases/installment/GetNextInstallmentsByCollectorUseCase";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
@@ -11,6 +11,10 @@ import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { GetInstallmentsSummaryUseCase, type GetInstallmentsSummaryError, type GetInstallmentsSummaryInput, type GetInstallmentsSummaryOutput } from "../business/useCases/installment/GetInstallmentsSummaryUseCase";
 import { GetManagementInstallmentsUseCase, type GetManagementInstallmentsError, type GetManagementInstallmentsInput, type GetManagementInstallmentsOutput } from "../business/useCases/installment/GetManagementInstallmentsUseCase";
 import { GetManagementInstallmentsByRoutesUseCase, type GetManagementInstallmentsByRoutesError, type GetManagementInstallmentsByRoutesInput, type GetManagementInstallmentsByRoutesOutput } from "../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase";
+import { MarkInstallAsPaidCase, type MarkInstallAsPaidError, type MarkInstallAsPaidInput, type MarkInstallAsPaidOutput } from "../business/useCases/installment/MarkInstallAsPaidCase";
+import { MarkInstallmentAsearringCase, type MarkInstallmentAsearringInput } from "../business/useCases/installment/MarkInstallmentAsearringCase";
+import { MarkInstallmentAsCanceledCase, type MarkInstallmentAsCanceledInput } from "../business/useCases/installment/MarkInstallmentAsCanceledCase";
+import type { InstallmentGateway } from "./InstallmentGateway";
 
 export default class InstallmentsOrchestrator {
 
@@ -18,6 +22,9 @@ export default class InstallmentsOrchestrator {
   private readonly getByIdCase: GetByIdCase
   private readonly getManagementInstallmentsByRoutesUseCase: GetManagementInstallmentsByRoutesUseCase
   private readonly updateByIdCase: UpdateByIdCase
+  private readonly markInstallAsPaidCase: MarkInstallAsPaidCase
+  private readonly markInstallmentAsCanceledCase: MarkInstallmentAsCanceledCase
+  private readonly markInstallmentAsearringCase: MarkInstallmentAsearringCase
   private readonly getByDebtCase: GetInstallmentsByDebtCase
   private readonly getNextByRouteCase: GetNextInstallmentsByRouteUseCase
   private readonly getInstallmentsSummaryCase: GetInstallmentsSummaryUseCase
@@ -31,7 +38,10 @@ export default class InstallmentsOrchestrator {
 
     this.getManagementInstallmentsByRoutesUseCase = new GetManagementInstallmentsByRoutesUseCase(installmentsGateway)
     this.getByCollectorCase = new GetByCollectorCase(installmentsGateway)
+    this.markInstallmentAsearringCase = new MarkInstallmentAsearringCase(installmentsGateway)
     this.getByIdCase = new GetByIdCase(installmentsGateway)
+    this.markInstallmentAsCanceledCase = new MarkInstallmentAsCanceledCase(installmentsGateway)
+    this.markInstallAsPaidCase = new MarkInstallAsPaidCase(installmentsGateway)
     this.updateByIdCase = new UpdateByIdCase(installmentsGateway)
     this.getByDebtCase = new GetInstallmentsByDebtCase(installmentsGateway)
     this.getNextByRouteCase = new GetNextInstallmentsByRouteUseCase(debtGateway, installmentsGateway)
@@ -46,12 +56,21 @@ export default class InstallmentsOrchestrator {
   async updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
     return this.updateByIdCase.execute(input)
   }
+  async markInstallmentAsCanceled(input: MarkInstallmentAsCanceledInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
+    return this.markInstallmentAsCanceledCase.execute(input);
+  }
+
+  async markInstallmentAsearring(input: MarkInstallmentAsearringInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {
+    return this.markInstallmentAsearringCase.execute(input);
+  }
 
   async getManagementInstallmentsByRoutes(input: GetManagementInstallmentsByRoutesInput): Promise<Result<GetManagementInstallmentsByRoutesOutput, GetManagementInstallmentsByRoutesError>> {
     return this.getManagementInstallmentsByRoutesUseCase.execute(input);
   }
 
-
+  async markInstallAsPaid(input: MarkInstallAsPaidInput): Promise<Result<MarkInstallAsPaidOutput, MarkInstallAsPaidError>> {
+    return this.markInstallAsPaidCase.execute(input);
+  }
 
   async getByCollector(input: GetByCollectorInput): Promise<Result<GetByCollectorOutput, GetByCollectorError>> {
     return this.getByCollectorCase.execute(input);

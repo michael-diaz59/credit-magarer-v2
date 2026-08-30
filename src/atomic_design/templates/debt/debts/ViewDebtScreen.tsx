@@ -18,12 +18,14 @@ import { BaseDialog } from "../../../atoms/BaseDialog";
 
 import { DebtForm, mapDebtToForm, mergeDebtWithForm, type DebtFormRef } from "../debtForm";
 import { DebtFormDataProvider } from "./DebtFormDataProvider";
+import { preaprovarCredito } from "../../../sub_atomic_particles/debFormConsts";
 
 /**pantalla deuda del asesor de oficina */
 export const ViewDebtScreen = () => {
   const companyId = useAppSelector(
     (state) => state.user.user?.companyId || "undefined",
   );
+
   const { debitId } = useParams<{ debitId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -59,9 +61,46 @@ export const ViewDebtScreen = () => {
     }
   };
 
-  const handlePreAbroves = async (data: Debt) => {
-    data.status = "preAprobada"
-    handleUpdateDebt(data)
+  const handlePreAbroves = async (debtToUpdate: Debt) => {
+    const orchestrator = new DebtOrchestrator();
+    console.log(debitId);
+    console.log(debtToUpdate.id);
+    try {
+      const update = await orchestrator.goToPreAbroves({
+        isNewRoute: false,
+        companyId: companyId,
+        debt: debtToUpdate,
+      });
+      if (update.state.ok) {
+        if (debtToUpdate.status !== "tentativa") {
+          setMode("view")
+        }
+        setDialogConfig({
+          title: "Actualización exitosa",
+          body: "La deuda fue actualizada correctamente.",
+          buttonText: "Entendido",
+        });
+      } else {
+        setDialogConfig({
+          title: "Error al actualizar",
+          body:
+            update.state.error.code ??
+            "Ocurrió un error inesperado al actualizar la deuda.",
+          buttonText: "Cerrar",
+        });
+      }
+    } catch {
+      setDialogConfig({
+        title: "Error",
+        body: "No fue posible completar la operación. Intenta nuevamente.",
+        buttonText: "Cerrar",
+      });
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setDialogOpen(true);
+      }, 200);
+    }
   };
 
   const handleUpdateDebt = async (debtToUpdate: Debt) => {
@@ -76,7 +115,7 @@ export const ViewDebtScreen = () => {
       console.log(debitId);
       console.log(debtToUpdate.id);
 
-      const update = await orchestrator.updateDebtUse({
+      const update = await orchestrator.updateSimpleDebt({
         isNewRoute: true,
         companyId: companyId,
         debt: debtToUpdate,
@@ -184,14 +223,13 @@ export const ViewDebtScreen = () => {
                       ref={formRef}
                       routes={routes}
                       debValues={mapDebtToForm(form as Debt)}
-                      config={{
-                        editableFields: mode === "edit" ? undefined : []
-                      }}
+                      config={preaprovarCredito}
                     />
 
                     <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
                       {mode === "edit" && (
                         <>
+                          {/* 
                           <Button
                             variant="outlined"
                             color="primary"
@@ -200,6 +238,7 @@ export const ViewDebtScreen = () => {
                           >
                             Actualizar
                           </Button>
+                          */}
                           <Button
                             variant="contained"
                             color="primary"

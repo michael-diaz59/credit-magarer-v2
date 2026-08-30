@@ -70,10 +70,10 @@ export const InstallmentItem = ({ installment }: Props) => {
         Vence: {formatISOToInputDate(installment.dueDate)}
       </Typography>
 
-      {installment.arrearsDueDate && (
+      {installment.defermentDueDate && (
         <Typography variant="body2" color="text.secondary">
           la cuota se registra con retrazo para fecha de :
-          {" "}{installment.arrearsDueDate}
+          {" "}{installment.defermentDueDate}
         </Typography>
       )}
 

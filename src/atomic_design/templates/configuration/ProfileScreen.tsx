@@ -84,35 +84,35 @@ export const ProfileScreen = () => {
 
       {isAdmin && (
         <Box mt={2} mb={2}>
-           <Stack spacing={2}>
-             <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover'} }} onClick={() => navigate('/configuration/routes')}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, padding: '16px !important' }}>
-                   <Box sx={{ bgcolor: 'primary.light', p: 1, borderRadius: 1, display: 'flex' }}>
-                      <MapIcon sx={{ color: 'primary.contrastText' }} />
-                   </Box>
-                   <Box>
-                      <Typography variant="h6">Administrar Rutas</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                         Agrega, edita y asocia cobradores a rutas específicas.
-                      </Typography>
-                   </Box>
-                </CardContent>
-             </Card>
+          <Stack spacing={2}>
+            <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={() => navigate('/configuration/routes')}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, padding: '16px !important' }}>
+                <Box sx={{ bgcolor: 'primary.light', p: 1, borderRadius: 1, display: 'flex' }}>
+                  <MapIcon sx={{ color: 'primary.contrastText' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6">Administrar Rutas</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Agrega, edita y asocia cobradores a rutas específicas.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
 
-             <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover'} }} onClick={() => navigate('/configuration/bank-accounts')}>
-                <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, padding: '16px !important' }}>
-                   <Box sx={{ bgcolor: 'secondary.light', p: 1, borderRadius: 1, display: 'flex' }}>
-                      <AccountBalanceWallet sx={{ color: 'secondary.contrastText' }} />
-                   </Box>
-                   <Box>
-                      <Typography variant="h6">Administrar Cuentas Bancarias</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                         Controla las cuentas, bancos, tipos y límites de caja operacionales.
-                      </Typography>
-                   </Box>
-                </CardContent>
-             </Card>
-           </Stack>
+            <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }} onClick={() => navigate('/configuration/bank-accounts')}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, padding: '16px !important' }}>
+                <Box sx={{ bgcolor: 'secondary.light', p: 1, borderRadius: 1, display: 'flex' }}>
+                  <AccountBalanceWallet sx={{ color: 'secondary.contrastText' }} />
+                </Box>
+                <Box>
+                  <Typography variant="h6">Administrar Cuentas Bancarias</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Controla las cuentas, bancos, tipos y límites de caja operacionales.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Stack>
         </Box>
       )}
 

@@ -11,36 +11,38 @@ export interface PersonalInfo {
 
   idPago?: string;
 
+  /**nombre completo */
   fullName: string;
-  //cedula
+
+  /**cedula */
   idNumber: string;
 
-  //ciudad de nacimiento
+  /**ciudad de nacimiento */
   birthCity: string;
 
-  //nacimiento
+  /**fecha de nacimiento */
   birthDate: string; // yyyy-mm-dd
 
-  // ciudad de expedicion de documnento
+  /**ciudad de expedicion de documnento */
   issueCity: string;
 
-  // yyyy-mm-dd
+  /**fecha de expedicion de documnento  yyyy-mm-dd */
   issueDate: string
 
-  //estado civil
+  /**estado civil */
   maritalStatus: MaritalStatus;
-  //numero de hijos
+  /**numero de hijos */
   childrenCount: number;
-  //celular
+  /**celular */
   phone: string;
 
-  //direccion
+  /**direccion */
   address: Address;
 
-  //tipo de viviendo e informacion de arrendatario
+  /**tipo de vivienda e informacion de arrendatario */
   housing: HousingInfo;
 
-  //inofmracion de trabajo
+  /**informacion de trabajo */
   workInfo: WorkInfo;
 }
 

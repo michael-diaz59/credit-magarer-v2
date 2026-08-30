@@ -11,7 +11,7 @@ import type { SummaryGateway } from "../../domain/infraestructure/SummaryGateway
 import type { EquityDetails, GeneralSummary, GrossProfitDetails, ProfitDetails } from "../../domain/business/entities/Summary";
 import type { GetExpensivesError, GetExpensivesInput, GetExpensivesOutput } from "../../domain/business/useCases/GetExpensivesCase";
 import type { GetFinancialAggregatesError, GetFinancialAggregatesInput, GetFinancialAggregatesOutput } from "../../domain/business/useCases/GetFinancialAggregatesByDateRangeUseCase";
-import { encodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { encodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import { minZero } from "../../../../core/helpers/limits";
 
 export class FirebaseSummaryRepository implements SummaryGateway {
@@ -79,7 +79,7 @@ export class FirebaseSummaryRepository implements SummaryGateway {
         try {
 
             const debtsRef = collection(firestore, "companies", input.companyId, "debts");
-            
+
             const globalTotals = await getAggregateFromServer(debtsRef, {
                 totalPaid: sum("totalPaid"),
             });

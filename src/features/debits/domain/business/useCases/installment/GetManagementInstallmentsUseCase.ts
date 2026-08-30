@@ -1,6 +1,6 @@
 import { type Result } from "../../../../../../core/helpers/ResultC";
 import type { Installment } from "../../entities/Installment";
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 
 export type GetManagementInstallmentsError =
   | { code: "UNKNOWN_ERROR" }

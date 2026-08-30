@@ -1,7 +1,7 @@
 import type { Result } from "../../../../../../core/helpers/ResultC";
 import type { Customer } from "../../../../../costumers/domain/business/entities/Customer";
 import type { PersonalInfo } from "../../../../../costumers/domain/business/entities/PersonalInfo";
-import type { InstallmentGateway } from "../../../infraestructure/DebtGatweay";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 import type { Debt, DebtTerms } from "../../entities/Debt";
 import {
   defaultInstallment,

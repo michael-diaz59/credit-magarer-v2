@@ -1,8 +1,8 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
-import type { Debt } from "../../entities/Debt";
+import { cloneDebt, type Debt } from "../../entities/Debt";
 import { type Installment, defaultInstallment } from "../../entities/Installment";
-import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../../shared/helpers/Days";
-import { getValidDueDate } from "../../../../../shared/helpers/calcularFestivosColombia";
+import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../../../core/shared/helpers/Days";
+import { getValidDueDate } from "../../../../../../core/shared/helpers/calcularFestivosColombia";
 
 export type SimulateDebtVariableError =
   | { code: "STATE_INVALID" }
@@ -30,7 +30,7 @@ export class SimulateDebtVariableCase {
       return fail({ code: "CAPITAL_MINIMO_1000" });
     }
 
-    const debt = input.debt;
+    const debt = cloneDebt({ ...input.debt, id: "" });
 
     const gananciaMensual = debt.capital * (debt.interestRate / 100);
 

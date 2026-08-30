@@ -1,7 +1,6 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
 import type {
-  DebtGateway,
-  InstallmentGateway,
+  DebtGateway
 } from "../../../infraestructure/DebtGatweay";
 import { type Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
@@ -11,6 +10,7 @@ import { CreateInstallmentsUseCase } from "../installment/CreateInstallmentsUseC
 import { GetDebitByIdCase } from "./GetDebitByIdCase";
 import type { Customer } from "../../../../../costumers/domain/business/entities/Customer";
 import type CostumerGateway from "../../../../../costumers/domain/infraestructure/CostumerGateway";
+import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 
 export type UpdateDebtError =
   | { code: "no hay una ruta asignada" }

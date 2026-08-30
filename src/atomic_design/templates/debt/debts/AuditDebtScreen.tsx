@@ -99,43 +99,103 @@ export const AuditDebtScreen = () => {
     }
   };
   const handleChangeStatus = async (nextStatus: DebtStatus): Promise<void> => {
+    if (!debt) return;
     const orchestrator = new DebtOrchestrator();
     console.log("companyId", companyId)
     console.log("debt?.id", debt?.id)
     console.log("nextStatus", nextStatus)
 
-    const result = await orchestrator.updateDebtStatus({
+    const updatedDebt = debt
+    const input = {
       companyId: companyId,
-      idDebt: debt?.id ?? "",
-      debtStatus: nextStatus,
-    });
+      debt: updatedDebt,
+      isNewRoute: false,
+    };
 
-    console.log("result:", result)
-    setDialogOpen(true);
-    if (result.ok) {
-      setDebt((prev) => ({
-        ...(prev ?? createEmptyDebt()),
-        status: nextStatus,
-      }));
+    let resultState;
 
-      setForm({
-        ...debt!,
-        status: nextStatus,
-      });
+    try {
+      switch (nextStatus) {
+        case "preAprobada": {
+          const res = await orchestrator.goToPreAbroves(input);
+          resultState = res.state;
+          break;
+        }
+        case "preparacion": {
+          const res = await orchestrator.goToPreparation(input);
+          resultState = res.state;
+          break;
+        }
+        case "activa": {
+          const res = await orchestrator.goToActivate(input);
+          resultState = res.state;
+          break;
+        }
+        case "inactivo": {
+          const res = await orchestrator.goToDeactivate(input);
+          resultState = res.state;
+          break;
+        }
+        case "anulado": {
+          const res = await orchestrator.goToAnnular(input);
+          resultState = res.state;
+          break;
+        }
+        case "pagada": {
+          const res = await orchestrator.markAsPaid({
+            companyId: companyId,
+            debtId: debt.id,
+            auditorNotes: "",
+          });
+          resultState = res;
+          break;
+        }
+        default: {
+          const res = await orchestrator.updateDebtStatus({
+            companyId: companyId,
+            idDebt: debt.id,
+            debtStatus: nextStatus,
+          });
+          resultState = res;
+          break;
+        }
+      }
+      console.log("result:", resultState)
+      setDialogOpen(true);
+      if (resultState.ok) {
+        setDebt((prev) => ({
+          ...(prev ?? createEmptyDebt()),
+          status: nextStatus,
+        }));
 
+        setForm({
+          ...debt,
+          status: nextStatus,
+        });
 
-      setDialogConfig({
-        title: "Actualización exitosa",
-        body: "La deuda fue actualizada correctamente.",
-        buttonText: "Entendido",
-      });
-    } else {
+        setDialogConfig({
+          title: "Actualización exitosa",
+          body: "La deuda fue actualizada correctamente.",
+          buttonText: "Entendido",
+        });
+      } else {
+        setDialogConfig({
+          title: "Error al actualizar",
+          body: resultState.error.code ?? "Ocurrió un error inesperado al actualizar la deuda.",
+          buttonText: "Cerrar",
+        });
+      }
+
+    } catch (error) {
+      setDialogOpen(true);
       setDialogConfig({
         title: "Error al actualizar",
-        body: result.error.code ?? "Ocurrió un error inesperado al actualizar la deuda.",
+        body: "Ocurrió un error inesperado al actualizar la deuda.",
         buttonText: "Cerrar",
       });
-    }
+    };
+
+
   }
 
   const handleSimulateDebt = async (data: Debt, months?: number) => {
@@ -320,9 +380,13 @@ export const AuditDebtScreen = () => {
                       />
                       <Divider />
 
+
+
+                      {/* 
                       <Button onClick={() => handleSubmitDebt("actualizar")}>
                         Actualizar deuda
                       </Button>
+                      */}
                       <Button onClick={() => handleSubmitDebt("simular")}>
                         simular deuda
                       </Button>

@@ -27,7 +27,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import { MoneyField } from "../../../atoms/MoneyField";
 import { BaseDialog } from "../../../atoms/BaseDialog";
-import { getCurrentLocation } from "../../../../features/shared/helpers/geoLocation";
+import { getCurrentLocation } from "../../../../core/shared/helpers/geoLocation";
 import BankAccountOrchestrator from "../../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
 import FinancialDebtOrchestrator from "../../../../features/financialDebt/domain/infraestructure/FinancialDebtOrchestrator";
 import FinancialPaymentOrchestrator from "../../../../features/financialDebt/domain/infraestructure/FinancialPaymentOrchestrator";

@@ -18,8 +18,16 @@ import { GetTotalDeliveredCapitalUseCase, type GetTotalDeliveredCapitalInput, ty
 import { GetSumRenewalPaymentUseCase, type GetSumRenewalPaymentInput, type GetSumRenewalPaymentOutput, type GetSumRenewalPaymentError } from "../business/useCases/debt/GetSumRenewalPaymentUseCase";
 import { ConfirmDebtDeliveryUseCase, type ConfirmDebtDeliveryInput } from "../business/useCases/debt/ConfirmDebtDeliveryUseCase";
 import { CreateDebtFromExcelCase, type CreateDebtFromExcelInput } from "../business/useCases/debt/createDebtFromExcel";
-import type { DebtGateway, InstallmentGateway } from "./DebtGatweay";
+import type { DebtGateway } from "./DebtGatweay";
 import { SimulateDebtVariableCase } from "../business/useCases/debt/SimulateDebtVariableCase";
+import { UpdateSimpleDebtCase, type UpdateSimpleDebtInput, type UpdateSimpleDebtOutput } from "../business/useCases/debt/UpdateSimpleDebtCase";
+import { GoToPreparationUseCase, type GoToPreparationInput } from "../business/useCases/debt/GoToPreparationUseCase";
+import { GoToPreAbrovesUseCase, type GoToPreAbrovesInput } from "../business/useCases/debt/GoToPreAbrovesUseCase";
+import { GoToAnnularUseCase, type GoToAnnularInput } from "../business/useCases/debt/GoToAnnularUseCase";
+import { GoToDeactivateUseCase, type GoToDeactivateInput } from "../business/useCases/debt/GoToDeactivateUseCase";
+import { GoToActivateUseCase, type GoToActivateInput } from "../business/useCases/debt/GoToActivateUseCase";
+import { MarkAsPaidUseCase, type MarkAsPaidError, type MarkAsPaidInput, type MarkAsPaidOutput } from "../business/useCases/debt/MarkAsPaidUseCase";
+import type { InstallmentGateway } from "./InstallmentGateway";
 
 export default class DebtOrchestrator {
 
@@ -30,8 +38,15 @@ export default class DebtOrchestrator {
     private getDebstByCostumerDocumentCase: GetDebstByCostumerDocumentCase
     private updateDebtUseCase: UpdateDebtUseCase
     private updateDebtStatusUseCase: UpdateDebtStatusUseCase
+    private updateSimpleDebtCase: UpdateSimpleDebtCase
     private debtGateway: DebtGateway
     private simulateDebtCase: SimulateDebtCase
+    private goToPreparationUseCase: GoToPreparationUseCase
+    private goToPreAbrovesUseCase: GoToPreAbrovesUseCase
+    private goToAnnularUseCase: GoToAnnularUseCase
+    private goToDeactivateUseCase: GoToDeactivateUseCase
+    private goToActivateUseCase: GoToActivateUseCase
+    private markAsPaidUseCase: MarkAsPaidUseCase
     private simulateDebtVariableCase: SimulateDebtVariableCase
     private getDebtsValidByCollectorUseCase: GetDebtsValidByCollectorUseCase
     private getDebtsByRouteUseCase: GetDebtsByRouteUseCase
@@ -47,6 +62,13 @@ export default class DebtOrchestrator {
 
     constructor() {
         this.debtGateway = new FirebaseDebtRepository()
+        this.updateSimpleDebtCase = new UpdateSimpleDebtCase(this.debtGateway)
+        this.goToPreparationUseCase = new GoToPreparationUseCase(this.debtGateway)
+        this.goToPreAbrovesUseCase = new GoToPreAbrovesUseCase(this.debtGateway)
+        this.goToAnnularUseCase = new GoToAnnularUseCase(this.debtGateway)
+        this.goToDeactivateUseCase = new GoToDeactivateUseCase(this.debtGateway)
+        this.goToActivateUseCase = new GoToActivateUseCase(this.debtGateway)
+        this.markAsPaidUseCase = new MarkAsPaidUseCase(this.debtGateway)
 
         this.simulateDebtCase = new SimulateDebtCase()
         this.simulateDebtVariableCase = new SimulateDebtVariableCase()
@@ -71,6 +93,34 @@ export default class DebtOrchestrator {
 
     async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
         return this.getDebtsCase.execute(input)
+    }
+
+    async updateSimpleDebt(input: UpdateSimpleDebtInput): Promise<UpdateSimpleDebtOutput> {
+        return this.updateSimpleDebtCase.execute(input)
+    }
+
+    async goToPreparation(input: GoToPreparationInput): Promise<UpdateSimpleDebtOutput> {
+        return this.goToPreparationUseCase.execute(input)
+    }
+
+    async goToPreAbroves(input: GoToPreAbrovesInput): Promise<UpdateSimpleDebtOutput> {
+        return this.goToPreAbrovesUseCase.execute(input)
+    }
+
+    async goToAnnular(input: GoToAnnularInput): Promise<UpdateSimpleDebtOutput> {
+        return this.goToAnnularUseCase.execute(input)
+    }
+
+    async goToDeactivate(input: GoToDeactivateInput): Promise<UpdateSimpleDebtOutput> {
+        return this.goToDeactivateUseCase.execute(input)
+    }
+
+    async goToActivate(input: GoToActivateInput): Promise<UpdateSimpleDebtOutput> {
+        return this.goToActivateUseCase.execute(input)
+    }
+
+    async markAsPaid(input: MarkAsPaidInput): Promise<Result<MarkAsPaidOutput, MarkAsPaidError>> {
+        return this.markAsPaidUseCase.execute(input)
     }
 
     async getByFilters(input: GetByFiltersInput): Promise<Result<GetByFiltersOutput, GetByFiltersError>> {

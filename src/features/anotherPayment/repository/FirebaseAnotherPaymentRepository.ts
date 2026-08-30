@@ -2,7 +2,7 @@ import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, deleteDoc, ty
 import { ref, uploadBytes } from "firebase/storage";
 import { firestore, storage } from "../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../core/helpers/ResultC";
-import { encodeDate, decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
 import type { AnotherPayment } from "../domain/business/entities/AnotherPayment";
 import type AnotherPaymentGateway from "../domain/infraestructure/AnotherPaymentGateway";
 import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";

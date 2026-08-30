@@ -1,10 +1,11 @@
+import { getLocalDate } from "../../../../../core/helpers/dates/calculateDays";
 import {
   diasDelMesPorTermino,
   diasPorTermino,
 } from "../../../../../core/helpers/debts/diasPorTermino";
 import type { Address } from "../../../../costumers/domain/business/entities/Address";
-import { getValidDueDate } from "../../../../shared/helpers/calcularFestivosColombia";
-import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../shared/helpers/Days";
+import { getValidDueDate } from "../../../../../core/shared/helpers/calcularFestivosColombia";
+import { obtenerDiaMesSiguiente, obtenerDiaSiguienteQuincena, obtenerDiaSimple } from "../../../../../core/shared/helpers/Days";
 import type { Debt, DebtTerms } from "../entities/Debt";
 import { defaultInstallment, type Installment, type InstallmentAddress } from "../entities/Installment";
 
@@ -74,9 +75,7 @@ export function generateInstallments2(
     neighborhood: costumerAddress.neighborhood,
     stratum: costumerAddress.stratum,
     locationGPS: costumerAddress.locationGPS,
-
   };
-
 
   const installments: Installment[] = [];
 
@@ -155,22 +154,44 @@ export function generateInstallments2(
 
     installments.push({
       ...defaultInstallment(),
-      installmentTotalNumber: debt.installmentCount,
-      capital: capitalToInstallment,
-      interest: interesToInstallment,
-      routeId: debt.routeId,
-      companyId: companyId,
-      id: crypto.randomUUID(),
+
       debtId: debt.id,
+      companyId: companyId,
+      routeId: debt.routeId,
+      installmentTotalNumber: debt.installmentCount,
+      installmentNumber: i + 1,
       clientId: debt.clientId,
       clientDocument: debt.clientDocument,
       clientName: debt.clientName,
       clientAddres: installmentAddress,
-      installmentNumber: i + 1,
+
+      // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
       interestRate: debt.interestRate,
+      arrearsInterestRate: debt.arrearsInterestRate,
+      // --- VALORES BASE DE LA CUOTA ---
+      capital: capitalToInstallment,
+      interest: interesToInstallment,
       amount: valoresCuotas[i],
-      dueDate: dueDate.toISOString().slice(0, 10),
+      total: capitalToInstallment + interesToInstallment,
+
+
+      // --- PORCENTAJES DE PAGO ---
+      percentageOfCapitalPaid: 0,
+      percentageOfInterestPaid: 0,
+      percentageOfAmountPaid: 0,
+      percentageOfTotalPaid: 0,
+
+      // --- RESTANTE POR PAGAR ---
+      remainingCapitalToPay: capitalToInstallment,
+      remainingInterestToPay: interesToInstallment,
+      remainingAmountToPay: valoresCuotas[i],
+      remainingTotalToPay: capitalToInstallment + interesToInstallment,
+
+
+      // --- ESTADO, FECHAS Y PAGOS ---
       status: "pendiente",
+      dueDate: getLocalDate(dueDate),
+
       createdAt: new Date().toISOString().slice(0, 10),
     });
     switch (debt.debtTerms) {

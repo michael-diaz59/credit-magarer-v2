@@ -5,11 +5,11 @@ import { firestore, storage } from "../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../core/helpers/ResultC";
 import type { Payroll } from "../domain/business/entities/Payroll";
 import type { PayrollGateway } from "../domain/infraestructure/PayrollGateway";
-import { encodeDate, decodeDate } from "../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";
 
 export class FirebasePayrollRepository implements PayrollGateway {
-    
+
     private payrollToFirestore(payroll: Omit<Payroll, "id">): DocumentData {
         const result: any = { ...payroll };
         if (payroll.createdAt) result.createdAt = encodeDate(payroll.createdAt);

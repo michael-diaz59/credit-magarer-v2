@@ -40,7 +40,7 @@ import {
   type PaymentMethod,
 } from "../../../features/debits/domain/business/entities/Payment";
 import { useForm, Controller } from "react-hook-form";
-import { getCurrentLocation } from "../../../features/shared/helpers/geoLocation";
+import { getCurrentLocation } from "../../../core/shared/helpers/geoLocation";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BankAccountOrchestrator from "../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
 import type { BankAccount } from "../../../features/bankAccounts/domain/business/entities/BankAccount";

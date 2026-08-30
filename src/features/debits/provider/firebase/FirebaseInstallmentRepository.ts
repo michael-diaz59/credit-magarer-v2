@@ -13,7 +13,7 @@ import {
   sum,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import type { InstallmentGateway } from "../../domain/infraestructure/DebtGatweay";
+import type { InstallmentGateway, MarkInstallAsPaidInGate } from "../../domain/infraestructure/InstallmentGateway";
 import { firestore } from "../../../../store/firebase/firebase";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import type {
@@ -45,11 +45,54 @@ import type {
   UpdateByIdOutput,
   UpdateByIdError,
 } from "../../domain/business/useCases/installment/UpdateByIdCase";
-import { encodeDate, decodeDate } from "../../../shared/firebase/codeDecodeTime";
+import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 import type { GetManagementInstallmentsInput } from "../../domain/business/useCases/installment/GetManagementInstallmentsUseCase";
+import type { MarkInstallAsPaidError, MarkInstallAsPaidOutput } from "../../domain/business/useCases/installment/MarkInstallAsPaidCase";
 
 export class FirebaseInstallmentRepository implements InstallmentGateway {
+
+  async markInstallAsPaid(
+    input: MarkInstallAsPaidInGate,
+  ): Promise<Result<MarkInstallAsPaidOutput, MarkInstallAsPaidError>> {
+    const { companyId, auditorNotes, idInstallment, payStatus } = input;
+
+    try {
+      const ref = doc(
+        firestore,
+        "companies",
+        companyId,
+        "installments",
+        idInstallment,
+      );
+
+      const snapshot = await getDoc(ref);
+
+      if (!snapshot.exists()) {
+        return fail({ code: "INSTALLMENT_NOT_FOUND" });
+      }
+
+      await updateDoc(ref, {
+        status: payStatus,
+        AuditorNotes: auditorNotes,
+        paidAt: Timestamp.now(),
+      });
+
+      return ok({
+        state: null,
+      });
+    } catch (error) {
+      console.log(error);
+
+      if (error instanceof FirebaseError) {
+        if (error.code === "unavailable") {
+          return fail({ code: "NETWORK_ERROR" });
+        }
+      }
+
+      return fail({ code: "UNKNOWN_ERROR" });
+    }
+  }
 
   async updateById(
     input: UpdateByIdInput,
@@ -504,7 +547,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       // Filtrado en memoria para las fechas para mayor flexibilidad y evitar índices compuestos complejos
       const filtered = installments.filter((inst) => {
         const isDueDatePastOrToday = inst.dueDate && inst.dueDate <= today;
-        const isLateDueDatePastOrToday = inst.arrearsDueDate && inst.arrearsDueDate <= today;
+        const isLateDueDatePastOrToday = inst.defermentDueDate && inst.defermentDueDate <= today;
         return isDueDatePastOrToday || isLateDueDatePastOrToday;
       });
 
@@ -549,7 +592,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       // Filtrado en memoria para las fechas para mayor flexibilidad y evitar índices compuestos complejos
       const filtered = allInstallments.filter((inst) => {
         const isDueDatePastOrToday = inst.dueDate && inst.dueDate <= today;
-        const isLateDueDatePastOrToday = inst.arrearsDueDate && inst.arrearsDueDate <= today;
+        const isLateDueDatePastOrToday = inst.defermentDueDate && inst.defermentDueDate <= today;
         return isDueDatePastOrToday || isLateDueDatePastOrToday;
       });
 
@@ -578,6 +621,13 @@ export function InstallmentToDocument(
     installmentTotalNumber: installment.installmentTotalNumber,
     installmentNumber: installment.installmentNumber,
 
+    // --- pagos pendientes por confirmar por el contador ---
+    pendeningInterest: installment.pendeningInterest,
+    pendinCapital: installment.pendinCapital,
+    pendingAmount: installment.pendingAmount,
+    pendingArrears: installment.pendingArrears,
+    pendingTotal: installment.pendingTotal,
+
     // --- INFORMACIÓN DEL CLIENTE ---
     clientId: installment.clientId,
     clientName: installment.clientName,
@@ -595,24 +645,26 @@ export function InstallmentToDocument(
           coordinates:
             installment.clientAddres.locationGPS.coordinates ?? "",
           latitude:
-            installment.clientAddres.locationGPS.latitude ?? 0,
+            installment.clientAddres.locationGPS.latitude ?? null,
           longitude:
-            installment.clientAddres.locationGPS.longitude ?? 0,
+            installment.clientAddres.locationGPS.longitude ?? null,
           accuracy:
-            installment.clientAddres.locationGPS.accuracy ?? 0,
+            installment.clientAddres.locationGPS.accuracy ?? null,
         }
-        : undefined,
+        : null,
     },
 
     // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
     interestRate: installment.interestRate,
     arrearsInterestRate: installment.arrearsInterestRate,
+    type: installment.type,
 
     // --- VALORES BASE DE LA CUOTA ---
     capital: installment.capital,
     interest: installment.interest,
     amount: installment.amount,
     arrears: installment.arrears,
+    deferment: installment.deferment,
     total: installment.total,
 
     // --- PAGOS REALIZADOS ---
@@ -639,40 +691,52 @@ export function InstallmentToDocument(
     // --- MORA Y RETRASO ---
     numberOfArrearsDays: installment.numberOfArrearsDays,
 
-    arrearsDueDate: installment.arrearsDueDate
-      ? encodeDate(installment.arrearsDueDate)
-      : undefined,
+    defermentDueDate: installment.defermentDueDate
+      ? encodeDate(installment.defermentDueDate)
+      : null,
+
+    defermentDays: installment.defermentDays ?? 0,
 
     // --- ESTADO Y FECHAS ---
     status: installment.status,
+    isLife: installment.isLife ?? true,
 
     dueDate: installment.dueDate
       ? encodeDate(installment.dueDate)
-      : undefined,
+      : null,
 
     createdAt: installment.createdAt
       ? encodeDate(installment.createdAt)
-      : undefined,
+      : null,
 
     paidAt: installment.paidAt
       ? encodeDate(installment.paidAt)
-      : undefined,
+      : null,
 
     payments: installment.payments ?? [],
 
     // --- GESTIÓN DE COBRO EN CAMPO ---
+
+    requiredArrears: installment.requiredArrears ?? 0,
+    requiredState: installment.requiredState ?? "",
+    accountantNotes: installment.accountantNotes ?? "",
+    closedAt: installment.closedAt ? encodeDate(installment.closedAt) : null,
+    AuditorNotes: installment.AuditorNotes ?? "",
+    collectorNotes: installment.collectorNotes ?? "",
+
+
     deferred: installment.deferred,
     managed: installment.managed,
 
     managementDate: installment.managementDate
       ? encodeDate(installment.managementDate)
-      : undefined,
+      : null,
 
     attemptedCollection: installment.attemptedCollection,
 
     dateAttemptedPayment: installment.dateAttemptedPayment
       ? encodeDate(installment.dateAttemptedPayment)
-      : undefined,
+      : null,
 
     descriptionAttemptedPayment:
       installment.descriptionAttemptedPayment ?? "",
@@ -688,7 +752,7 @@ export function InstallmentToDocument(
         accuracy:
           installment.locationAttemptedPayment.accuracy ?? 0,
       }
-      : undefined,
+      : null,
   };
 
   return removeUndefined(result);
@@ -701,6 +765,13 @@ export function DocumentToInstallment(
   return {
     // --- IDENTIFICACIÓN Y RUTA ---
     id,
+
+    // --- pagos pendientes por confirmar por el contador ---
+    pendeningInterest: data.pendeningInterest ?? 0,
+    pendinCapital: data.pendinCapital ?? 0,
+    pendingAmount: data.pendingAmount ?? 0,
+    pendingArrears: data.pendingArrears ?? 0,
+    pendingTotal: data.pendingTotal ?? 0,
 
     debtId: data.debtId ?? "",
     companyId: data.companyId ?? "",
@@ -738,6 +809,7 @@ export function DocumentToInstallment(
     // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
     interestRate: data.interestRate ?? 0,
     arrearsInterestRate: data.arrearsInterestRate ?? 0,
+    type: data.type ?? "fijo",
 
     // --- VALORES BASE DE LA CUOTA ---
     capital: data.capital ?? 0,
@@ -745,6 +817,8 @@ export function DocumentToInstallment(
     amount: data.amount ?? 0,
     arrears: data.arrears ?? 0,
     total: data.total ?? 0,
+    deferment: data.deferment ?? 0,
+
 
     // --- PAGOS REALIZADOS ---
     capitalPaid: data.capitalPaid ?? 0,
@@ -789,12 +863,15 @@ export function DocumentToInstallment(
     numberOfArrearsDays:
       data.numberOfArrearsDays ?? 0,
 
-    arrearsDueDate: data.arrearsDueDate
+    defermentDays: data.defermentDays ?? 0,
+
+    defermentDueDate: data.arrearsDueDate
       ? decodeDate(data.arrearsDueDate)
       : undefined,
 
     // --- ESTADO Y FECHAS ---
     status: data.status ?? "pendiente",
+    isLife: data.isLife ?? true,
 
     dueDate: data.dueDate
       ? decodeDate(data.dueDate)
@@ -811,6 +888,14 @@ export function DocumentToInstallment(
     payments: data.payments ?? [],
 
     // --- GESTIÓN DE COBRO EN CAMPO ---
+
+    requiredArrears: data.requiredArrears ?? 0,
+    requiredState: data.requiredState ?? "",
+    accountantNotes: data.accountantNotes ?? "",
+    closedAt: data.closedAt ? decodeDate(data.closedAt) : undefined,
+    AuditorNotes: data.AuditorNotes ?? "",
+    collectorNotes: data.collectorNotes ?? "",
+
     deferred: data.deferred ?? false,
 
     managed: data.managed ?? false,

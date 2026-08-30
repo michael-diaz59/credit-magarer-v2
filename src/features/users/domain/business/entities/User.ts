@@ -5,8 +5,22 @@ export interface User {
   companyId: string;
   roles: Role[]
 
-  /**representa el dinero que pueda llegar a tener recolectado en fisico un cobrador */
+  /**representa el dinero que pueda llegar a tener recolectado en fisico un cobrador \
+   * capital + interest + arrears + Funding
+  */
   totalAmount?: number
+
+  /** capital que recolecto el cobrador */
+  capital?: number
+
+  /** intereses que recolecto el cobrador */
+  interest?: number
+
+  /** mora que recolecto el cobrador */
+  arrears?: number
+
+  /**dinero que el cobrador se le ha asignado para desembolso de creditos a clientes*/
+  funding?: number
 
   /**dinero que el cobrador debe por descuadre */
   totalDebt?: number
