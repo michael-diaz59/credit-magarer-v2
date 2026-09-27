@@ -16,7 +16,8 @@ import { MiniMap } from "../../organisms/MiniMap";
 
 const statusColorMap = {
   registrado: "warning",
-  conflicto: "error",
+  conflictoCobrador: "error",
+  conflictoCliente: "error",
   confirmado: "success",
   cancelada: "default",
 } as const;

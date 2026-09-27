@@ -1,6 +1,7 @@
 import type { Result } from "../../../../core/helpers/ResultC";
-import type { Route, CashBalances, DepositBalances } from "../business/entities/Route";
+import type { Route } from "../business/entities/Route";
 import type { RouteError } from "../business/entities/routeErrors";
+import type { PutMoneyToRoutesError, PutMoneyToRoutesInput, PutMoneyToRoutesOutput } from "../business/useCases/PutMoneyToRoutesCase";
 
 export interface CreateRouteGatewayInput {
   route: Route;
@@ -17,12 +18,7 @@ export interface UpdateRouteGatewayInput {
 export interface RouteGateway {
   createRoute(input: CreateRouteGatewayInput): Promise<Result<void, RouteError>>;
   getRoutesByCompany(input: GetRoutesGatewayInput): Promise<Result<Route[], RouteError>>;
+  PutMoneyToRoutes(input: PutMoneyToRoutesInput): Promise<Result<PutMoneyToRoutesOutput, PutMoneyToRoutesError>>
   updateRoute(input: UpdateRouteGatewayInput): Promise<Result<void, RouteError>>;
   updateBalance(input: { companyId: string, routeId: string, amount: number }): Promise<Result<void, any>>;
-  updateSpecificBalances(input: {
-    companyId: string,
-    routeId: string,
-    cashEntries: CashBalances[],
-    depositEntries: DepositBalances[]
-  }): Promise<Result<void, any>>;
 }

@@ -14,11 +14,11 @@ const statusColorMap: Record<
   "default" | "success" | "warning" | "error"
 > = {
   pendiente: "warning",
-  incompleto: "warning",
+  negociada: "success",
   pagada: "success",
   renovada: "success",
-  cancelada: "default",
-  liquidada: "success",
+  inactivo: "success",
+  adelantada: "success",
 };
 
 export const InstallmentItem = ({ installment }: Props) => {
@@ -56,7 +56,7 @@ export const InstallmentItem = ({ installment }: Props) => {
       >
         <Typography fontWeight={500}>
           Cuota #{installment.installmentNumber} — $
-          {installment.amount + installment.arrears}
+          {installment.total}
         </Typography>
 
         <Chip
@@ -79,9 +79,14 @@ export const InstallmentItem = ({ installment }: Props) => {
 
       <Typography variant="body2" color="text.secondary">
         valor base a cobrar:{" "}
-        {installment.amount - installment.amountPaid}
+        {installment.amount}
       </Typography>
 
+      {installment.deferment > 0 && (
+        <Typography variant="body2" color="text.secondary">
+          valor de aplazamiento a cobrar: {installment.deferment}
+        </Typography>
+      )}
       {installment.arrears > 0 && (
         <Typography variant="body2" color="text.secondary">
           valor de retraso a cobrar: {installment.arrears}

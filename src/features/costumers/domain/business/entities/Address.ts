@@ -34,3 +34,19 @@ export interface LocationGPS {
   provider?: string
 }
 
+/**
+ * ubicacion del cliente
+ */
+export const defaultAddress: Address = {
+  address: "",
+  neighborhood: "",
+  stratum: 0,
+  city: "",
+  locationGPS: {
+    coordinates: "",
+    latitude: 0,
+    longitude: 0,
+  },
+
+};
+

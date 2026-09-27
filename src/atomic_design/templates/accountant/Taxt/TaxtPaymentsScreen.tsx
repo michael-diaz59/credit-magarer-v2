@@ -97,9 +97,9 @@ export const TaxtPaymentsScreen: React.FC = () => {
                         backgroundColor:
                           payment.status === "confirmado"
                             ? theme.palette.success.light
-                            : payment.status === "conflicto"
-                            ? theme.palette.error.light
-                            : theme.palette.warning.light,
+                            : payment.status === "conflictoCliente" || payment.status === "conflictoCobrador"
+                              ? theme.palette.error.light
+                              : theme.palette.warning.light,
                         color: "#fff",
                         fontWeight: "bold",
                         textTransform: "uppercase",

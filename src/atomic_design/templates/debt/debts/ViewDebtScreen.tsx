@@ -67,14 +67,12 @@ export const ViewDebtScreen = () => {
     console.log(debtToUpdate.id);
     try {
       const update = await orchestrator.goToPreAbroves({
-        isNewRoute: false,
+        debtId: debtToUpdate.id,
         companyId: companyId,
-        debt: debtToUpdate,
       });
       if (update.state.ok) {
-        if (debtToUpdate.status !== "tentativa") {
-          setMode("view")
-        }
+        debtToUpdate.status = "preAprobada"
+        setMode("view")
         setDialogConfig({
           title: "Actualización exitosa",
           body: "La deuda fue actualizada correctamente.",
@@ -229,7 +227,7 @@ export const ViewDebtScreen = () => {
                     <Stack direction="row" spacing={2} justifyContent="flex-end" mt={3}>
                       {mode === "edit" && (
                         <>
-                          {/* 
+
                           <Button
                             variant="outlined"
                             color="primary"
@@ -238,7 +236,7 @@ export const ViewDebtScreen = () => {
                           >
                             Actualizar
                           </Button>
-                          */}
+
                           <Button
                             variant="contained"
                             color="primary"

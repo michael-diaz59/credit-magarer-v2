@@ -36,7 +36,7 @@ import { AuditorDebtsFiltersScreen } from "../atomic_design/templates/audit/Audi
 import { AuditDebtScreen } from "../atomic_design/templates/debt/debts/AuditDebtScreen.tsx";
 import Collector_layout from "./collector/Collector_layout.tsx";
 import { RecolectorHome } from "../atomic_design/templates/recollector/RecolectorHome.tsx";
-import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetail/InstallmentDetailScreen2.tsx";
+import { InstallmentDetailScreen } from "../atomic_design/templates/recollector/InstallmentDetail/InstallmentDetailScreen.tsx";
 import { ProfileScreen } from "../atomic_design/templates/configuration/ProfileScreen.tsx";
 import { RouteAdministrationScreen } from "../atomic_design/templates/configuration/RouteAdministrationScreen.tsx";
 import { CreateRouteScreen } from "../atomic_design/templates/configuration/CreateRouteScreen.tsx";
@@ -51,7 +51,7 @@ import { DailyOperationsScreen } from "../atomic_design/templates/audit/DailyOpe
 import { CollectionAttemptDetailScreen } from "../atomic_design/templates/audit/CollectionAttemptDetailScreen.tsx";
 import { BankAccountsAdministrationScreen } from "../atomic_design/templates/configuration/BankAccountsAdministrationScreen.tsx";
 import { AccountantDashboard } from "../atomic_design/templates/accountant/AccountantDashboard.tsx";
-import { AccountantDailyOperations } from "../atomic_design/templates/accountant/movementAccountant.tsx";
+import { AccountantDailyOperations } from "../atomic_design/templates/accountant/AccountantDailyOperations.tsx";
 import { AccountantDebtsScreen } from "../atomic_design/templates/accountant/AccountantDebtsScreen.tsx";
 import { AccountantDebtsForCustomer } from "../atomic_design/templates/accountant/debt/AccountantDebtsForCustomer.tsx";
 import { PaymentInvoiceScreen } from "../atomic_design/templates/accountant/PaymentAccountant/PaymentInvoiceScreen.tsx";

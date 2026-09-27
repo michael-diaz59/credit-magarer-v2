@@ -158,7 +158,7 @@ export class UpdateDebtUseCase {
 
             if (originalInstallmentsResult.state.ok) {
               const toUpdate = originalInstallmentsResult.state.value.filter(
-                (inst) => inst.status !== "pagada" && inst.status !== "liquidada" && inst.status !== "cancelada"
+                (inst) => !inst.isLife
               );
 
               if (toUpdate.length > 0) {

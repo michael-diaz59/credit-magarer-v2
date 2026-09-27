@@ -26,13 +26,12 @@ interface RoutesBalanceViewProps {
     globalTotal: number;
     globalChartData: any[];
     totalCashSystem: number;
-    bankAccountTotals: Record<string, number>;
+    bankAccountTotals: number;
 }
 
 export const RoutesBalanceView = ({
     routes,
     bankAccounts,
-    collectors,
     isLoading,
     globalTotal,
     globalChartData,
@@ -156,8 +155,8 @@ export const RoutesBalanceView = ({
 
             <Stack spacing={2}>
                 {routes.map((route) => {
-                    const cashTotal = (route.totalCash2 || []).reduce((acc, c) => acc + c.amount, 0);
-                    const depositTotal = (route.totalDeposit || []).reduce((acc, d) => acc + d.amount, 0);
+                    const cashTotal = route.cashBalances
+                    const depositTotal = route.depositBalances
                     const routeTotal = cashTotal + depositTotal;
 
                     if (routeTotal === 0) return null;
@@ -167,14 +166,6 @@ export const RoutesBalanceView = ({
                         { id: 1, value: depositTotal, label: "Depósitos", color: "#2196f3" }
                     ].filter(i => i.value > 0);
 
-                    const collectorChartData = (route.totalCash2 || []).map((c, idx) => {
-                        const collector = collectors.find(u => u.id === c.collectorId);
-                        return {
-                            id: idx,
-                            value: c.amount,
-                            label: collector ? `${collector.name}` : `ID: ${c.collectorId.substring(0, 5)}...`
-                        };
-                    }).filter(i => i.value > 0);
 
                     return (
                         <Accordion key={route.id} sx={{ borderRadius: '16px !important', overflow: 'hidden', '&:before': { display: 'none' }, border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
@@ -187,7 +178,7 @@ export const RoutesBalanceView = ({
                                         {route.name || "Sin nombre (default)"}
                                     </Typography>
                                     <Box textAlign="right">
-                                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>TOTAL RUTA</Typography>
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>TOTAL RUTA a cobrar</Typography>
                                         <Typography variant="subtitle1" color="primary" fontWeight="bold">
                                             {FormatNumberToMoney(routeTotal)}
                                         </Typography>
@@ -213,31 +204,9 @@ export const RoutesBalanceView = ({
                                             />
                                         </Box>
                                     </Grid>
-
-                                    {/* Collector breakdown chart */}
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <Typography variant="subtitle2" color="text.secondary" align="center" fontWeight="bold" gutterBottom>
-                                            DISTRIBUCIÓN DE EFECTIVO POR COBRADOR
-                                        </Typography>
-                                        <Box height={250} mt={2}>
-                                            {collectorChartData.length > 0 ? (
-                                                <PieChart
-                                                    series={[{
-                                                        data: collectorChartData,
-                                                        innerRadius: 30
-                                                    }]}
-                                                    height={250}
-                                                />
-                                            ) : (
-                                                <Box display="flex" justifyContent="center" alignItems="center" height="100%" sx={{ bgcolor: 'action.hover', borderRadius: 2 }}>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        No hay ingresos registrados en efectivo.
-                                                    </Typography>
-                                                </Box>
-                                            )}
-                                        </Box>
-                                    </Grid>
                                 </Grid>
+
+
 
                                 {/* Detailed Lists */}
                                 <Grid container spacing={4} mt={4}>
@@ -245,37 +214,20 @@ export const RoutesBalanceView = ({
                                     <Grid size={{ xs: 12, lg: 6 }}>
                                         <Typography variant="subtitle2" fontWeight="bold" mb={2} color="success.main">Saldos en Efectivo:</Typography>
                                         <Stack spacing={1}>
-                                            {(route.totalCash2 || []).map((c, i) => {
-                                                const collector = collectors.find(u => u.id === c.collectorId);
-                                                return (
-                                                    <Box key={i} display="flex" justifyContent="space-between" py={1.5} borderBottom="1px solid" borderColor="divider">
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {collector ? collector.name : `Cobrador ID: ${c.collectorId}`}
-                                                        </Typography>
-                                                        <Typography variant="body2" fontWeight="bold">{FormatNumberToMoney(c.amount)}</Typography>
-                                                    </Box>
-                                                );
-                                            })}
-                                            {(route.totalCash2 || []).length === 0 && <Typography variant="caption" color="text.secondary">Sin movimientos en efectivo.</Typography>}
+                                            {route.cashBalances}
+                                            {route.cashBalances > 0 && <Typography variant="caption" color="text.secondary">Sin movimientos en efectivo.</Typography>}
                                         </Stack>
                                     </Grid>
+                                </Grid>
 
-                                    {/* Deposits list */}
+                                {/* Detailed Lists */}
+                                <Grid container spacing={4} mt={4}>
+                                    {/* deposit list */}
                                     <Grid size={{ xs: 12, lg: 6 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" mb={2} color="primary.main">Saldos en Cuentas (Bancos):</Typography>
+                                        <Typography variant="subtitle2" fontWeight="bold" mb={2} color="success.main">Saldos en Depósitos:</Typography>
                                         <Stack spacing={1}>
-                                            {(route.totalDeposit || []).map((d, i) => {
-                                                const bank = bankAccounts.find(b => b.id === d.bankAccountId);
-                                                return (
-                                                    <Box key={i} display="flex" justifyContent="space-between" py={1.5} borderBottom="1px solid" borderColor="divider">
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {bank ? `${bank.bankName} - ${bank.name}` : `ID: ${d.bankAccountId}`}
-                                                        </Typography>
-                                                        <Typography variant="body2" fontWeight="bold">{FormatNumberToMoney(d.amount)}</Typography>
-                                                    </Box>
-                                                );
-                                            })}
-                                            {(route.totalDeposit || []).length === 0 && <Typography variant="caption" color="text.secondary">Sin depósitos registrados.</Typography>}
+                                            {route.depositBalances}
+                                            {route.depositBalances > 0 && <Typography variant="caption" color="text.secondary">Sin movimientos en Depósitos.</Typography>}
                                         </Stack>
                                     </Grid>
                                 </Grid>

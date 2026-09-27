@@ -20,8 +20,8 @@ import {
     Timestamp,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import type { DebtGateway, MarkAsPaidGateInput } from "../../domain/infraestructure/DebtGatweay";
-import type { CreateDebtError, CreateDebtUInput, CreateDebtUOutput, createWithInstallmentsInput } from "../../domain/business/useCases/debt/CreateDebtUseCase";
+import type { DebtGateway, GetDebtsForPreparationGateInput, GoToActivateGateInput, MarkAsPaidGateInput } from "../../domain/infraestructure/DebtGatweay";
+import type { CreateDebtError2, CreateDebtUInput2, CreateDebtUOutput2, CreateWithInstallmentsInput2 } from "../../domain/business/useCases/debt/CreateDebtUseCase2";
 import { firestore } from "../../../../store/firebase/firebase";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import type { UpdateDebitInput, UpdateDebitOutput } from "../../domain/business/useCases/debt/UpdateDebtUseCase";
@@ -31,14 +31,152 @@ import type { Debt, DebtStatus, DebtType } from "../../domain/business/entities/
 import type { GetDebtsInput, GetDebtsOutput } from "../../domain/business/useCases/debt/GetDebtsCase";
 import type { GetByFiltersError, GetByFiltersInput, GetByFiltersOutput } from "../../domain/business/useCases/debt/GetByFiltersCase";
 import type { UpdateDebtStatusInput, UpdateDebtStatusOutput, UpdateDebtStatusError } from "../../domain/business/useCases/debt/UpdateDebtStatusUseCase";
-import { extraerNumeroDeString } from "../../../../core/repository/Conversors";
 import { calculateDatesOfDebts } from "../../scripts/createDebtExcel";
 import { InstallmentToDocument } from "./FirebaseInstallmentRepository";
 import type { MarkAsPaidError, MarkAsPaidOutput } from "../../domain/business/useCases/debt/MarkAsPaidUseCase";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 import { decodeDate, encodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
+import type { GetDebtsForPreparationError, GetDebtsForPreparationOutput } from "../../domain/business/useCases/debt/GetDebtsForPreparationCase";
+import type { GoToActivateOutput, GoToActivateError } from "../../domain/business/useCases/debt/GoToActivateUseCase";
 
 export class FirebaseDebtRepository implements DebtGateway {
+
+    async goToActivate(input: GoToActivateGateInput): Promise<Result<GoToActivateOutput, GoToActivateError>> {
+        try {
+            const db = getFirestore();
+
+            const debtRef = doc(
+                db,
+                "companies",
+                input.companyId,
+                "debts",
+                input.debtId,
+            );
+
+            const installmentsCol = collection(
+                db,
+                "companies",
+                input.companyId,
+                "installments"
+            );
+
+            await runTransaction(db, async (tx) => {
+
+                tx.set(debtRef, {
+                    isLife: true,
+                    status: "activa",
+                });
+
+                /** 📌 Crear cuotas */
+                for (const installment of input.installments) {
+                    installment.debtId = input.debtId
+                    const installmentRef = doc(installmentsCol);
+
+                    tx.set(installmentRef, {
+                        ...InstallmentToDocument(installment),
+                    });
+                }
+            });
+
+            return ok({ state: null });
+        } catch (error) {
+            console.error("[createWithInstallments]", error);
+
+            if (error instanceof FirebaseError) {
+                return fail({ code: "ERROR_DEBT_UPDATE" });
+            }
+
+            return fail({ code: "ERROR_DEBT_UPDATE" });
+        }
+    }
+
+    async goToReactivate(input: GoToActivateGateInput): Promise<Result<GoToActivateOutput, GoToActivateError>> {
+        try {
+            const db = getFirestore();
+
+            const debtRef = doc(
+                db,
+                "companies",
+                input.companyId,
+                "debts",
+                input.debtId,
+            );
+
+            await runTransaction(db, async (tx) => {
+
+                tx.set(debtRef, {
+                    isLife: true,
+                    status: "activa",
+                });
+            });
+
+            const installmentRef = collection(
+                firestore,
+                "companies",
+                input.companyId,
+                "installments",
+            );
+
+            const installmentQuery = query(
+                installmentRef,
+                where('debtId', '==', input.debtId),
+                where('status', '==', 'inactivo'),
+            );
+
+            const snapshot = await getDocs(installmentQuery);
+
+            let updatedCount = 0;
+
+            for (let i = 0; i < snapshot.docs.length; i += 400) {
+                const batch = writeBatch(db);
+
+                const documents = snapshot.docs.slice(i, i + 400);
+
+                for (const document of documents) {
+                    batch.update(document.ref, {
+                        estado: 'pendiente',
+                    });
+                }
+
+                await batch.commit();
+
+                updatedCount += documents.length;
+            }
+
+            return ok({ state: null });
+        } catch (error) {
+            console.error("[createWithInstallments]", error);
+
+            if (error instanceof FirebaseError) {
+                return fail({ code: "ERROR_DEBT_UPDATE" });
+            }
+
+            return fail({ code: "ERROR_DEBT_UPDATE" });
+        }
+    }
+
+    async getDebtsForPreparation(input: GetDebtsForPreparationGateInput): Promise<Result<GetDebtsForPreparationOutput, GetDebtsForPreparationError>> {
+        try {
+            const { companyId, delivered, deliveredStatus } = input;
+            const ref = collection(
+                firestore,
+                "companies",
+                companyId,
+                "debts",
+            );
+            const snapshot = await getDocs(query(
+                ref,
+                where("delivered", "==", delivered),
+                where("deliveredStatus", "==", deliveredStatus),
+            ));
+            const debts: Debt[] = snapshot.docs.map((doc) => documentToDebt({ ...doc.data(), id: doc.id }));
+            return ok({ state: debts });
+        } catch (error) {
+            console.error("[GetDebtsForPreparation]", error);
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
 
     async markAsPaid(input: MarkAsPaidGateInput): Promise<Result<MarkAsPaidOutput, MarkAsPaidError>> {
         try {
@@ -102,8 +240,8 @@ export class FirebaseDebtRepository implements DebtGateway {
             }
 
             if (customerId) {
-                constraints.push(where("customerId", "==", customerId));
-                console.log("customerId", customerId)
+                constraints.push(where("clientId", "==", customerId));
+                console.log("clientId", customerId)
             }
 
             if (idVisit) {
@@ -154,15 +292,13 @@ export class FirebaseDebtRepository implements DebtGateway {
 
             return fail({ code: "UNKNOWN_ERROR" });
         }
-
-
     }
 
 
 
     async createWithInstallments(
-        input: createWithInstallmentsInput
-    ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
+        input: CreateWithInstallmentsInput2
+    ): Promise<Result<CreateDebtUOutput2, CreateDebtError2>> {
         try {
             let debtNameOut = ""
             let debtIdOut = ""
@@ -287,7 +423,7 @@ export class FirebaseDebtRepository implements DebtGateway {
     async reserveDebtNumbers(
         companyId: string,
         quantity: number
-    ): Promise<Result<number[], CreateDebtError>> {
+    ): Promise<Result<number[], CreateDebtError2>> {
         try {
             const countersRef = doc(
                 firestore,
@@ -350,7 +486,7 @@ export class FirebaseDebtRepository implements DebtGateway {
             companyId: string;
             debts: Debt[];
         }
-    ): Promise<Result<void, CreateDebtError>> {
+    ): Promise<Result<void, CreateDebtError2>> {
         try {
             const debtsRef = collection(
                 firestore,
@@ -415,8 +551,8 @@ export class FirebaseDebtRepository implements DebtGateway {
     }
 
     async create(
-        input: CreateDebtUInput
-    ): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
+        input: CreateDebtUInput2
+    ): Promise<Result<CreateDebtUOutput2, CreateDebtError2>> {
         try {
             let debtNameOut = ""
             let debtIdOut = ""
@@ -459,6 +595,7 @@ export class FirebaseDebtRepository implements DebtGateway {
                 const debtRef = doc(debtsRef);
                 const debtId = debtRef.id;
                 debtIdOut = debtId;
+                input.debt.name = nextDebtNumber.toString();
 
                 tx.set(debtRef, DebtToDocumentData(input.debt));
             });
@@ -471,6 +608,8 @@ export class FirebaseDebtRepository implements DebtGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
+
+
 
     async update(
         input: UpdateDebitInput
@@ -911,190 +1050,435 @@ export class FirebaseDebtRepository implements DebtGateway {
     }
 }
 
-export function documentToDebt(doc: DocumentData, id?: string): Debt {
-    // Si pasas un snapshot, extraemos la data y el id automáticamente
-    const data = "data" in doc ? doc.data() : doc;
-    const documentId = "id" in doc ? doc.id : (id ?? "");
+export function documentToDebt(
+    doc: DocumentData,
+    id?: string,
+): Debt {
+    const data =
+        typeof doc === "object" &&
+            doc !== null &&
+            "data" in doc &&
+            typeof doc.data === "function"
+            ? doc.data()
+            : doc;
+
+    const documentId =
+        typeof doc === "object" &&
+            doc !== null &&
+            "id" in doc &&
+            typeof doc.id === "string"
+            ? doc.id
+            : (id ?? "");
 
     const result: Debt = {
-        requiredArrears: data.requiredArrearsDays ?? 0,
-        requiredState: data.requiredState ?? "no",
+        // ---------------------------------------------------------
+        // IDENTIFICACIÓN Y RUTA
+        // ---------------------------------------------------------
         id: documentId,
+        name: data.name ?? "",
         lateInterestRate: data.lateInterestRate ?? 0,
-        name: "Crédito " + extraerNumeroDeString(data.name ?? ""),
-        type: transformacionType(data.type),
+        type: data.type ?? "fijo",
         status: data.status ?? "tentativa",
-        isLife: data.isLife ?? true,
+        isLife: data.isLife ?? false,
+
         routeId: data.routeId ?? "",
-        idVisit: data.idVisit ?? "",
+        routeName: data.routeName ?? "",
+        idVisit: data.idVisit,
         prepayment: data.prepayment,
 
-        // --- INFORMACIÓN DEL CLIENTE ---
+        // ---------------------------------------------------------
+        // CLIENTE
+        // ---------------------------------------------------------
         clientId: data.clientId ?? "",
         clientName: data.clientName ?? "",
         clientDocument: data.clientDocument ?? "",
 
-        // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+        // ---------------------------------------------------------
+        // CONDICIONES FINANCIERAS
+        // ---------------------------------------------------------
         debtTerms: data.debtTerms ?? "diario",
-        daysPerMonth: data.daysPerMonth,
+        daysPerMonth: data.daysPerMonth ?? 30,
+
         interestRate: data.interestRate ?? 0,
-        arrearsInterestRate: data.arrearsInterestRate ?? 0,
+
         capital: data.capital ?? 0,
         interest: data.interest ?? 0,
         amount: data.amount ?? 0,
         arrears: data.arrears ?? 0,
         total: data.total ?? 0,
+
         processingFee: data.processingFee ?? 0,
 
-        // --- DESEMBOLSO Y ENTREGA ---
+        // ---------------------------------------------------------
+        // DESEMBOLSO
+        // ---------------------------------------------------------
         delivered: data.delivered ?? false,
         deliveredStatus: data.deliveredStatus ?? "false_preparacion",
 
-        // --- GARANTÍAS Y PRENDA ---
+        // ---------------------------------------------------------
+        // PRENDA
+        // ---------------------------------------------------------
         pledge: data.pledge ?? false,
         pledgeDescription: data.pledgeDescription,
         pledgeValue: data.pledgeValue,
 
-        // --- SEGUIMIENTO DE PAGOS Y SALDOS ---
+        // ---------------------------------------------------------
+        // PAGOS
+        // ---------------------------------------------------------
         capitalPaid: data.capitalPaid ?? 0,
         interestPaid: data.interestPaid ?? 0,
         amountPaid: data.amountPaid ?? 0,
         arrearsPaid: data.arrearsPaid ?? 0,
         totalPaid: data.totalPaid ?? 0,
 
-        remainingCapitalToPay: data.remainingCapitalToPay ?? 0,
-        remainingInterestToPay: data.remainingInterestToPay ?? 0,
-        remainingAmountToPay: data.remainingAmountToPay ?? 0,
-        remainingArrearsToPay: data.remainingArrearsToPay ?? 0,
-        remainingTotalToPay: data.remainingTotalToPay ?? 0,
+        // ---------------------------------------------------------
+        // SALDOS
+        // ---------------------------------------------------------
+        remainingCapitalToPay:
+            data.remainingCapitalToPay ?? 0,
 
-        percentageOfCapitalPaid: data.percentageOfCapitalPaid ?? 0,
-        percentageOfInteresPaid: data.percentageOfInteresPaid ?? 0,
-        percentageOfAmountPaid: data.percentageOfAmountPaid ?? 0,
-        porcentageOfArrearsPaid: data.porcentageOfArrearsPaid ?? 0,
-        percentageOfTotalPaid: data.percentageOfTotalPaid ?? 0,
+        remainingInterestToPay:
+            data.remainingInterestToPay ?? 0,
 
-        // --- GESTIÓN DE MORA Y RETRASO ---
-        numberOfArrearsInstallments: data.numberOfArrearsInstallments ?? 0,
-        numberOfArrearsDays: data.numberOfArrearsDays ?? 0,
-        maxNumberOfArrearsDays: data.maxNumberOfArrearsDays ?? 0,
-        totalArrearsDays: data.totalArrearsDays ?? 0,
+        remainingAmountToPay:
+            data.remainingAmountToPay ?? 0,
 
-        // --- CUOTAS Y FECHAS (yyyy-mm-dd) ---
-        installmentCount: data.installmentCount ?? 0,
-        installmentsPaid: data.installmentsPaid ?? 0,
-        createdAt: decodeDate(data.createdAt),
-        startDate: decodeDate(data.startDate),
-        nextPaymentDue: decodeDate(data.nextPaymentDue),
-        dateLastPayment: data.dateLastPayment ? decodeDate(data.dateLastPayment) : undefined,
-        expectedEndDate: decodeDate(data.expectedEndDate),
-        closedAt: data.closedAt ? decodeDate(data.closedAt) : undefined,
+        remainingArrearsToPay:
+            data.remainingArrearsToPay ?? 0,
 
-        // --- RENOVACIONES ---
-        renewalPayment: data.renewalPayment ?? 0,
-        originalDebt: data.originalDebt,
-        renewedToDebtId: data.renewedToDebtId,
+        remainingTotalToPay:
+            data.remainingTotalToPay ?? 0,
 
-        // --- OBSERVACIONES Y NOTAS ---
-        collectorNotes: data.collectorNotes,
-        auditorNotes: data.auditorNotes,
-        accountantNotes: data.accountantNotes,
-        advisorNotes: data.advisorNotes,
+        // ---------------------------------------------------------
+        // PORCENTAJES
+        // ---------------------------------------------------------
+        percentageOfCapitalPaid:
+            data.percentageOfCapitalPaid ?? 100,
+
+        percentageOfInteresPaid:
+            data.percentageOfInteresPaid ?? 100,
+
+        percentageOfAmountPaid:
+            data.percentageOfAmountPaid ?? 100,
+
+        porcentageOfArrearsPaid:
+            data.porcentageOfArrearsPaid ?? 100,
+
+        percentageOfTotalPaid:
+            data.percentageOfTotalPaid ?? 100,
+
+        // ---------------------------------------------------------
+        // SALDOS PENDIENTES DE COBRO
+        // ---------------------------------------------------------
+        outstandingReceivables:
+            data.outstandingReceivables ?? 0,
+
+        outstandingReceivablesAmount:
+            data.outstandingReceivablesAmount ?? 0,
+
+        outstandingReceivablesDeferment:
+            data.outstandingReceivablesDeferment ?? 0,
+
+        outstandingReceivablesArrears:
+            data.outstandingReceivablesArrears ?? 0,
+
+        // ---------------------------------------------------------
+        // MORA
+        // ---------------------------------------------------------
+        numberOfArrearsInstallments:
+            data.numberOfArrearsInstallments ?? 0,
+
+        numberOfArrearsDays:
+            data.numberOfArrearsDays ?? 0,
+
+        requiredArrears:
+            data.requiredArrears ?? "no",
+
+        requiredState:
+            data.requiredState ?? false,
+
+        maxNumberOfArrearsDays:
+            data.maxNumberOfArrearsDays ?? 0,
+
+        totalArrearsDays:
+            data.totalArrearsDays ?? 0,
+
+        // ---------------------------------------------------------
+        // CUOTAS Y FECHAS
+        // ---------------------------------------------------------
+        installmentCount:
+            data.installmentCount ?? 0,
+
+        installmentsPaid:
+            data.installmentsPaid ?? 0,
+
+        createdAt:
+            decodeDate(data.createdAt),
+
+        startDate:
+            decodeDate(data.startDate),
+
+        nextPaymentDue:
+            decodeDate(data.nextPaymentDue),
+
+        dateLastPayment:
+            data.dateLastPayment
+                ? decodeDate(data.dateLastPayment)
+                : undefined,
+
+        expectedEndDate:
+            decodeDate(data.expectedEndDate),
+
+        closedAt:
+            data.closedAt
+                ? decodeDate(data.closedAt)
+                : undefined,
+
+        // ---------------------------------------------------------
+        // RENOVACIONES
+        // ---------------------------------------------------------
+        renewalPayment:
+            data.renewalPayment ?? 0,
+
+        originalDebt:
+            data.originalDebt,
+
+        renewedToDebtId:
+            data.renewedToDebtId,
+
+        // ---------------------------------------------------------
+        // OBSERVACIONES
+        // ---------------------------------------------------------
+        collectorNotes:
+            data.collectorNotes,
+
+        auditorNotes:
+            data.auditorNotes,
+
+        accountantNotes:
+            data.accountantNotes,
+
+        advisorOfficeNotes:
+            data.advisorOfficeNotes,
+
+        advisorOfficeId:
+            data.advisorOfficeId,
+
+        advisorFieldNotes:
+            data.advisorFieldNotes,
+
+        advisorFieldId:
+            data.advisorFieldId,
     };
 
-    console.log("doc", result)
+    return result;
+}
 
-    return result
-};
-
-export function DebtToDocumentData(debt: Omit<Debt, "id">): DocumentData {
-    console.log("doc", debt);
+export function DebtToDocumentData(
+    debt: Omit<Debt, "id">,
+): DocumentData {
     const result = {
-        name: debt.name ? extraerNumeroDeString(debt.name).toString() : "",
+        // ---------------------------------------------------------
+        // IDENTIFICACIÓN Y RUTA
+        // ---------------------------------------------------------
+        name: debt.name,
+        lateInterestRate: debt.lateInterestRate,
         type: debt.type,
         status: debt.status,
         isLife: debt.isLife,
+
         routeId: debt.routeId,
+        routeName: debt.routeName,
         idVisit: debt.idVisit,
         prepayment: debt.prepayment,
 
-        // --- INFORMACIÓN DEL CLIENTE ---
+        // ---------------------------------------------------------
+        // CLIENTE
+        // ---------------------------------------------------------
         clientId: debt.clientId,
         clientName: debt.clientName,
         clientDocument: debt.clientDocument,
 
-        // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
+        // ---------------------------------------------------------
+        // CONDICIONES FINANCIERAS
+        // ---------------------------------------------------------
         debtTerms: debt.debtTerms,
         daysPerMonth: debt.daysPerMonth,
+
         interestRate: debt.interestRate,
-        arrearsInterestRate: debt.arrearsInterestRate,
+
         capital: debt.capital,
         interest: debt.interest,
         amount: debt.amount,
         arrears: debt.arrears,
         total: debt.total,
+
         processingFee: debt.processingFee,
 
-        // --- DESEMBOLSO Y ENTREGA ---
+        // ---------------------------------------------------------
+        // DESEMBOLSO
+        // ---------------------------------------------------------
         delivered: debt.delivered,
         deliveredStatus: debt.deliveredStatus,
 
-        // --- GARANTÍAS Y PRENDA ---
+        // ---------------------------------------------------------
+        // PRENDA
+        // ---------------------------------------------------------
         pledge: debt.pledge,
         pledgeDescription: debt.pledgeDescription,
         pledgeValue: debt.pledgeValue,
 
-        // --- SEGUIMIENTO DE PAGOS Y SALDOS ---
+        // ---------------------------------------------------------
+        // PAGOS
+        // ---------------------------------------------------------
         capitalPaid: debt.capitalPaid,
         interestPaid: debt.interestPaid,
         amountPaid: debt.amountPaid,
         arrearsPaid: debt.arrearsPaid,
         totalPaid: debt.totalPaid,
 
-        remainingCapitalToPay: debt.remainingCapitalToPay,
-        remainingInterestToPay: debt.remainingInterestToPay,
-        remainingAmountToPay: debt.remainingAmountToPay,
-        remainingArrearsToPay: debt.remainingArrearsToPay,
-        remainingTotalToPay: debt.remainingTotalToPay,
+        // ---------------------------------------------------------
+        // SALDOS
+        // ---------------------------------------------------------
+        remainingCapitalToPay:
+            debt.remainingCapitalToPay,
 
-        percentageOfCapitalPaid: debt.percentageOfCapitalPaid,
-        percentageOfInteresPaid: debt.percentageOfInteresPaid,
-        percentageOfAmountPaid: debt.percentageOfAmountPaid,
-        porcentageOfArrearsPaid: debt.porcentageOfArrearsPaid,
-        percentageOfTotalPaid: debt.percentageOfTotalPaid,
+        remainingInterestToPay:
+            debt.remainingInterestToPay,
 
-        // --- GESTIÓN DE MORA Y RETRASO ---
-        numberOfArrearsInstallments: debt.numberOfArrearsInstallments,
-        numberOfArrearsDays: debt.numberOfArrearsDays,
-        maxNumberOfArrearsDays: debt.maxNumberOfArrearsDays,
-        totalArrearsDays: debt.totalArrearsDays,
+        remainingAmountToPay:
+            debt.remainingAmountToPay,
 
-        // --- CUOTAS Y FECHAS (yyyy-mm-dd) ---
-        installmentCount: debt.installmentCount,
-        installmentsPaid: debt.installmentsPaid,
-        createdAt: encodeDate(debt.createdAt),
-        startDate: encodeDate(debt.startDate),
-        nextPaymentDue: encodeDate(debt.nextPaymentDue),
-        dateLastPayment: debt.dateLastPayment ? encodeDate(debt.dateLastPayment) : null,
-        expectedEndDate: encodeDate(debt.expectedEndDate),
-        closedAt: debt.closedAt ? encodeDate(debt.closedAt) : null,
+        remainingArrearsToPay:
+            debt.remainingArrearsToPay,
 
-        requiredArrears: debt.requiredArrears,
-        requiredState: debt.requiredState,
+        remainingTotalToPay:
+            debt.remainingTotalToPay,
 
-        // --- RENOVACIONES ---
-        renewalPayment: debt.renewalPayment,
-        originalDebt: debt.originalDebt,
-        renewedToDebtId: debt.renewedToDebtId,
+        // ---------------------------------------------------------
+        // PORCENTAJES
+        // ---------------------------------------------------------
+        percentageOfCapitalPaid:
+            debt.percentageOfCapitalPaid,
 
-        // --- OBSERVACIONES Y NOTAS ---
-        collectorNotes: debt.collectorNotes,
-        Auditornotes: debt.auditorNotes,
-        accountantNotes: debt.accountantNotes,
-        advisorNotes: debt.advisorNotes,
+        percentageOfInteresPaid:
+            debt.percentageOfInteresPaid,
+
+        percentageOfAmountPaid:
+            debt.percentageOfAmountPaid,
+
+        porcentageOfArrearsPaid:
+            debt.porcentageOfArrearsPaid,
+
+        percentageOfTotalPaid:
+            debt.percentageOfTotalPaid,
+
+        // ---------------------------------------------------------
+        // SALDOS PENDIENTES DE COBRO
+        // ---------------------------------------------------------
+        outstandingReceivables:
+            debt.outstandingReceivables,
+
+        outstandingReceivablesAmount:
+            debt.outstandingReceivablesAmount,
+
+        outstandingReceivablesDeferment:
+            debt.outstandingReceivablesDeferment,
+
+        outstandingReceivablesArrears:
+            debt.outstandingReceivablesArrears,
+
+        // ---------------------------------------------------------
+        // MORA
+        // ---------------------------------------------------------
+        numberOfArrearsInstallments:
+            debt.numberOfArrearsInstallments,
+
+        numberOfArrearsDays:
+            debt.numberOfArrearsDays,
+
+        requiredArrears:
+            debt.requiredArrears,
+
+        requiredState:
+            debt.requiredState,
+
+        maxNumberOfArrearsDays:
+            debt.maxNumberOfArrearsDays,
+
+        totalArrearsDays:
+            debt.totalArrearsDays,
+
+        // ---------------------------------------------------------
+        // CUOTAS Y FECHAS
+        // ---------------------------------------------------------
+        installmentCount:
+            debt.installmentCount,
+
+        installmentsPaid:
+            debt.installmentsPaid,
+
+        createdAt:
+            encodeDate(debt.createdAt),
+
+        startDate:
+            encodeDate(debt.startDate),
+
+        nextPaymentDue:
+            encodeDate(debt.nextPaymentDue),
+
+        dateLastPayment:
+            debt.dateLastPayment
+                ? encodeDate(debt.dateLastPayment)
+                : null,
+
+        expectedEndDate:
+            encodeDate(debt.expectedEndDate),
+
+        closedAt:
+            debt.closedAt
+                ? encodeDate(debt.closedAt)
+                : null,
+
+        // ---------------------------------------------------------
+        // RENOVACIONES
+        // ---------------------------------------------------------
+        renewalPayment:
+            debt.renewalPayment,
+
+        originalDebt:
+            debt.originalDebt,
+
+        renewedToDebtId:
+            debt.renewedToDebtId,
+
+        // ---------------------------------------------------------
+        // OBSERVACIONES
+        // ---------------------------------------------------------
+        collectorNotes:
+            debt.collectorNotes,
+
+        auditorNotes:
+            debt.auditorNotes,
+
+        accountantNotes:
+            debt.accountantNotes,
+
+        advisorOfficeNotes:
+            debt.advisorOfficeNotes,
+
+        advisorOfficeId:
+            debt.advisorOfficeId,
+
+        advisorFieldNotes:
+            debt.advisorFieldNotes,
+
+        advisorFieldId:
+            debt.advisorFieldId,
     };
-    return removeUndefined(result)
-};
+
+    return removeUndefined(result);
+}
 
 export function transformacionType(type: string): DebtType {
     if (type === "credito") return "fijo"

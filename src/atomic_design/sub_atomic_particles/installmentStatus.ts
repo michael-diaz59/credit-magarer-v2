@@ -6,8 +6,10 @@ export function isInstallmentLate(installment: Installment): boolean {
   // estados finales → nunca mora
   if (
     installment.status === "pagada" ||
-    installment.status === "liquidada" ||
-    installment.status === "cancelada"
+    installment.status === "negociada" ||
+    installment.status === "adelantada" ||
+    installment.status === "inactivo" ||
+    installment.status === "renovada"
   ) {
     return false;
   }

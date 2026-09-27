@@ -228,7 +228,7 @@ export const OfficeVisit = () => {
     const orchestrator = new DebtOrchestrator();
     console.log(data);
 
-    const result = await orchestrator.createDebt({
+    const result = await orchestrator.createDebt2({
       companyId,
       debt: data,
       months,

@@ -9,7 +9,8 @@ import {
     getDocs,
     writeBatch,
     getAggregateFromServer,
-    sum
+    sum,
+    runTransaction
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { firestore, storage } from "../../../../store/firebase/firebase";
@@ -27,9 +28,18 @@ import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../
 import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import type { DocumentData } from "firebase/firestore";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
+import type { Installment } from "../../domain/business/entities/Installment";
+import type { Debt } from "../../domain/business/entities/Debt";
+import type { BankAccount } from "../../../bankAccounts/domain/business/entities/BankAccount";
+import { paidPorcential } from "../../../../core/shared/helpers/calculate";
+import { DebtToDocumentData, documentToDebt } from "./DebtRepository";
+import { DocumentToInstallment, InstallmentToDocument } from "./FirebaseInstallmentRepository";
+import type { RegisterCashPaymentInput, RegisterCashPaymentOutput, RegisterCashPaymentError } from "../../domain/business/useCases/payment/RegisterCashPaymentUseCase";
+import type { RegisterConsignmentPaymentRepositoryInput, RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError } from "../../domain/business/useCases/payment/RegisterConsignmentPaymentUseCase";
 
-/**corregir any y removeUndefined con variable no usada */
+
 export class FirebasePaymentRepository implements PaymentGateway {
+
     generateId(companyId: string): string {
         const refCollection = collection(
             firestore,
@@ -352,6 +362,877 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
+
+    async registerCashPayment(
+        input: RegisterCashPaymentInput
+    ): Promise<Result<RegisterCashPaymentOutput, RegisterCashPaymentError>> {
+        const { payment, companyId, collectorId, currentCollectorAmount } = input;
+
+        try {
+            const installmentRef = doc(
+                firestore,
+                "companies",
+                companyId,
+                "installments",
+                payment.installmentId
+            );
+
+            const initialInstallmentSnap = await getDoc(installmentRef);
+            if (!initialInstallmentSnap.exists()) {
+                return fail({ code: "INSTALLMENT_NOT_FOUND" });
+            }
+
+            const initialInstallmentData = initialInstallmentSnap.data();
+            const debtId = initialInstallmentData.debtId;
+
+            const debtRef = doc(firestore, "companies", companyId, "debts", debtId);
+            const debtSnap = await getDoc(debtRef);
+            if (!debtSnap.exists()) {
+                return fail({ code: "DEBT_NOT_FOUND" });
+            }
+
+            const installmentsQuery = query(
+                collection(firestore, "companies", companyId, "installments"),
+                where("debtId", "==", debtId)
+            );
+            const allInstallmentsSnap = await getDocs(installmentsQuery);
+            const allInstallmentRefs = allInstallmentsSnap.docs.map((d) => d.ref);
+
+            const userRef = collectorId
+                ? doc(firestore, "companies", companyId, "users", collectorId)
+                : null;
+
+            const newPaymentRef = payment.id
+                ? doc(firestore, "companies", companyId, "payments", payment.id)
+                : doc(collection(firestore, "companies", companyId, "payments"));
+
+            const paymentIdToSave = newPaymentRef.id;
+            const paymentWithId: Payment = {
+                ...payment,
+                id: paymentIdToSave,
+            };
+
+            let distributionRes: DistributionResult | null = null;
+            let finalCollectorAmount = currentCollectorAmount + payment.amount;
+
+            await runTransaction(firestore, async (tx) => {
+                const debtDocTx = await tx.get(debtRef);
+                if (!debtDocTx.exists()) {
+                    throw new Error("DEBT_NOT_FOUND");
+                }
+                const debtEntity = documentToDebt(debtDocTx.data(), debtDocTx.id);
+
+                const instDocsTx = await Promise.all(
+                    allInstallmentRefs.map((ref) => tx.get(ref))
+                );
+
+                const allInstEntities: Installment[] = instDocsTx.map((snap) =>
+                    DocumentToInstallment(snap.id, snap.data() || {})
+                );
+
+                let fetchedCollectorAmount = currentCollectorAmount;
+                if (userRef) {
+                    const userSnap = await tx.get(userRef);
+                    if (userSnap.exists()) {
+                        fetchedCollectorAmount = userSnap.data().totalAmount ?? currentCollectorAmount;
+                    }
+                }
+                finalCollectorAmount = fetchedCollectorAmount + payment.amount;
+
+                distributionRes = distributePayment(
+                    payment.amount,
+                    false,
+                    payment.paidAt || new Date().toISOString(),
+                    payment.installmentId,
+                    allInstEntities,
+                    debtEntity
+                );
+
+                tx.set(newPaymentRef, paymentToFirestore(paymentWithId));
+
+                for (const updatedInst of distributionRes.updatedInstallments) {
+                    const instDocRef = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "installments",
+                        updatedInst.id
+                    );
+                    tx.update(instDocRef, InstallmentToDocument(updatedInst));
+                }
+
+                tx.update(debtRef, DebtToDocumentData(distributionRes.updatedDebt));
+
+                if (userRef) {
+                    tx.update(userRef, { totalAmount: finalCollectorAmount });
+                }
+            });
+
+            if (!distributionRes) {
+                return fail({ code: "UNKNOWN_ERROR" });
+            }
+
+            const res: DistributionResult = distributionRes;
+
+            return ok({
+                payment: paymentWithId,
+                installment: res.targetInstallment,
+                debt: res.updatedDebt,
+                newCollectorAmount: finalCollectorAmount,
+            });
+        } catch (error) {
+            console.error("[registerCashPayment]", error);
+            if (error instanceof Error) {
+                if (error.message === "DEBT_NOT_FOUND") {
+                    return fail({ code: "DEBT_NOT_FOUND" });
+                }
+                if (error.message === "INSTALLMENT_NOT_FOUND") {
+                    return fail({ code: "INSTALLMENT_NOT_FOUND" });
+                }
+            }
+            if (error instanceof FirebaseError) {
+                if (error.code === "unavailable") {
+                    return fail({ code: "NETWORK_ERROR" });
+                }
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+
+    async registerConsignmentPayment(
+        input: RegisterConsignmentPaymentRepositoryInput
+    ): Promise<Result<RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError>> {
+        const {
+            companyId,
+            amount,
+            location,
+            paymentId,
+            proofUrl,
+            bankAccount,
+            installmentId,
+            debtId,
+            clientId,
+        } = input;
+
+        try {
+            const installmentRef = doc(
+                firestore,
+                "companies",
+                companyId,
+                "installments",
+                installmentId
+            );
+            const initialInstallmentSnap = await getDoc(installmentRef);
+            if (!initialInstallmentSnap.exists()) {
+                return fail({ code: "INSTALLMENT_NOT_FOUND" });
+            }
+
+            const targetDebtId = debtId || initialInstallmentSnap.data().debtId;
+            const debtRef = doc(firestore, "companies", companyId, "debts", targetDebtId);
+            const debtSnap = await getDoc(debtRef);
+            if (!debtSnap.exists()) {
+                return fail({ code: "DEBT_NOT_FOUND" });
+            }
+
+            const bankAccountRef = doc(
+                firestore,
+                "companies",
+                companyId,
+                "bankAccounts",
+                bankAccount.id
+            );
+
+            const installmentsQuery = query(
+                collection(firestore, "companies", companyId, "installments"),
+                where("debtId", "==", targetDebtId)
+            );
+            const allInstallmentsSnap = await getDocs(installmentsQuery);
+            const allInstallmentRefs = allInstallmentsSnap.docs.map((d) => d.ref);
+
+            const paymentRef = doc(firestore, "companies", companyId, "payments", paymentId);
+
+            let distributionRes: DistributionResult | null = null;
+            let updatedBankAccount: BankAccount = bankAccount;
+            let finalPayment: Payment | null = null;
+
+            await runTransaction(firestore, async (tx) => {
+                const debtDocTx = await tx.get(debtRef);
+                if (!debtDocTx.exists()) {
+                    throw new Error("DEBT_NOT_FOUND");
+                }
+                const debtEntity = documentToDebt(debtDocTx.data(), debtDocTx.id);
+
+                const bankAccountDocTx = await tx.get(bankAccountRef);
+                if (!bankAccountDocTx.exists()) {
+                    throw new Error("BANK_ACCOUNT_NOT_FOUND");
+                }
+                const currentMonto = bankAccountDocTx.data().monto ?? bankAccount.monto;
+                const newMonto = currentMonto + amount;
+                updatedBankAccount = {
+                    ...bankAccount,
+                    monto: newMonto,
+                };
+
+                const instDocsTx = await Promise.all(
+                    allInstallmentRefs.map((ref) => tx.get(ref))
+                );
+                const allInstEntities: Installment[] = instDocsTx.map((snap) =>
+                    DocumentToInstallment(snap.id, snap.data() || {})
+                );
+
+                const targetInst = allInstEntities.find((i) => i.id === installmentId);
+
+                const paidAtStr = new Date().toISOString();
+
+                finalPayment = {
+                    id: paymentId,
+                    clientId: clientId || targetInst?.clientId || "",
+                    capitalPaid: targetInst?.capitalPaid ?? 0,
+                    interestPaid: targetInst?.interestPaid ?? 0,
+                    arrearsPaid: targetInst?.arrearsPaid ?? 0,
+                    defermentPaid: targetInst?.defermentPaid ?? 0,
+                    debtId: targetDebtId,
+                    idRoute: debtEntity.routeId || "",
+                    isTight: false,
+                    idProofOfPayment: proofUrl,
+                    collectorObservation: "",
+                    accountantObservation: "",
+                    installmentId,
+                    clientName: targetInst?.clientName ?? "",
+                    collectorName: "Consignación",
+                    collectorId: "",
+                    amount,
+                    method: "consignacion",
+                    status: "registrado",
+                    paidAt: paidAtStr,
+                    location,
+                    bankAccountId: bankAccount.id,
+                };
+
+                distributionRes = distributePayment(
+                    amount,
+                    false,
+                    paidAtStr,
+                    installmentId,
+                    allInstEntities,
+                    debtEntity
+                );
+
+                tx.set(paymentRef, paymentToFirestore(finalPayment));
+
+                for (const updatedInst of distributionRes.updatedInstallments) {
+                    const instDocRef = doc(
+                        firestore,
+                        "companies",
+                        companyId,
+                        "installments",
+                        updatedInst.id
+                    );
+                    tx.update(instDocRef, InstallmentToDocument(updatedInst));
+                }
+
+                tx.update(debtRef, DebtToDocumentData(distributionRes.updatedDebt));
+                tx.update(bankAccountRef, { monto: newMonto });
+            });
+
+            if (!distributionRes || !finalPayment) {
+                return fail({ code: "UNKNOWN_ERROR" });
+            }
+
+            const res: DistributionResult = distributionRes;
+
+            return ok({
+                payment: finalPayment,
+                installment: res.targetInstallment,
+                debt: res.updatedDebt,
+                bankAccount: updatedBankAccount,
+            });
+        } catch (error) {
+            console.error("[registerConsignmentPayment]", error);
+            if (error instanceof Error) {
+                if (error.message === "DEBT_NOT_FOUND") {
+                    return fail({ code: "DEBT_NOT_FOUND" });
+                }
+                if (error.message === "INSTALLMENT_NOT_FOUND") {
+                    return fail({ code: "INSTALLMENT_NOT_FOUND" });
+                }
+                if (error.message === "BANK_ACCOUNT_NOT_FOUND") {
+                    return fail({ code: "BANK_ACCOUNT_NOT_FOUND" });
+                }
+            }
+            if (error instanceof FirebaseError) {
+                if (error.code === "unavailable") {
+                    return fail({ code: "NETWORK_ERROR" });
+                }
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
+}
+
+interface DistributionResult {
+    updatedInstallments: Installment[];
+    updatedDebt: Debt;
+    targetInstallment: Installment;
+}
+
+function distributePayment(
+    paymentAmount: number,
+    payLatePayment: boolean,
+    paidAt: string,
+    targetInstallmentId: string,
+    allInstallments: Installment[],
+    debt: Debt
+): DistributionResult {
+    if (paymentAmount <= 0) {
+        throw new Error("PAYMENT_AMOUNT_INVALID");
+    }
+
+    const sortedInstallments = [...allInstallments].sort(
+        (a, b) => a.installmentNumber - b.installmentNumber
+    );
+
+    const currentIndex = sortedInstallments.findIndex(
+        (installment) => installment.id === targetInstallmentId
+    );
+
+    if (currentIndex === -1) {
+        throw new Error("INSTALLMENT_NOT_FOUND");
+    }
+
+    const targetInstallment = sortedInstallments[currentIndex];
+
+    /**
+     * Según la entidad Installment:
+     *
+     * isLife === true  -> cuota todavía pendiente/viva
+     * isLife === false -> cuota liquidada/inactiva/etc.
+     */
+    const installmentsToPay = sortedInstallments
+        .slice(currentIndex)
+        .filter((installment) => installment.isLife);
+
+    let remainingPayment = paymentAmount;
+
+    let totalPaidToCapital = 0;
+    let totalPaidToInterest = 0;
+    let totalPaidToAmount = 0;
+    let totalPaidToDeferment = 0;
+    let totalPaidToArrears = 0;
+
+    const updatedInstallmentsMap = new Map<string, Installment>();
+
+    const paymentDate = paidAt.split("T")[0];
+
+    for (const installment of installmentsToPay) {
+        if (remainingPayment <= 0) {
+            break;
+        }
+
+        /*
+         * ============================================================
+         * VALORES PENDIENTES
+         * ============================================================
+         */
+
+        const pendingCapital = Math.max(
+            0,
+            (installment.capital ?? 0) -
+            (installment.capitalPaid ?? 0)
+        );
+
+        const pendingInterest = Math.max(
+            0,
+            (installment.interest ?? 0) -
+            (installment.interestPaid ?? 0)
+        );
+
+        const pendingDeferment = Math.max(
+            0,
+            (installment.deferment ?? 0) -
+            (installment.defermentPaid ?? 0)
+        );
+
+        const pendingArrears = Math.max(
+            0,
+            (installment.arrears ?? 0) -
+            (installment.arrearsPaid ?? 0)
+        );
+
+        let installmentPayment = remainingPayment;
+
+        let paidToCapital = 0;
+        let paidToInterest = 0;
+        let paidToDeferment = 0;
+        let paidToArrears = 0;
+
+        /*
+         * ============================================================
+         * 1. CAPITAL / INTERÉS
+         *
+         * FIJO:
+         *   capital -> interest
+         *
+         * VARIABLE:
+         *   interest -> capital
+         * ============================================================
+         */
+
+        if (installment.type === "fijo") {
+            // Primero capital
+            paidToCapital = Math.min(
+                installmentPayment,
+                pendingCapital
+            );
+
+            installmentPayment -= paidToCapital;
+
+            // Después interés
+            if (installmentPayment > 0) {
+                paidToInterest = Math.min(
+                    installmentPayment,
+                    pendingInterest
+                );
+
+                installmentPayment -= paidToInterest;
+            }
+        } else {
+            // Primero interés
+            paidToInterest = Math.min(
+                installmentPayment,
+                pendingInterest
+            );
+
+            installmentPayment -= paidToInterest;
+
+            // Después capital
+            if (installmentPayment > 0) {
+                paidToCapital = Math.min(
+                    installmentPayment,
+                    pendingCapital
+                );
+
+                installmentPayment -= paidToCapital;
+            }
+        }
+
+        /*
+         * ============================================================
+         * 2. DEFERMENT
+         *
+         * Siempre después de capital/interés.
+         * ============================================================
+         */
+
+        if (installmentPayment > 0) {
+            paidToDeferment = Math.min(
+                installmentPayment,
+                pendingDeferment
+            );
+
+            installmentPayment -= paidToDeferment;
+        }
+
+        /*
+         * ============================================================
+         * 3. MORA
+         *
+         * Siempre después de capital/interés/deferment.
+         *
+         * payLatePayment permite decidir si este pago puede
+         * cubrir mora.
+         * ============================================================
+         */
+
+        if (installmentPayment > 0 && payLatePayment) {
+            paidToArrears = Math.min(
+                installmentPayment,
+                pendingArrears
+            );
+
+            installmentPayment -= paidToArrears;
+        }
+
+        /*
+         * ============================================================
+         * ACUMULAR DISTRIBUCIÓN GLOBAL
+         * ============================================================
+         */
+
+        const paidToBase = paidToCapital + paidToInterest;
+
+        totalPaidToCapital += paidToCapital;
+        totalPaidToInterest += paidToInterest;
+        totalPaidToAmount += paidToBase;
+        totalPaidToDeferment += paidToDeferment;
+        totalPaidToArrears += paidToArrears;
+
+        /*
+         * ============================================================
+         * NUEVOS VALORES PAGADOS
+         * ============================================================
+         */
+
+        const newCapitalPaid =
+            (installment.capitalPaid ?? 0) +
+            paidToCapital;
+
+        const newInterestPaid =
+            (installment.interestPaid ?? 0) +
+            paidToInterest;
+
+        const newAmountPaid =
+            newCapitalPaid +
+            newInterestPaid;
+
+        const newDefermentPaid =
+            (installment.defermentPaid ?? 0) +
+            paidToDeferment;
+
+        const newArrearsPaid =
+            (installment.arrearsPaid ?? 0) +
+            paidToArrears;
+
+        /*
+         * ============================================================
+         * TOTAL
+         * ============================================================
+         *
+         * amount = capital + interest
+         *
+         * total = amount + deferment + arrears
+         */
+
+        const installmentAmount =
+            (installment.capital ?? 0) +
+            (installment.interest ?? 0);
+
+        const installmentTotal =
+            installmentAmount +
+            (installment.deferment ?? 0) +
+            (installment.arrears ?? 0);
+
+        const newTotalPaid =
+            newAmountPaid +
+            newDefermentPaid +
+            newArrearsPaid;
+
+        /*
+         * ============================================================
+         * VALORES RESTANTES
+         * ============================================================
+         */
+
+        const remainingCapitalToPay = Math.max(
+            0,
+            (installment.capital ?? 0) -
+            newCapitalPaid
+        );
+
+        const remainingInterestToPay = Math.max(
+            0,
+            (installment.interest ?? 0) -
+            newInterestPaid
+        );
+
+        const remainingAmountToPay = Math.max(
+            0,
+            installmentAmount -
+            newAmountPaid
+        );
+
+        const remainingDefermentToPay = Math.max(
+            0,
+            (installment.deferment ?? 0) -
+            newDefermentPaid
+        );
+
+        const remainingArrearsToPay = Math.max(
+            0,
+            (installment.arrears ?? 0) -
+            newArrearsPaid
+        );
+
+        const remainingTotalToPay = Math.max(
+            0,
+            installmentTotal -
+            newTotalPaid
+        );
+
+        /*
+         * ============================================================
+         * PORCENTAJES
+         * ============================================================
+         */
+
+        const percentageOfCapitalPaid = paidPorcential(
+            newCapitalPaid,
+            installment.capital
+        );
+
+        const percentageOfInterestPaid = paidPorcential(
+            newInterestPaid,
+            installment.interest
+        );
+
+        const percentageOfAmountPaid = paidPorcential(
+            newAmountPaid,
+            installmentAmount
+        );
+
+        const percentageOfDefermentPaid = paidPorcential(
+            newDefermentPaid,
+            installment.deferment
+        );
+
+        const porcentageOfArrearsPaid = paidPorcential(
+            newArrearsPaid,
+            installment.arrears
+        );
+
+        const percentageOfTotalPaid = paidPorcential(
+            newTotalPaid,
+            installmentTotal
+        );
+
+        /*
+         * ============================================================
+         * FECHAS DE PAGO
+         * ============================================================
+         */
+
+        const capitalPaidAt =
+            newCapitalPaid >= (installment.capital ?? 0)
+                ? installment.capitalPaidAt ?? paymentDate
+                : installment.capitalPaidAt;
+
+        const interestPaidAt =
+            newInterestPaid >= (installment.interest ?? 0)
+                ? installment.interestPaidAt ?? paymentDate
+                : installment.interestPaidAt;
+
+        const amountPaidAt =
+            newAmountPaid >= installmentAmount
+                ? installment.amountPaidAt ?? paymentDate
+                : installment.amountPaidAt;
+
+        const defermentPaidAt =
+            newDefermentPaid >= (installment.deferment ?? 0)
+                ? installment.deferredPaidAt ?? paymentDate
+                : installment.deferredPaidAt;
+
+        const arrearsPaidAt =
+            newArrearsPaid >= (installment.arrears ?? 0)
+                ? installment.arrearsPaidAt ?? paymentDate
+                : installment.arrearsPaidAt;
+
+        /*
+         * ============================================================
+         * ESTADO
+         * ============================================================
+         *
+         * requiredState / requiredArrears determinan si la mora
+         * es requisito para considerar la cuota completamente pagada.
+         *
+         * Si requiredArrears === "si", la mora pendiente impide
+         * marcarla como pagada.
+         */
+
+        const baseAndDefermentPaid =
+            remainingAmountToPay <= 0 &&
+            remainingDefermentToPay <= 0;
+
+        const arrearsRequired = installment.requiredState === true
+
+
+        const arrearsCompleted =
+            remainingArrearsToPay <= 0;
+
+        const installmentCompleted =
+            baseAndDefermentPaid &&
+            (!arrearsRequired || arrearsCompleted);
+
+        let status = installment.status;
+        let newPaidAt = installment.paidAt;
+
+        if (installmentCompleted) {
+            status = "pagada";
+            newPaidAt = paymentDate;
+        } else if (newTotalPaid > 0) {
+            status = "pendiente";
+        }
+
+        /*
+         * ============================================================
+         * OUTSTANDING RECEIVABLES
+         * ============================================================
+         */
+
+        const outstandingReceivablesDeferment =
+            remainingDefermentToPay;
+
+        const outstandingReceivablesArrears =
+            remainingArrearsToPay;
+
+        const outstandingReceivables =
+            remainingTotalToPay;
+
+        /*
+         * ============================================================
+         * ACTUALIZAR CUOTA
+         * ============================================================
+         */
+
+        const updatedInstallment: Installment = {
+            ...installment,
+
+            // Valores base
+            amount: installmentAmount,
+            total: installmentTotal,
+
+            // Pagos
+            capitalPaid: newCapitalPaid,
+            interestPaid: newInterestPaid,
+            amountPaid: newAmountPaid,
+            defermentPaid: newDefermentPaid,
+            arrearsPaid: newArrearsPaid,
+            totalPaid: newTotalPaid,
+
+            // Porcentajes
+            percentageOfCapitalPaid,
+            percentageOfInterestPaid,
+            percentageOfAmountPaid,
+            percentageOfDefermentPaid,
+            porcentageOfArrearsPaid,
+            percentageOfTotalPaid,
+
+            // Restantes
+            remainingCapitalToPay,
+            remainingInterestToPay,
+            remainingAmountToPay,
+            remainingDefermentToPay,
+            remainingArrearsToPay,
+            remainingTotalToPay,
+
+            // Fechas
+            capitalPaidAt,
+            interestPaidAt,
+            amountPaidAt,
+            deferredPaidAt: defermentPaidAt,
+            arrearsPaidAt,
+
+            // Estado
+            status,
+            paidAt: newPaidAt,
+
+            // Cartera pendiente
+            outstandingReceivables,
+            outstandingReceivablesAmount:
+                remainingAmountToPay,
+            outstandingReceivablesDeferment,
+            outstandingReceivablesArrears,
+        };
+
+        updatedInstallmentsMap.set(
+            updatedInstallment.id,
+            updatedInstallment
+        );
+
+        /*
+         * Lo que no se utilizó de este pago continúa hacia
+         * la siguiente cuota.
+         */
+        remainingPayment = installmentPayment;
+    }
+
+    /*
+     * ================================================================
+     * TODAS LAS CUOTAS ACTUALIZADAS
+     * ================================================================
+     */
+
+    const allUpdatedInstallments = sortedInstallments.map(
+        (installment) =>
+            updatedInstallmentsMap.get(installment.id) ??
+            installment
+    );
+
+    /*
+     * ================================================================
+     * CUOTAS PAGADAS
+     * ================================================================
+     */
+
+    const installmentsPaidCount =
+        allUpdatedInstallments.filter(
+            (installment) =>
+                installment.status === "pagada"
+        ).length;
+
+    /*
+     * ================================================================
+     * ACTUALIZAR DEBT
+     * ================================================================
+     *
+     * Mantenemos aquí únicamente los campos de Debt que ya utiliza
+     * tu implementación original.
+     */
+
+    const newDebtAmountPaid =
+        (debt.amountPaid ?? 0) +
+        totalPaidToAmount;
+
+    const newDebtArrearsPaid =
+        (debt.arrearsPaid ?? 0) +
+        totalPaidToArrears;
+
+    const totalPaidForDebtCalc =
+        newDebtAmountPaid +
+        newDebtArrearsPaid +
+        (debt.renewalPayment ?? 0);
+
+    const updatedDebt: Debt = {
+        ...debt,
+
+        amountPaid: newDebtAmountPaid,
+        arrearsPaid: newDebtArrearsPaid,
+
+        percentageOfCapitalPaid: paidPorcential(
+            totalPaidForDebtCalc,
+            debt.capital
+        ),
+
+        percentageOfInteresPaid: paidPorcential(
+            totalPaidForDebtCalc,
+            debt.interest
+        ),
+
+        percentageOfAmountPaid: paidPorcential(
+            totalPaidForDebtCalc,
+            debt.amount
+        ),
+
+        dateLastPayment: paidAt,
+        installmentsPaid: installmentsPaidCount,
+    };
+
+    /*
+     * ================================================================
+     * CUOTA OBJETIVO
+     * ================================================================
+     */
+
+    const updatedTargetInstallment =
+        updatedInstallmentsMap.get(targetInstallmentId) ??
+        targetInstallment;
+
+    return {
+        updatedInstallments: Array.from(
+            updatedInstallmentsMap.values()
+        ),
+        updatedDebt,
+        targetInstallment: updatedTargetInstallment,
+    };
 }
 
 export function paymentToFirestore(payment: Omit<Payment, "id">): DocumentData {
@@ -361,6 +1242,7 @@ export function paymentToFirestore(payment: Omit<Payment, "id">): DocumentData {
         capitalPaid: payment.capitalPaid,
         interestPaid: payment.interestPaid,
         arrearsPaid: payment.arrearsPaid,
+        defermentPaid: payment.defermentPaid,
         debtId: payment.debtId,
         idRoute: payment.idRoute,
         isTight: payment.isTight,
@@ -389,6 +1271,7 @@ export function documentToPayment(id: string, data: DocumentData): Payment {
         capitalPaid: data.capitalPaid ?? 0,
         interestPaid: data.interestPaid ?? 0,
         arrearsPaid: data.arrearsPaid ?? 0,
+        defermentPaid: data.defermentPaid ?? 0,
         debtId: data.debtId ?? "",
         idRoute: data.idRoute ?? "",
         isTight: data.isTight ?? false,

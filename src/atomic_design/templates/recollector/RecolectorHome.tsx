@@ -24,7 +24,7 @@ import {
 } from "../../organisms/ToCollectHomeBody";
 
 import { RouteManagementDialog } from "../../organisms/RouteManagementDialog";
-import { IsFutureOrToday, IsPastDate } from "../../../core/helpers/dates/calculateDays";
+import { getLocalDate, IsFutureOrToday, IsPastDate } from "../../../core/helpers/dates/calculateDays";
 
 
 export const RecolectorHome = () => {
@@ -106,7 +106,7 @@ export const RecolectorHome = () => {
         const result = await orchestrator.getManagementInstallmentsByRoutes({
           companyId,
           routeIds: idRoutes,
-          today: new Date().toISOString().split("T")[0],
+          today: getLocalDate(new Date()),
         });
 
         if (result.ok) {
@@ -154,12 +154,12 @@ export const RecolectorHome = () => {
     return {
       pending: filteredItems.filter(
         (i) =>
-          (i.status === "pendiente" || i.status === "incompleto") &&
+          (i.status === "pendiente") &&
           IsFutureOrToday(i.dueDate)
       ),
       overdue: filteredItems.filter(
         (i) =>
-          (i.status === "pendiente" || i.status === "incompleto") &&
+          (i.status === "pendiente") &&
           IsPastDate(i.dueDate)
       ),
       paid: items.filter((i) => i.status === "pagada"), // Paid items should stay

@@ -86,8 +86,8 @@ export const AccountantDailyOperations = () => {
 
   const globalTotal = useMemo(() => {
     return routes.reduce((acc, route) => {
-      const cashTotal = (route.totalCash2 || []).reduce((sum, c) => sum + c.amount, 0);
-      const depositTotal = (route.totalDeposit || []).reduce((sum, d) => sum + d.amount, 0);
+      const cashTotal = route.cashBalances;
+      const depositTotal = route.depositBalances;
       return acc + cashTotal + depositTotal;
     }, 0);
   }, [routes]);
@@ -224,6 +224,8 @@ export const AccountantDailyOperations = () => {
               <RoutePaymentsAccordion
                 key={route.id}
                 route={route}
+                cashBalances={route.cashBalances}
+                depositBalances={route.depositBalances}
                 payments={payments}
                 selectedIds={selectedIds}
                 onTogglePayment={toggleSelection}

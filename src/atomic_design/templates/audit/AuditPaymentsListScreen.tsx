@@ -22,11 +22,11 @@ import {
   Alert,
 } from "@mui/material";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
-import type { Installment } from "../../../features/debits/domain/business/entities/Installment";
+import { deferInstallment, type Installment } from "../../../features/debits/domain/business/entities/Installment";
 import { BaseDialog } from "../../atoms/BaseDialog";
 import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
-import { calculateDebtFinancialsSimple } from "../../../features/debits/domain/business/useCases/helper";
+import { calculateInstallmentLateInterest } from "../../../features/debits/domain/business/useCases/helper";
 
 
 function parseLocalDate(dateString: string) {
@@ -42,7 +42,8 @@ const statusColorMap: Record<
   "default" | "success" | "warning" | "error"
 > = {
   registrado: "warning",
-  conflicto: "error",
+  conflictoCobrador: "error",
+  conflictoCliente: "error",
   confirmado: "success",
   cancelada: "default",
 };
@@ -114,7 +115,7 @@ export const PaymentsListScreen = () => {
   }, [companyId, idInstallment, user?.id]);
 
 
-  const handleDefer = async () => {
+  const handlesAplazarDeuda = async () => {
     if (!installment || !companyId) return;
 
     if (new Date(newDueDate) <= new Date(installment.dueDate)) {
@@ -151,25 +152,24 @@ export const PaymentsListScreen = () => {
       }
 
       // Cálculo de nuevo monto: Interés proporcional basado en 24 días (al ser aplazada)
-      console.log("dias de atraso:", diffDays)
+      console.log("diffDays:", diffDays)
 
-      const newDebt = calculateDebtFinancialsSimple({
-        debtTerms: debt.debtTerms,
-        diasMes: debt.daysPerMonth,
-        installmentCount: debt.installmentCount,
-        interestRate: newInterestRate,
-        totalAmount: debt.amount,
-        delayDays: diffDays
+      const defermentAmount = calculateInstallmentLateInterest({
+        capital: debt.capital,
+        interestRate: Number(newInterestRate),
+        diasDelMes: debt.daysPerMonth,
+        delayDays: diffDays,
+      });
+
+      console.log("newInterestRate", newInterestRate);
+
+      const updatedInstallment = deferInstallment({
+        installment,
+        newDueDate,
+        newInterestRate,
+        defermentAmount,
+        defermentDays: diffDays,
       })
-
-
-      const updatedInstallment: Installment = {
-        ...installment,
-        defermentDueDate: newDueDate,
-        arrearsInterestRate: newInterestRate,
-        arrears: newDebt.pagoCuota,
-        deferred: true,
-      };
 
       const orchestrator = new InstallmentsOrchestrator();
       const result = await orchestrator.updateById({
@@ -237,7 +237,7 @@ export const PaymentsListScreen = () => {
           <Button onClick={() => setDeferDialogOpen(false)} disabled={updating}>
             Cancelar
           </Button>
-          <Button onClick={handleDefer} variant="contained" disabled={updating}>
+          <Button onClick={handlesAplazarDeuda} variant="contained" disabled={updating}>
             {updating ? <CircularProgress size={24} /> : "Actualizar cuota"}
           </Button>
         </DialogActions>

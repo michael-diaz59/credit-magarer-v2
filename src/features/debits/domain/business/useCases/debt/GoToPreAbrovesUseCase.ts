@@ -1,12 +1,14 @@
+import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
 import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
-import { type Debt } from "../../entities/Debt";
-import type { UpdateSimpleDebtOutput } from "./UpdateSimpleDebtCase";
 
 export interface GoToPreAbrovesInput {
-  debt: Debt;
+  debtId: string;
   companyId: string;
-  isNewRoute: boolean;
 }
+
+export type UpdateDebtStatusOutput2 = {
+  state: Result<null, { code: string }>;
+};
 
 export class GoToPreAbrovesUseCase {
   private debtGateway: DebtGateway;
@@ -17,12 +19,22 @@ export class GoToPreAbrovesUseCase {
 
   async execute(
     input: GoToPreAbrovesInput
-  ): Promise<UpdateSimpleDebtOutput> {
-    console.log("startDate:" + input.debt.startDate);
-    input.debt.status = "preAprobada";
+  ): Promise<UpdateDebtStatusOutput2> {
 
-    const result = await this.debtGateway.update(input);
+    const result = await this.debtGateway.updateStatus({
+      companyId: input.companyId,
+      idDebt: input.debtId,
+      debtStatus: "preAprobada",
+    });
 
-    return result;
+    if (!result.ok) {
+      return {
+        state: fail(result.error),
+      }
+    }
+
+    return {
+      state: ok(null),
+    }
   }
 }

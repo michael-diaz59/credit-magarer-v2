@@ -1,4 +1,4 @@
-import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
+import type { Address, LocationGPS } from "../../../../costumers/domain/business/entities/Address";
 import type { requiredArrearsState } from "./core";
 import type { DebtType } from "./Debt";
 
@@ -7,34 +7,18 @@ import type { DebtType } from "./Debt";
  * el estado de una cuota: \
  * pendiente: la cuota no se ha pagado  \
  * pagada: la cuota se marco como pagada  \
- * incompleto: la cuota esta incompleta \
- * cancelada: la deuda se cancelo \
- * liquidada: la cuota se liquido por acuerdo con el cliente \
+ * negociada: la cuota se negocia por acuerdo con el cliente y se deja de cobrar \
+ * adelantada: la cuota se completo antes de la fecha de corte anterior, asi que no se cobran intereses(si es fija) \
  * renovada: la cuota se renovo por acuerdo con el cliente \
+ * inactivo: la cuota se inactivo
 */
 export type InstallmentStatus =
   | 'pendiente'
   | 'pagada'
-  | 'incompleto'
-  | 'liquidada'
+  | 'negociada'
+  | 'adelantada'
   | 'renovada'
-  | 'cancelada';
-
-/**
- * representa la direccion de la casa del cliente, se mantiene sincronizado con costumer.address
- */
-export interface InstallmentAddress {
-  /**direccion */
-  address: string;
-  /**barrio */
-  neighborhood: string;
-  /**estrato */
-  stratum: number;
-  /**ciudad */
-  city: string;
-  /**ubicacion de la direccion */
-  locationGPS?: LocationGPS
-}
+  | 'inactivo';
 
 
 /**
@@ -64,6 +48,9 @@ export interface Installment {
   /**id de la ruta asignada */
   routeId: string;
 
+  /**nombre de la ruta a la que esta enlazada la deuda */
+  routeName: string;
+
   /**total de cuotas de la deuda */
   installmentTotalNumber: number; // 6
 
@@ -84,7 +71,7 @@ export interface Installment {
   clientNumber: string;
 
   /**direccion del cliente */
-  clientAddres: InstallmentAddress;
+  clientAddres: Address;
 
   // --- CONDICIONES FINANCIERAS Y TÉRMINOS ---
   /**tasa de interes*/
@@ -135,6 +122,9 @@ export interface Installment {
   /**dinero pagado por mora */
   arrearsPaid: number;
 
+  /**dinero pagado por aplazamiento */
+  defermentPaid: number;
+
   /**total pagado de la cuota (capital + interes + mora)*/
   totalPaid: number;
 
@@ -151,6 +141,9 @@ export interface Installment {
   /**porcentaje pagado de la mora */
   porcentageOfArrearsPaid: number;
 
+  /**porcentaje pagado de aplazamiento */
+  percentageOfDefermentPaid: number;
+
   /**porcentaje pagado de la cuota (capital + interes + mora)*/
   percentageOfTotalPaid: number;
 
@@ -166,6 +159,9 @@ export interface Installment {
 
   /**mora restante por pagar */
   remainingArrearsToPay: number;
+
+  /**aplazamiento restante por pagar */
+  remainingDefermentToPay: number;
 
   /**total restante de la cuota por pagar(capital + interes + mora)*/
   remainingTotalToPay: number;
@@ -199,7 +195,7 @@ export interface Installment {
    * renovada: la cuota se renovo por acuerdo con el cliente */
   status: InstallmentStatus;
 
-  /**indica si la cuota sigue viva
+  /**indica si la cuota sigue viva, paa saber si el cobrador debe gestionarla
    * false: cuando la cuota esta pagada, liquidada, cancelada, renovada
    * true: cuando la cuota esta incompleto o pendiente,
    */
@@ -208,14 +204,49 @@ export interface Installment {
   /**fecha de corte de la cuota**/
   dueDate: string;
 
+  /**fecha de cobro efectiva de la cuota */
+  paymentDate: string
+
   /**fecha de creacion de cuota */
   createdAt: string;
 
-  /**fecha en la que se completo el pago de la cuota */
+  /**fecha en la que se completo el pago total de la cuota */
   paidAt?: string;
 
   /**registro de pagos, es la lista de id de payments */
   payments?: string[];
+
+  //fechas de pagos
+
+  /**fecha en la que se completo el pago de capital*/
+  capitalPaidAt?: string;
+
+  /**fecha en la que se completo el pago de interes*/
+  interestPaidAt?: string;
+
+  /**fecha en la que se completo el pago del monto (capital + interes)*/
+  amountPaidAt?: string;
+
+  /**fecha en la que se completo el pago de mora*/
+  arrearsPaidAt?: string;
+
+  /**fecha en la que se completo el pago de aplazamiento */
+  deferredPaidAt?: string;
+
+  /**fecha en la que se completo el pago total de la cuota */
+  totalPaidAt?: string;
+
+  /**dias en los que se pago el capital */
+  daysOfCapital: number
+
+  /**dias de mora reales del cliente */
+  daysOfArrears?: number;
+
+  /**dias de aplazamiento reales del cliente(difiere del dia de aplazamiento ya que se quiere saber cuantos dias realmente se pago desde la fecha de corte orifinal, se calcula aqui para filtrados posteriores por dias de mora) */
+  daysOfDeferment?: number;
+
+  /**daysOfArrears+daysOfDeferment */
+  totalDaysOfArrears?: number;
 
   //montos registrador por el cobrador y que no han sido validados por el contador
 
@@ -231,8 +262,23 @@ export interface Installment {
   /**interes pendiente por confirma de parte del contador */
   pendingArrears: number
 
+  /**aplazamiento pendiente por confirmar de parte del contador */
+  pendingDeferment: number
+
   /**total pendiente por confirmar de parte del contador */
   pendingTotal: number
+
+  /**saldo pendiente por cobrar, este saldo indica en total en base a las configuraciones del credito y en base a los montos pagados y pendientes por validar cuanto quedaria por cobrar en la cuota */
+  outstandingReceivables: number
+
+  /**monto(capital+interes) pendiente por cobrar */
+  outstandingReceivablesAmount: number
+
+  /**interes por aplazamiento pendiente por cobrar */
+  outstandingReceivablesDeferment: number
+
+  /**mora pendiente por cobrar */
+  outstandingReceivablesArrears: number
 
   // --- GESTIÓN DE COBRO EN CAMPO ---
   /** indica si la cuota fue aplazada */
@@ -260,6 +306,8 @@ export interface Installment {
   locationAttemptedPayment?: LocationGPS;
 
   // --- OBSERVACIONES Y NOTAS ---
+  //las observaciones hechas por un mismo usuario no crear observaciones nuevas
+  //limitar las observaciones a 5 por entidad
 
   /**observaciones del cobrador*/
   collectorNotes?: string;
@@ -276,7 +324,7 @@ export interface Installment {
 /**
  * ubicacion del cliente
  */
-export const defaultInstallmentAddress: InstallmentAddress = {
+export const defaultInstallmentAddress: Address = {
   address: "",
   neighborhood: "",
   stratum: 0,
@@ -295,12 +343,22 @@ export const defaultInstallmentAddress: InstallmentAddress = {
  */
 export function defaultInstallment(): Installment {
   return {
+    defermentPaid: 0,
+    pendingDeferment: 0,
+    remainingDefermentToPay: 0,
+    percentageOfDefermentPaid: 0,
+    daysOfCapital: 0,
     requiredArrears: "no",
     requiredState: false,
+    outstandingReceivablesAmount: 0,
+    outstandingReceivablesDeferment: 0,
+    routeName: "",
+    outstandingReceivablesArrears: 0,
     pendeningInterest: 0,
     pendinCapital: 0,
     pendingAmount: 0,
     pendingArrears: 0,
+    outstandingReceivables: 0,
     pendingTotal: 0,
     id: "",
     debtId: "",
@@ -313,11 +371,11 @@ export function defaultInstallment(): Installment {
     attemptedCollection: false,
     managed: false,
     numberOfArrearsDays: 0,
-    percentageOfInterestPaid: 100,
-    percentageOfAmountPaid: 100,
-    percentageOfTotalPaid: 100,
-    percentageOfCapitalPaid: 100,
-    porcentageOfArrearsPaid: 100,
+    percentageOfInterestPaid: 0, // Corregido de 100 a 0
+    percentageOfAmountPaid: 0,   // Corregido de 100 a 0
+    percentageOfTotalPaid: 0,    // Corregido de 100 a 0
+    percentageOfCapitalPaid: 0,  // Corregido de 100 a 0
+    porcentageOfArrearsPaid: 0,  // Corregido de 100 a 0
     remainingAmountToPay: 0,
     remainingArrearsToPay: 0,
     remainingCapitalToPay: 0,
@@ -341,11 +399,112 @@ export function defaultInstallment(): Installment {
     installmentNumber: 0,
     arrears: 0,
     dueDate: "",
+    paymentDate: "",
     status: "pendiente",
-    isLife: true,
+    isLife: false,
     createdAt: "",
     payments: [],
     arrearsPaid: 0,
     deferred: false,
   }
+}
+
+
+export interface DeferInstallmentParams {
+  installment: Installment;
+  newDueDate: string;
+  newInterestRate: number;
+  defermentAmount: number;
+  defermentDays: number;
+}
+
+/**
+ * 
+ * @param param0 al marcar un valor de aplazamieno por cueta de una cuota no se le suma el valo de mora aplazada sino que se cambia por el calculo actual de mora aplazada
+ * @returns 
+ */
+export function deferInstallment({
+  installment,
+  newDueDate,
+  newInterestRate,
+  defermentAmount,
+  defermentDays,
+}: DeferInstallmentParams): Installment {
+  const invalidFields = [];
+  console.log("defermentAmount", defermentAmount);
+  console.log("defermentDays", defermentDays);
+  console.log("installment", installment);
+  console.log("newDueDate", newDueDate);
+  console.log("newInterestRate", newInterestRate);
+
+
+  if (!Number.isFinite(defermentAmount) || defermentAmount < 0) {
+    invalidFields.push(`defermentAmount invalid (value: ${defermentAmount}, type: ${typeof defermentAmount})`);
+  }
+
+  if (!Number.isFinite(defermentDays) || defermentDays < 0) {
+    invalidFields.push(`defermentDays invalid (value: ${defermentDays}, type: ${typeof defermentDays})`);
+  }
+
+  if (invalidFields.length > 0) {
+    throw new Error(`Los valores del aplazamiento no son válidos: ${invalidFields.join('; ')}`);
+  }
+
+  // Se reemplaza el cargo anterior.
+  const deferment = defermentAmount;
+
+  const total =
+    installment.amount +
+    installment.arrears +
+    deferment;
+
+  const remainingTotalToPay = Math.max(
+    0,
+    total -
+    installment.totalPaid -
+    installment.pendingTotal,
+  );
+  const remainingDefermentToPay = Math.max(
+    0,
+    deferment -
+    installment.defermentPaid -
+    installment.pendingDeferment,
+  );
+
+  return {
+    ...installment,
+
+    defermentDueDate: newDueDate,
+    arrearsInterestRate: newInterestRate,
+    defermentDays: defermentDays,
+    deferred: true,
+
+    deferment,
+    total,
+
+    remainingDefermentToPay,
+    remainingTotalToPay,
+
+    percentageOfDefermentPaid:
+      deferment > 0
+        ? Math.min(
+          100,
+          (installment.defermentPaid / deferment) * 100,
+        )
+        : 100,
+
+    percentageOfTotalPaid:
+      total > 0
+        ? Math.min(
+          100,
+          (installment.totalPaid / total) * 100,
+        )
+        : 100,
+
+    outstandingReceivablesDeferment:
+      remainingDefermentToPay,
+
+    outstandingReceivables:
+      remainingTotalToPay,
+  };
 }

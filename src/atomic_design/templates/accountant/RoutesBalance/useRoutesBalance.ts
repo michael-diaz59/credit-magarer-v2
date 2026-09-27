@@ -52,8 +52,8 @@ export const useRoutesBalance = () => {
 
     const globalTotal = useMemo(() => {
         return routes.reduce((acc, route) => {
-            const cash = (route.totalCash2 || []).reduce((sum, c) => sum + c.amount, 0);
-            const deposit = (route.totalDeposit || []).reduce((sum, d) => sum + d.amount, 0);
+            const cash = (route.cashBalances);
+            const deposit = (route.depositBalances);
             return acc + cash + deposit;
         }, 0);
     }, [routes]);
@@ -61,8 +61,8 @@ export const useRoutesBalance = () => {
     const globalChartData = useMemo(() => {
         return routes
             .map(route => {
-                const total = (route.totalCash2 || []).reduce((sum, c) => sum + (c.amount || 0), 0) +
-                    (route.totalDeposit || []).reduce((sum, d) => sum + (d.amount || 0), 0);
+                const total = (route.cashBalances) +
+                    (route.depositBalances);
                 return {
                     id: route.id,
                     label: route.name || "Sin Nombre",
@@ -74,18 +74,14 @@ export const useRoutesBalance = () => {
 
     const totalCashSystem = useMemo(() => {
         return routes.reduce((acc, route) => {
-            return acc + (route.totalCash2 || []).reduce((sum, c) => sum + c.amount, 0);
+            return acc + (route.cashBalances);
         }, 0);
     }, [routes]);
 
     const bankAccountTotals = useMemo(() => {
-        const totals: Record<string, number> = {};
-        for (const route of routes) {
-            for (const deposit of (route.totalDeposit || [])) {
-                totals[deposit.bankAccountId] = (totals[deposit.bankAccountId] || 0) + deposit.amount;
-            }
-        }
-        return totals;
+        return routes.reduce((acc, route) => {
+            return acc + (route.depositBalances);
+        }, 0);
     }, [routes]);
 
     return {

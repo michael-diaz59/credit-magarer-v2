@@ -20,32 +20,60 @@ import { DebtForm, mapDebtToForm } from "../debt/debtForm";
 import { DebtFormDataProvider } from "../../templates/debt/debts/DebtFormDataProvider";
 import { useAppSelector } from "../../../store/redux/coreRedux";
 import { confirmPaymentConfig } from "../../sub_atomic_particles/debFormConsts";
+import { DisbursementOrchestrator } from "../../../features/anotherPayment/domain/infraestructure/DisbursementOrchestrator";
+import type { DisbursementInput } from "../../../features/anotherPayment/domain/business/useCases/disbursement/MarkDisbursementDeliveredAndActivateDebt";
+
+export function debtToDisbursement(debt: Debt, userId: string, userName: string): DisbursementInput {
+  return {
+    debtName: debt.name,
+    amount: debt.amount,
+    debtId: debt.id,
+    method: "efectivo",
+    clientId: debt.clientId,
+    clientName: debt.clientName,
+    accountantId: userId,
+    accountantName: userName,
+    routeId: debt.routeId,
+    routeName: debt.routeName,
+  }
+}
 
 export const AccountantPendingDeliveryScreen: React.FC = () => {
   const session = useAppSelector((state) => state.user.user);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDebtIds, setSelectedDebtIds] = useState<string[]>([]);
-  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  //const [selectedDebtIds, setSelectedDebtIds] = useState<string[]>([]);
+  const [selectedDebt, setSelectedDebt] = useState<Debt | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [selectedDisbursements, setSelectedDisbursements] =
+    useState<DisbursementInput[]>([]);
 
   useEffect(() => {
-    fetchDebts();
-  }, []);
+    void fetchDebts();
+  }, [session?.companyId]);
+
+  const resetScreen = async () => {
+    setSelectedDisbursements([]);
+    setSelectedDebt(undefined);
+    setDialogOpen(false);
+
+    await fetchDebts();
+  };
 
   const fetchDebts = async () => {
     if (!session?.companyId) return;
+
     setLoading(true);
+
     try {
       const orchestrator = new DebtOrchestrator();
-      const result = await orchestrator.getByFilters({
+
+      const result = await orchestrator.getDebtsForPreparation({
         companyId: session.companyId,
-        deliveredStatus: "true_preparacion",
       });
 
       if (result.ok) {
-        // Filtramos locamente si es necesario, o mostramos todos los que delivered == false.
         setDebts(result.value.state);
       }
     } catch (error) {
@@ -55,16 +83,27 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
     }
   };
 
-  const handleToggleCheckbox = (debt: Debt, event: React.MouseEvent) => {
+  const handleToggleCheckbox = (
+    debt: Debt,
+    event: React.MouseEvent
+  ) => {
     event.stopPropagation();
 
-    if (debt.delivered) return; // 🚫 bloquea selección
+    if (debt.delivered) return;
 
-    setSelectedDebtIds((prev) =>
-      prev.includes(debt.id)
-        ? prev.filter((id) => id !== debt.id)
-        : [...prev, debt.id]
-    );
+    const disbursement = debtToDisbursement(debt, session?.id ?? "", session?.name ?? "");
+
+    setSelectedDisbursements((prev) => {
+      const exists = prev.some(
+        (item) => item.debtId === debt.id
+      );
+
+      return exists
+        ? prev.filter(
+          (item) => item.debtId !== debt.id
+        )
+        : [...prev, disbursement];
+    });
   };
 
   const handleDebtClick = (debt: Debt) => {
@@ -72,16 +111,18 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleConfirmSingleDelivery = async () => {
-    if (!session?.companyId || !selectedDebt) return;
+  const handleConfirmDelivery = async (debt: Debt | undefined) => {
+    if (!session?.companyId || !selectedDebt || debt === undefined) return;
     setConfirming(true);
     try {
-      const orchestrator = new DebtOrchestrator();
-      const result = await orchestrator.confirmDebtDelivery({
+      const orchestrator = new DisbursementOrchestrator();
+      const result = await orchestrator.markDisbursementDeliveredAndActivateDebt({
         companyId: session.companyId,
-        debtIds: [selectedDebt.id],
+        disbursements: [debtToDisbursement(debt!, session?.id ?? "", session?.name ?? "")],
+        debt: [debt]
       });
       if (result.ok) {
+        resetScreen()
         setDialogOpen(false);
         fetchDebts();
       } else {
@@ -95,22 +136,47 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
   };
 
   const handleConfirmMultipleDelivery = async () => {
-    if (!session?.companyId || selectedDebtIds.length === 0) return;
+    if (
+      !session?.companyId ||
+      selectedDisbursements.length === 0
+    ) {
+      return;
+    }
+
     setConfirming(true);
+
     try {
-      const orchestrator = new DebtOrchestrator();
-      const result = await orchestrator.confirmDebtDelivery({
-        companyId: session.companyId,
-        debtIds: selectedDebtIds,
-      });
-      if (result.ok) {
-        setSelectedDebtIds([]);
-        fetchDebts();
-      } else {
+      const orchestrator = new DisbursementOrchestrator();
+
+      const selectedDebts = debts.filter((debt) =>
+        selectedDisbursements.some(
+          (disbursement) =>
+            disbursement.debtId === debt.id
+        )
+      );
+
+      const result =
+        await orchestrator.markDisbursementDeliveredAndActivateDebt({
+          companyId: session.companyId,
+          disbursements: selectedDisbursements,
+          debt: selectedDebts,
+        });
+
+      if (!result.ok) {
         alert("Error al confirmar entrega");
+        return;
       }
+
+      // Limpiar selección
+      setSelectedDisbursements([]);
+      resetScreen()
+
+      // Recargar información desde Firebase
+      await fetchDebts();
+
     } catch (error) {
       console.error(error);
+      alert("Ocurrió un error al confirmar las entregas");
     } finally {
       setConfirming(false);
     }
@@ -130,13 +196,13 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
               </Typography>
               <Button
                 variant="contained"
-                disabled={selectedDebtIds.length === 0 || confirming}
+                disabled={selectedDisbursements.length === 0 || confirming}
                 onClick={handleConfirmMultipleDelivery}
               >
                 {confirming ? (
                   <CircularProgress size={24} />
                 ) : (
-                  `Confirmar Selección (${selectedDebtIds.length})`
+                  `Confirmar Selección (${selectedDisbursements.length})`
                 )}
               </Button>
             </Box>
@@ -161,7 +227,9 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
                     {!debt.delivered && (
                       <Checkbox
                         edge="start"
-                        checked={selectedDebtIds.includes(debt.id)}
+                        checked={selectedDisbursements.some(
+                          (disbursement) => disbursement.debtId === debt.id
+                        )}
                         disableRipple
                       />
                     )}
@@ -215,7 +283,7 @@ export const AccountantPendingDeliveryScreen: React.FC = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={handleConfirmSingleDelivery}
+            onClick={() => handleConfirmDelivery(selectedDebt)}
             disabled={confirming || selectedDebt?.delivered === true}
 
           >

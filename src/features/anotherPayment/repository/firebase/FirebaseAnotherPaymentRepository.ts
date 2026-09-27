@@ -1,11 +1,11 @@
 import { collection, doc, setDoc, getDoc, getDocs, query, orderBy, deleteDoc, type DocumentData } from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
-import { firestore, storage } from "../../../store/firebase/firebase";
-import { ok, fail, type Result } from "../../../core/helpers/ResultC";
-import { encodeDate, decodeDate } from "../../../core/shared/firebase/codeDecodeTime";
-import type { AnotherPayment } from "../domain/business/entities/AnotherPayment";
-import type AnotherPaymentGateway from "../domain/infraestructure/AnotherPaymentGateway";
-import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";
+import { firestore, storage } from "../../../../store/firebase/firebase";
+import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
+import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
+import type { AnotherPayment } from "../../domain/business/entities/AnotherPayment";
+import type AnotherPaymentGateway from "../../domain/infraestructure/AnotherPaymentGateway";
+import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 
 export class FirebaseAnotherPaymentRepository implements AnotherPaymentGateway {
 
@@ -40,7 +40,7 @@ export class FirebaseAnotherPaymentRepository implements AnotherPaymentGateway {
             let idProofOfPayment = payment.idProofOfPayment;
 
             if (file) {
-                const uploadResult = await this.uploadProof(companyId, id, file);
+                const uploadResult = await uploadProof(companyId, id, file);
                 if (uploadResult.ok) {
                     idProofOfPayment = uploadResult.value;
                 }
@@ -63,7 +63,7 @@ export class FirebaseAnotherPaymentRepository implements AnotherPaymentGateway {
             let idProofOfPayment = payment.idProofOfPayment;
 
             if (file) {
-                const uploadResult = await this.uploadProof(companyId, payment.id, file);
+                const uploadResult = await uploadProof(companyId, payment.id, file);
                 if (uploadResult.ok) {
                     idProofOfPayment = uploadResult.value;
                 }
@@ -115,20 +115,20 @@ export class FirebaseAnotherPaymentRepository implements AnotherPaymentGateway {
             return fail(error as Error);
         }
     }
+}
 
-    private async uploadProof(companyId: string, anotherPaymentId: string, file: File): Promise<Result<string, Error>> {
-        try {
-            const ext = file.name.split(".").pop();
-            const fileName = `proof_${Date.now()}.${ext}`;
-            const path = `companies/${companyId}/anotherPayments/${anotherPaymentId}/${fileName}`;
-            const fileRef = ref(storage, path);
+export async function uploadProof(companyId: string, anotherPaymentId: string, file: File): Promise<Result<string, Error>> {
+    try {
+        const ext = file.name.split(".").pop();
+        const fileName = `proof_${Date.now()}.${ext}`;
+        const path = `companies/${companyId}/anotherPayments/${anotherPaymentId}/${fileName}`;
+        const fileRef = ref(storage, path);
 
-            await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, file);
 
-            return ok(fileName);
-        } catch (error) {
-            console.error("Error uploading another payment proof:", error);
-            return fail(error as Error);
-        }
+        return ok(fileName);
+    } catch (error) {
+        console.error("Error uploading another payment proof:", error);
+        return fail(error as Error);
     }
 }

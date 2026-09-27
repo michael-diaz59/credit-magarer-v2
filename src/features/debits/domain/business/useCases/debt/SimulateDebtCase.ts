@@ -1,4 +1,5 @@
 import { fail, ok, type Result } from "../../../../../../core/helpers/ResultC";
+import { defaultAddress } from "../../../../../costumers/domain/business/entities/Address";
 import type { Debt } from "../../entities/Debt";
 import type { Installment } from "../../entities/Installment";
 import { simulateInstallments } from "../helper";
@@ -68,7 +69,10 @@ export class SimulateDebtCase {
     /** 4️⃣ Generar cuotas */
     const { pago_cuota, total_deuda_a_pagar, cuotasCompletas, pago_ultima_cuota, pago_cuota_reound, installments } = simulateInstallments(
       debt,
-      input.months
+      defaultAddress,
+      "",
+      "",
+      input.months,
     );
 
     return ok({

@@ -23,6 +23,8 @@ import type { CalculationMode } from "./form/constsForm";
 import { mergeDefined } from "../../sub_atomic_particles/helpers";
 import { MoneyTypography } from "../../atoms/MoneyTypography";
 import { formatISOToInputDate } from "../../../core/helpers/dates/dateConvert";
+import type { requiredArrearsState } from "../../../features/debits/domain/business/entities/core";
+import { removeUndefined } from "../../../core/helpers/cleanFirestoreData";
 
 
 
@@ -46,7 +48,41 @@ export type DebtFormValues = {
   installmentCount: number;
   startDate: string;
   daysPerMonth: number;
+  requiredState: requiredArrearsState;
+  lateInterestRate: number;
 };
+
+export function debtFormValuesToPartialDebt(
+  values?: DebtFormValues,
+): Partial<Debt> {
+  if (!values) {
+    return {};
+  }
+
+  return removeUndefined<Partial<Debt>>({
+    routeId: values.routeId,
+    clientDocument: values.clientDocument,
+
+    status: values.status,
+    type: values.type,
+    prepayment: values.prepayment,
+
+    pledge: values.pledge,
+    pledgeDescription: values.pledgeDescription,
+    pledgeValue: values.pledgeValue,
+
+    capital: values.capital,
+    debtTerms: values.debtTerms,
+    interestRate: values.interestRate,
+    installmentCount: values.installmentCount,
+    startDate: values.startDate,
+    daysPerMonth: values.daysPerMonth,
+
+    lateInterestRate: values.lateInterestRate,
+
+    requiredState: values.requiredState,
+  });
+}
 
 /**
  * son los valores por defecto del formulario
@@ -76,6 +112,8 @@ const baseDefaults: DebtFormValues = {
   installmentCount: 1,
   startDate: "",
   daysPerMonth: diasDelMesPorTermino[debtFormDefaults.debtTerms],
+  requiredState: "no",
+  lateInterestRate: 0,
 };
 
 /**
@@ -517,6 +555,75 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
 
         <Grid>
           <Stack spacing={2}>
+            {/* MORA Y ANTIGÜEDAD */}
+            {isVisible("requiredState") && <>
+              <Controller
+                name="requiredState"
+                control={control}
+                rules={{
+                  required: isRequired("requiredState")
+                    ? "se debe indicar una configuracion para el cambio automatico a negociado"
+                    : false,
+                }}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Estado"
+                    select
+                    fullWidth
+                    value={field.value || ""}
+                    disabled={!isEditable("requiredState")}
+                    error={!!errors.requiredState}
+                    helperText={errors.requiredState?.message}
+                  >
+                    <MenuItem value="no">No</MenuItem>
+                    <MenuItem value="total">Mora</MenuItem>
+                    <MenuItem value="aplazamiento">Aplazamiento</MenuItem>
+                  </TextField>
+                )}
+              />
+              {renewalProposal && (
+                <Typography>
+                  Estado original: {renewalProposal.requiredState}
+                </Typography>
+              )}
+            </>}
+
+            {
+              isVisible("lateInterestRate") && <>
+                <Controller
+                  name="lateInterestRate"
+                  control={control}
+                  rules={{
+                    required: isRequired("lateInterestRate")
+                      ? "La tasa de interes por mora es obligatoria"
+                      : false,
+                    min: { value: 0, message: "No puede ser negativa" },
+                  }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Tasa de interés por mora (%)"
+                      type="number"
+                      fullWidth
+                      disabled={!isEditable("lateInterestRate")}
+                      error={!!errors.lateInterestRate}
+                      helperText={errors.lateInterestRate?.message}
+                    />
+                  )}
+                />
+                {renewalProposal && (
+                  <Typography>
+                    Tasa de interés original: {renewalProposal.lateInterestRate}
+                  </Typography>
+                )}
+              </>
+            }
+          </Stack>
+        </Grid>
+
+        <Grid>
+          <Stack spacing={2}>
             {/* INTERÉS */}
             {isVisible("interestRate") && <>
               <Controller
@@ -550,7 +657,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             }
 
             {/* selector de meses o cuotas */}
-            {isVisible("calculationMode") && <Controller
+            {isVisible("calculationMode") && type == "fijo" && <Controller
               name="calculationMode"
               control={control}
 
@@ -579,7 +686,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             }
 
             {/* CUOTAS */}
-            {isVisible("installmentCount") && calculationMode === "installments" &&
+            {isVisible("installmentCount") && type == "fijo" && calculationMode === "installments" &&
               <><Controller
                 name="installmentCount"
                 control={control}
@@ -619,7 +726,7 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
             }
 
             {/* MESES */}
-            {calculationMode === "months" && (
+            {calculationMode === "months" && type == "fijo" && (
               <Controller
                 name="months"
                 control={control}
@@ -710,6 +817,9 @@ export function mapDebtToForm(debt: Debt): DebtFormValues {
     pledge: debt.pledge,
     pledgeDescription: debt.pledgeDescription,
     pledgeValue: debt.pledgeValue,
+    requiredState: debt.requiredArrears,
+    lateInterestRate: debt.lateInterestRate,
+
   };
 }
 

@@ -40,3 +40,8 @@ export const getCurrentLocation = (): Promise<LocationGPS> => {
         );
     });
 };
+
+export function HasValidCoordinates(coordinates: any): boolean {
+    return typeof coordinates === "string" &&
+        /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(coordinates.trim());
+};

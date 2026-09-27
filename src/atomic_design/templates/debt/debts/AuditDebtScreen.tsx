@@ -25,6 +25,8 @@ import { auditDebtConfig } from "../../../sub_atomic_particles/debFormConsts";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
 import { selectActionAuditor } from "../../audit/helpers/selecActionAuditor";
 import { MoneyTypography } from "../../../atoms/MoneyTypography";
+import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
+import type { UpdateDebtSimpleError } from "../../../../features/debits/domain/business/useCases/debt/UpdateSimpleDebtCase";
 
 export const AuditDebtScreen = () => {
   const debtFormRef = useRef<DebtFormRef>(null);
@@ -112,13 +114,19 @@ export const AuditDebtScreen = () => {
       isNewRoute: false,
     };
 
-    let resultState;
+    let resultState: Result<null, UpdateDebtSimpleError>
 
     try {
       switch (nextStatus) {
         case "preAprobada": {
-          const res = await orchestrator.goToPreAbroves(input);
-          resultState = res.state;
+          const res = await orchestrator.goToPreAbroves({ debtId: debt.id, companyId: companyId });
+          if (res.state.ok) {
+            resultState = ok(null)
+          } else {
+            console.log("go to pre approved error")
+            console.log(res.state.error)
+            resultState = fail({ code: "UNKNOWN_ERROR" })
+          }
           break;
         }
         case "preparacion": {
@@ -127,8 +135,18 @@ export const AuditDebtScreen = () => {
           break;
         }
         case "activa": {
-          const res = await orchestrator.goToActivate(input);
-          resultState = res.state;
+          const res = await orchestrator.goToActivate({
+            debt: updatedDebt,
+            companyId: companyId,
+            reactive: true,
+          });
+          if (res.ok) {
+            resultState = ok(null)
+          } else {
+            console.log("go to activate error")
+            console.log(res.error)
+            resultState = fail({ code: "UNKNOWN_ERROR" })
+          }
           break;
         }
         case "inactivo": {
@@ -147,7 +165,14 @@ export const AuditDebtScreen = () => {
             debtId: debt.id,
             auditorNotes: "",
           });
-          resultState = res;
+
+          if (res.ok) {
+            resultState = ok(null)
+          } else {
+            console.log("mark as paid error")
+            console.log(res.error)
+            resultState = fail({ code: "UNKNOWN_ERROR" })
+          }
           break;
         }
         default: {
@@ -156,7 +181,13 @@ export const AuditDebtScreen = () => {
             idDebt: debt.id,
             debtStatus: nextStatus,
           });
-          resultState = res;
+          if (res.ok) {
+            resultState = ok(null)
+          } else {
+            console.log("update debt status error")
+            console.log(res.error)
+            resultState = fail({ code: "UNKNOWN_ERROR" })
+          }
           break;
         }
       }

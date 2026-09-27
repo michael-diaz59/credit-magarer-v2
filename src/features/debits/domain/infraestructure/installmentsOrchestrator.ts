@@ -15,6 +15,8 @@ import { MarkInstallAsPaidCase, type MarkInstallAsPaidError, type MarkInstallAsP
 import { MarkInstallmentAsearringCase, type MarkInstallmentAsearringInput } from "../business/useCases/installment/MarkInstallmentAsearringCase";
 import { MarkInstallmentAsCanceledCase, type MarkInstallmentAsCanceledInput } from "../business/useCases/installment/MarkInstallmentAsCanceledCase";
 import type { InstallmentGateway } from "./InstallmentGateway";
+import { BalancesDueFromInstallmentCase, type BalancesDueFromInstallmentError, type BalancesDueFromInstallmentInput, type BalancesDueFromInstallmentOutput } from "../business/useCases/installment/BalancesDueFromInstallmentCase";
+import { MaxDueFromInstallmentCase, type MaxDueFromInstallmentError, type MaxDueFromInstallmentInput, type MaxDueFromInstallmentOutput } from "../business/useCases/installment/MaxDueFromInstallmentCase";
 
 export default class InstallmentsOrchestrator {
 
@@ -26,7 +28,9 @@ export default class InstallmentsOrchestrator {
   private readonly markInstallmentAsCanceledCase: MarkInstallmentAsCanceledCase
   private readonly markInstallmentAsearringCase: MarkInstallmentAsearringCase
   private readonly getByDebtCase: GetInstallmentsByDebtCase
+  private readonly balancesDueFromInstallmentCase: BalancesDueFromInstallmentCase
   private readonly getNextByRouteCase: GetNextInstallmentsByRouteUseCase
+  private readonly maxDueFromInstallmentCase: MaxDueFromInstallmentCase
   private readonly getInstallmentsSummaryCase: GetInstallmentsSummaryUseCase
   private readonly getManagementInstallmentsCase: GetManagementInstallmentsUseCase
 
@@ -34,6 +38,9 @@ export default class InstallmentsOrchestrator {
   constructor() {
     const installmentsGateway: InstallmentGateway = new FirebaseInstallmentRepository()
     const debtGateway: DebtGateway = new FirebaseDebtRepository()
+
+    this.maxDueFromInstallmentCase = new MaxDueFromInstallmentCase(installmentsGateway)
+    this.balancesDueFromInstallmentCase = new BalancesDueFromInstallmentCase(installmentsGateway)
 
 
     this.getManagementInstallmentsByRoutesUseCase = new GetManagementInstallmentsByRoutesUseCase(installmentsGateway)
@@ -51,6 +58,14 @@ export default class InstallmentsOrchestrator {
 
   async getInstallmentsSummary(input: GetInstallmentsSummaryInput): Promise<Result<GetInstallmentsSummaryOutput, GetInstallmentsSummaryError>> {
     return this.getInstallmentsSummaryCase.execute(input);
+  }
+
+  async balancesDueFromDebt(input: BalancesDueFromInstallmentInput): Promise<Result<BalancesDueFromInstallmentOutput, BalancesDueFromInstallmentError>> {
+    return this.balancesDueFromInstallmentCase.execute(input);
+  }
+
+  async maxDueFromInstallment(input: MaxDueFromInstallmentInput): Promise<Result<MaxDueFromInstallmentOutput, MaxDueFromInstallmentError>> {
+    return this.maxDueFromInstallmentCase.execute(input);
   }
 
   async updateById(input: UpdateByIdInput): Promise<Result<UpdateByIdOutput, UpdateByIdError>> {

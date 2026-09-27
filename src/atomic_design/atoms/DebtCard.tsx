@@ -26,6 +26,7 @@ const debtStatusConfig: Record<
   corregir: { label: "Corregir", color: "warning" },
   pagada: { label: "Pagada", color: "success" },
   en_mora: { label: "En mora", color: "error" },
+  negociada: { label: "Negociada", color: "warning" },
   inactivo: { label: "Inactivo", color: "default" },
   anulado: { label: "Anulado", color: "default" },
 };

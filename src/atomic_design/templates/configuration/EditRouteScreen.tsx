@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { 
-  Box, Button, Stack, TextField, Typography, CircularProgress, 
-  Select, MenuItem, InputLabel, FormControl 
+import {
+  Box, Button, Stack, TextField, Typography, CircularProgress,
+  Select, MenuItem, InputLabel, FormControl
 } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector, type RootState } from "../../../store/redux/coreRedux";
@@ -38,7 +38,7 @@ export const EditRouteScreen = () => {
   const fetchRouteAndUsers = useCallback(async () => {
     if (!companyId || !routeId) return;
     setLoading(true);
-    
+
     // Fetch route
     const result = await routeOrchestrator.getRoutesUseCase.execute({ companyId });
     if (result.ok) {
@@ -47,7 +47,7 @@ export const EditRouteScreen = () => {
         setRoute(foundRoute);
         setName(foundRoute.name);
         setDescription(foundRoute.description);
-        setSelectedCobrador(foundRoute.cobradorId || "");
+        setSelectedCobrador(foundRoute.collectorId || "");
       } else {
         alert("Ruta no encontrada");
         navigate(-1);
@@ -106,14 +106,14 @@ export const EditRouteScreen = () => {
     const result = await routeOrchestrator.assignRouteCollectorUseCase.execute({
       route,
       newCobradorId: selectedCobrador || undefined,
-      oldCobradorId: route.cobradorId,
+      oldCobradorId: route.collectorId,
       companyId
     });
 
     if (result.ok) {
       alert("Cobrador modificado exitosamente");
       // Update local route state
-      setRoute({ ...route, cobradorId: selectedCobrador || undefined });
+      setRoute({ ...route, collectorId: selectedCobrador || undefined });
     } else {
       alert("Error al cambiar cobrador");
     }
@@ -121,7 +121,7 @@ export const EditRouteScreen = () => {
   };
 
   if (loading) {
-     return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
+    return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
   }
 
   return (
@@ -149,17 +149,17 @@ export const EditRouteScreen = () => {
         />
 
         <Box display="flex" gap={2} mt={2}>
-          <Button 
-            variant="outlined" 
-            fullWidth 
+          <Button
+            variant="outlined"
+            fullWidth
             onClick={() => navigate(-1)}
             disabled={saving}
           >
             Volver
           </Button>
-          <Button 
-            variant="contained" 
-            fullWidth 
+          <Button
+            variant="contained"
+            fullWidth
             onClick={handleSaveRoute}
             disabled={!name.trim() || saving || (name === route?.name && description === route?.description)}
           >
@@ -169,32 +169,32 @@ export const EditRouteScreen = () => {
       </Stack>
 
       <Box mt={4}>
-         <Typography variant="h6" mb={2}>Asignación de Cobrador</Typography>
-         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-            <FormControl fullWidth>
-              <InputLabel id="select-user-label">Cobrador Asignado</InputLabel>
-              <Select
-                 labelId="select-user-label"
-                 value={selectedCobrador}
-                 label="Cobrador Asignado"
-                 onChange={(e) => setSelectedCobrador(e.target.value)}
-              >
-                 <MenuItem value=""><em>Ninguno</em></MenuItem>
-                 {allCompanyUsers.map(u => (
-                    <MenuItem key={u.id} value={u.id}>{u.name} ({u.email})</MenuItem>
-                 ))}
-              </Select>
-            </FormControl>
-            <Button 
-              variant="contained" 
-              color="secondary"
-              onClick={handleChangeCobrador}
-              disabled={savingCobrador || selectedCobrador === (route?.cobradorId || "")}
-              sx={{ minWidth: 180, py: { xs: 1.5, sm: undefined } }}
+        <Typography variant="h6" mb={2}>Asignación de Cobrador</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <FormControl fullWidth>
+            <InputLabel id="select-user-label">Cobrador Asignado</InputLabel>
+            <Select
+              labelId="select-user-label"
+              value={selectedCobrador}
+              label="Cobrador Asignado"
+              onChange={(e) => setSelectedCobrador(e.target.value)}
             >
-              {savingCobrador ? "Cambiando..." : "Cambiar cobrador"}
-            </Button>
-         </Stack>
+              <MenuItem value=""><em>Ninguno</em></MenuItem>
+              {allCompanyUsers.map(u => (
+                <MenuItem key={u.id} value={u.id}>{u.name} ({u.email})</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleChangeCobrador}
+            disabled={savingCobrador || selectedCobrador === (route?.collectorId || "")}
+            sx={{ minWidth: 180, py: { xs: 1.5, sm: undefined } }}
+          >
+            {savingCobrador ? "Cambiando..." : "Cambiar cobrador"}
+          </Button>
+        </Stack>
       </Box>
 
       <Box mt={6} mb={4}>
@@ -204,9 +204,9 @@ export const EditRouteScreen = () => {
             <CircularProgress size={30} />
           </Box>
         ) : debts.length > 0 ? (
-          <DebtTable 
-            debts={debts} 
-            onClick={(d) => navigate(ScreenPaths.auditor.debit(d.id))} 
+          <DebtTable
+            debts={debts}
+            onClick={(d) => navigate(ScreenPaths.auditor.debit(d.id))}
           />
         ) : (
           <Typography variant="body1" color="text.secondary" fontStyle="italic">

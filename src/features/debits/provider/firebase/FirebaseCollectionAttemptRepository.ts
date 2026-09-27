@@ -1,7 +1,6 @@
 import { collection, doc, setDoc, query, where, getDocs, getDoc, type DocumentData } from "firebase/firestore";
 import { firestore } from "../../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
-import type { CollectionAttempt } from "../../domain/business/entities/CollectionAttempt";
 import type {
     CollectionAttemptGateway,
     CreateCollectionAttemptInput
@@ -9,6 +8,7 @@ import type {
 import { FirebaseError } from "firebase/app";
 import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
+import type { CollectionAttempt } from "../../domain/business/entities/CollectionAttempt";
 
 export class FirebaseCollectionAttemptRepository implements CollectionAttemptGateway {
 

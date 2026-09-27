@@ -15,7 +15,7 @@ export function IsFutureOrToday(dateStr: string): boolean {
 }
 
 
-/** obtiene la fecha de un date en base a la zona horaria local y la devuelve en un string yyyy/mm/dd*/
+/** obtiene la fecha de un date en base a la zona horaria local y la devuelve en un string yyyy-mm-dd*/
 export function getLocalDate(date: Date): string {
     const year = date.getFullYear();
     var month = String(date.getMonth() + 1);

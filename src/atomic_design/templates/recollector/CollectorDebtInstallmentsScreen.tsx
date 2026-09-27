@@ -3,7 +3,7 @@ import { Box, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui
 import { useNavigate, useParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useAppSelector } from "../../../store/redux/coreRedux";
-import type { Installment } from "../../../features/debits/domain/business/entities/Installment";
+import type { Installment, InstallmentStatus } from "../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import { processInstallments, type ProcessedInstallment } from "../../../core/helpers/installments/getFirstPayableInstallment";
@@ -51,10 +51,24 @@ export const CollectorDebtInstallmentsScreen = () => {
         fetchInstallments();
     }, [debtId, companyId]);
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: InstallmentStatus) => {
         if (status === "pendiente") return "error";
-        if (status === "incompleto") return "warning";
         return "success";
+    };
+
+    const getStatusLabel = (status: InstallmentStatus, paymentDate: Date) => {
+        const now = new Date();
+        const isExpired = paymentDate < new Date(now.setDate(now.getDate() - 1));
+
+        if (status === "pagada") return "pagada";
+        if (status === "negociada") return "negociada";
+        if (status === "adelantada") return "pagada";
+        if (status === "renovada") return "pagada";
+        if (status === "pendiente") {
+            if (isExpired) return "mora";
+            return "pendiente";
+        };
+        return "pendiente";
     };
 
     if (loading) {
@@ -125,7 +139,7 @@ export const CollectorDebtInstallmentsScreen = () => {
                                 )}
 
                                 <Chip
-                                    label={i.status}
+                                    label={getStatusLabel(i.status, new Date(i.dueDate))}
                                     color={getStatusColor(i.status)}
                                     size="small"
                                     variant="outlined"

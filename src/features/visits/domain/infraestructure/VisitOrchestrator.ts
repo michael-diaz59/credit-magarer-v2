@@ -42,7 +42,7 @@ export default class VisitOrchestrator {
         const installmentRepository: InstallmentGateway = new FirebaseInstallmentRepository()
 
         this.createVisitCase = new CreateVisitUseCase(repository)
-        this.createVisitWithDebtCase = new CreateVisitWithDebtUseCase(repository, debtRepository, installmentRepository, costumerRepository)
+        this.createVisitWithDebtCase = new CreateVisitWithDebtUseCase(repository, debtRepository, costumerRepository)
         this.getVisitByStateCase = new GetVisitByStateCase(repository)
         this.getVisitsCase = new GetVisitsCase(repository)
         this.getVisitByIdCase = new GetVisitByIdCase(repository)

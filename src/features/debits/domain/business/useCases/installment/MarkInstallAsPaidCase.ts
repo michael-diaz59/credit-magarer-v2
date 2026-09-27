@@ -37,7 +37,8 @@ export class MarkInstallAsPaidCase {
             payStatus: 'pagada',
             idInstallment: input.idInstallment,
             companyId: input.companyId,
-            auditorNotes: input.auditorNotes
+            auditorNotes: input.auditorNotes,
+            isLife: false
         })
     }
 }

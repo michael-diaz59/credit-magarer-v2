@@ -1,6 +1,7 @@
 import { type Result } from "../../../../../../core/helpers/ResultC";
 import type { Installment } from "../../entities/Installment";
 import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
+import { getLocalDate } from "../../../../../../core/helpers/dates/calculateDays";
 
 export type GetManagementInstallmentsByRoutesError =
   | { code: "UNKNOWN_ERROR" }
@@ -24,6 +25,10 @@ export class GetManagementInstallmentsByRoutesUseCase {
   async execute(
     input: GetManagementInstallmentsByRoutesInput
   ): Promise<Result<GetManagementInstallmentsByRoutesOutput, GetManagementInstallmentsByRoutesError>> {
-    return this.installmentGateway.getPendingInstallmentsForCollectorByRoutes(input);
+    return this.installmentGateway.getPendingInstallmentsForCollectorByRoutes({
+      companyId: input.companyId,
+      routeIds: input.routeIds,
+      today: getLocalDate(new Date()),
+    });
   }
 }

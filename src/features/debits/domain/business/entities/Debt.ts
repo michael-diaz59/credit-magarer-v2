@@ -19,6 +19,7 @@ export type Prepayment = "si" | "no";
  * preparacion: cuando el auditor envia una deuda al contador \
  * activa: el contador da por desembolsada la deuda y el deudor pasa a deber a la empresa \
  * pagada: el deudor pago al totalidad de la deuda \
+ * negociada: el credito ya no se sigue cobrando por negocio con cliente \
  * en_mora: la deuda tiene cuotas incompletas o en mora \
  * inactivo: se perdio contacto y metodos de cobro al cliente(al dar por cancelada una deuda se da por cancelado todas las cuotas que esten en mora, las cuotas incompletas y pagadas sigen teniendo su estado) \
  * anulado: es una deuda que se creo en el sistema pero que por algun motivo se anula, implica que la empresa no perdio dinero y el cliente no fue mala paga-   colocar en gris las casillas
@@ -30,6 +31,7 @@ export type DebtStatus =
   | "activa"
   | "corregir"
   | "pagada"
+  | "negociada"
   | "en_mora"
   | "inactivo"
   | "anulado"
@@ -49,6 +51,7 @@ export type delivered_status =
 * preparacion: cuando el auditor envia una deuda al contador \
 * activa: el contador da por desembolsada la deuda y el deudor pasa a deber a la empresa \
 * pagada: el deudor pago al totalidad de la deuda \
+* negociada: el credito ya no se sigue cobrando por negocio con cliente \
 * en_mora: la deuda tiene cuotas incompletas o en mora \
 * inactivo: se perdio contacto y metodos de cobro al cliente(al dar por cancelada una deuda se da por cancelado todas las cuotas que esten en mora, las cuotas incompletas y pagadas sigen teniendo su estado) \
 * anulado: es una deuda que se creo en el sistema pero que por algun motivo se anula, implica que la empresa no perdio dinero y el cliente no fue mala paga-   colocar en gris las casillas
@@ -60,6 +63,7 @@ export const debtStatusList: DebtStatus[] = [
   "activa",
   "corregir",
   "pagada",
+  "negociada",
   "en_mora",
   "inactivo",
   "anulado",
@@ -81,6 +85,7 @@ export interface Debt {
   /**tasa de interes para retraso*/
   lateInterestRate: number
 
+
   /**
    *tipo de deuda \
    * fijo: el valor de la cuota se calcula el mismo dia de creacion y no cambia \
@@ -100,7 +105,7 @@ export interface Debt {
   status: DebtStatus;
 
   // --- DESEMBOLSO Y ENTREGA ---
-  /**indica si el credito sigue vivo
+  /**indica si el credito sigue vivo, se usa paa saber si el cobrador debe gestionar el credito
    * false: cuando el credito esta anulado, pagado, tentativa, preAprobada, preparacion, corregir
    * true: cuando el credito esta activo
    */
@@ -108,6 +113,9 @@ export interface Debt {
 
   /*id de la ruta a la que esta enlazada la deuda* */
   routeId: string;
+
+  /**nombre de la ruta a la que esta enlazada la deuda */
+  routeName: string;
 
   /**indica que la deuda esta relacionada con una visita, util para crear una deuda a la vez que una visita, una visita puede tener varias deudas */
   idVisit?: string;
@@ -224,6 +232,21 @@ export interface Debt {
   /**porcentaje de total pagado (capital + interes + mora)*/
   percentageOfTotalPaid: number;
 
+
+  //saldos pendientes por cobrar
+
+  /**saldo pendiente por cobrar, este saldo indica en total en base a las configuraciones del credito y en base a los montos pagados y pendientes por validar cuanto quedaria por cobrar en la cuota */
+  outstandingReceivables: number
+
+  /**monto(capital+interes) pendiente por cobrar */
+  outstandingReceivablesAmount: number
+
+  /**interes por aplazamiento pendiente por cobrar */
+  outstandingReceivablesDeferment: number
+
+  /**mora pendiente por cobrar */
+  outstandingReceivablesArrears: number
+
   // --- GESTIÓN DE MORA Y RETRASO ---
 
   /**Cantidad de cuotas vencidas actualmente */
@@ -235,11 +258,12 @@ export interface Debt {
   /**indica si es obligatorio el pago de algun tipo de mora para marcar en automatico como pagada */
   requiredArrears: requiredArrearsState;
 
-  /**indica si hay o no que pagar algun tipo de mora para marcar en automatico como pagada \
-   * true: es necesario algun tipo de pago de mora \
-   * false: no es encesario ningun tipo de pago por mora
+  /**indica si hay o no que pagar algun tipo de mora para marcar en automatico como pagada 
+   * no: no se paga mora
+   * aplazamiento: si se paga mora por aplazamiento
+   * total: se debe pagar todos los tipos de mora
   */
-  requiredState: boolean;
+  requiredState: requiredArrearsState;
 
   /**maximo de dias de mora que se registro en la deuda*/
   maxNumberOfArrearsDays: number;
@@ -266,12 +290,6 @@ export interface Debt {
   /**fecha del ultimo pago depositado*/
   dateLastPayment?: string;
 
-  /**tasa de interes de mora 
-   * indica cuanto se le cobra de interes a la deuda por cada dia en mora
-   * es un valor porcentual
-   * */
-  arrearsInterestRate: number;
-
   /**fecha estimada de finalizacion del pago de la deuda*/
   expectedEndDate: string;
 
@@ -289,6 +307,7 @@ export interface Debt {
   renewedToDebtId?: string;
 
   // --- OBSERVACIONES Y NOTAS ---
+  //el cobrador solo hace una observacion al finalizar el credito
   /**observaciones del recaudador*/
   collectorNotes?: string;
 
@@ -299,7 +318,16 @@ export interface Debt {
   accountantNotes?: string;
 
   /**observaciones del asesor comercial*/
-  advisorNotes?: string;
+  advisorOfficeNotes?: string;
+
+  /**id del asesor comercial que preAprovo el credito*/
+  advisorOfficeId?: string;
+
+  /**observaciones del asesor en calle */
+  advisorFieldNotes?: string;
+
+  /**id del asesor en calle que hizo la visita*/
+  advisorFieldId?: string;
 }
 
 export function createEmptyDebt(): Debt {
@@ -308,12 +336,12 @@ export function createEmptyDebt(): Debt {
   return {
     id: "",
     requiredArrears: "no",
-    requiredState: false,
-    isLife: true,
+    requiredState: "no",
+    routeName: "",
+    isLife: false,
     lateInterestRate: 0,
     numberOfArrearsDays: 0,
     maxNumberOfArrearsDays: 0,
-    arrearsInterestRate: 0,
     numberOfArrearsInstallments: 0,
     expectedEndDate: today,
     nextPaymentDue: today,
@@ -346,6 +374,11 @@ export function createEmptyDebt(): Debt {
     remainingAmountToPay: 0,
     remainingArrearsToPay: 0,
     remainingTotalToPay: 0,
+
+    outstandingReceivables: 0,
+    outstandingReceivablesAmount: 0,
+    outstandingReceivablesDeferment: 0,
+    outstandingReceivablesArrears: 0,
 
     capitalPaid: 0,
     interestPaid: 0,

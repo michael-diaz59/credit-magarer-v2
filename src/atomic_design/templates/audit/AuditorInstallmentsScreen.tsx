@@ -71,7 +71,7 @@ export const AuditorInstallmentsScreen = () => {
 
   const isRenewable =
     installments.length > 0 &&
-    installments.filter((i) => i.status === "liquidada" || i.status === "pagada")
+    installments.filter((i) => i.status === "negociada" || i.status === "pagada")
       .length >=
     installments.length / 2;
 

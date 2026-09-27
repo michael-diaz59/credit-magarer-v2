@@ -188,7 +188,7 @@ export const ToDisburseBody = ({
 
               <Typography variant="body2">
                 🏦 Pago:{" "}
-                {new Date(payment.paymentDate).toLocaleDateString()}
+                {new Date(payment.paymentDate!).toLocaleDateString()}
               </Typography>
             </Stack>
           </CardContent>

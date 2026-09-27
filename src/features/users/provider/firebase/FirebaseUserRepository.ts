@@ -31,6 +31,7 @@ export function DocumentToUser(id: string, data: DocumentData, companyId: string
     roles: data.roles ?? [],
     totalAmount: data.totalAmount ?? 0,
     capital: data.capital ?? 0,
+    deferment: data.deferment ?? 0,
     interest: data.interest ?? 0,
     arrears: data.arrears ?? 0,
     funding: data.funding ?? 0,
@@ -47,6 +48,7 @@ export function UserToDocument(user: Partial<User>): DocumentData {
   if (user.companyId !== undefined) result.companyId = user.companyId;
   if (user.roles !== undefined) result.roles = user.roles;
   if (user.idRoutes !== undefined) result.idRoutes = user.idRoutes;
+  if (user.deferment !== undefined) result.deferment = user.deferment;
   if (user.collectorRoutes !== undefined) result.collectorRoutes = user.collectorRoutes;
   if (user.totalAmount !== undefined) result.totalAmount = user.totalAmount;
   if (user.capital !== undefined) result.capital = user.capital;

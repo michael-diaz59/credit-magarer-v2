@@ -9,6 +9,10 @@ import type { UpdateMultiplePaymentsIsTightError } from "../business/useCases/pa
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../business/useCases/payment/GetPaymentsByStatusUseCase"
 
 
+import type { RegisterCashPaymentInput, RegisterCashPaymentOutput, RegisterCashPaymentError } from "../business/useCases/payment/RegisterCashPaymentUseCase"
+import type { RegisterConsignmentPaymentRepositoryInput, RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError } from "../business/useCases/payment/RegisterConsignmentPaymentUseCase"
+
+
 /** contrato de acceso a datos para payments */
 export interface PaymentGateway {
 
@@ -68,4 +72,12 @@ export interface PaymentGateway {
     companyId: string;
     payments: Payment[];
   }): Promise<Result<void, CreatePaymentError>>;
+
+  registerCashPayment(
+    input: RegisterCashPaymentInput
+  ): Promise<Result<RegisterCashPaymentOutput, RegisterCashPaymentError>>;
+
+  registerConsignmentPayment(
+    input: RegisterConsignmentPaymentRepositoryInput
+  ): Promise<Result<RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError>>;
 }

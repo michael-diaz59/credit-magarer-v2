@@ -148,7 +148,7 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
 
 
 
-            const result = await orchestrator.createDebt({
+            const result = await orchestrator.createDebt2({
                 companyId,
                 debt: initialDebt,
                 months: values.calculationMode === "months" ? values.months : undefined,

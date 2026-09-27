@@ -30,7 +30,6 @@ export const CreateDebtScreen = () => {
   const [SimulateDebtValues, setSimulateDebtValues] =
     useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
 
-
   const navigate = useNavigate();
   const companyId = useAppSelector((state) => state.user.user?.companyId || "");
 
@@ -98,7 +97,7 @@ export const CreateDebtScreen = () => {
     const orchestrator = new DebtOrchestrator();
     console.log(data);
 
-    const result = await orchestrator.createDebt({
+    const result = await orchestrator.createDebt2({
       companyId,
       debt: data,
       months,

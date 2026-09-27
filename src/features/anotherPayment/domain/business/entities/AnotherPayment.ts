@@ -5,6 +5,7 @@ export type CategoryPayment =
   | 'pagos a inversores'
   | 'descuadre';
 
+
 export interface AnotherPayment {
   id: string;
   createdAt: string;

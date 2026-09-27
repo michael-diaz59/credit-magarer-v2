@@ -19,6 +19,9 @@ export interface User {
   /** mora que recolecto el cobrador */
   arrears?: number
 
+  /** aplazamiento que recolecto el cobrador */
+  deferment?: number
+
   /**dinero que el cobrador se le ha asignado para desembolso de creditos a clientes*/
   funding?: number
 

@@ -8,16 +8,25 @@ import type { GetManagementInstallmentsInput } from "../business/useCases/instal
 import type { GetInstallmentsByDebtInput, GetInstallmentsByDebtOutput } from "../business/useCases/installment/GetInstallmentsByDebtCase";
 import type { UpdateInstallmentByDebtInput, UpdateInstallmentByDebtOutput } from "../business/useCases/installment/UpdateInstallmentsByDebtCase";
 import type { MarkInstallAsPaidError, MarkInstallAsPaidOutput } from "../business/useCases/installment/MarkInstallAsPaidCase";
+import type { GetManagementInstallmentsByRoutesError, GetManagementInstallmentsByRoutesInput } from "../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase";
+import type { BalancesDueFromInstallmentError, BalancesDueFromInstallmentInput, BalancesDueFromInstallmentOutput } from "../business/useCases/installment/BalancesDueFromInstallmentCase";
+import type { MaxDueFromInstallmentError, MaxDueFromInstallmentInput, MaxDueFromInstallmentOutput } from "../business/useCases/installment/MaxDueFromInstallmentCase";
 
 export interface MarkInstallAsPaidInGate {
     payStatus: InstallmentStatus;
     idInstallment: string
     companyId: string
     auditorNotes: string
+    isLife: boolean
 }
 
 export interface InstallmentGateway {
     markInstallAsPaid(input: MarkInstallAsPaidInGate): Promise<Result<MarkInstallAsPaidOutput, MarkInstallAsPaidError>>;
+
+
+    maxDueFromInstallment(input: MaxDueFromInstallmentInput): Promise<Result<MaxDueFromInstallmentOutput, MaxDueFromInstallmentError>>
+
+    balancesDueFromDebt(input: BalancesDueFromInstallmentInput): Promise<Result<BalancesDueFromInstallmentOutput, BalancesDueFromInstallmentError>>
 
     createForNewDebt(input: CreateInstallmentsGatewayInput): Promise<CreateInstallmentsOutput>
 
@@ -62,7 +71,7 @@ export interface InstallmentGateway {
     getPendingInstallmentsForCollector(input: GetManagementInstallmentsInput): Promise<Result<Installment[], any>>;
 
     getPendingInstallmentsForCollectorByRoutes(
-        input: import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesInput
-    ): Promise<Result<Installment[], import("../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase").GetManagementInstallmentsByRoutesError>>;
+        input: GetManagementInstallmentsByRoutesInput
+    ): Promise<Result<Installment[], GetManagementInstallmentsByRoutesError>>;
 
 }

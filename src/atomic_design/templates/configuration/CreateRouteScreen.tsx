@@ -3,6 +3,7 @@ import { Box, Button, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAppSelector, type RootState } from "../../../store/redux/coreRedux";
 import { routeOrchestrator } from "../../../features/routes/domain/infraestructure/RouteOrchestrator";
+import { defaultRoute, type Route } from "../../../features/routes/domain/business/entities/Route";
 
 export const CreateRouteScreen = () => {
   const navigate = useNavigate();
@@ -16,11 +17,11 @@ export const CreateRouteScreen = () => {
     if (!companyId || !name.trim()) return;
     setLoading(true);
 
-    const newRoute = {
-      id: "", // El repositorio generará uno si está vacío
+    const newRoute: Route = {
+      ...defaultRoute,
+      companyId: companyId,
       name: name.trim(),
       description: description.trim(),
-      companyId,
     };
 
     const result = await routeOrchestrator.createRouteUseCase.execute({ route: newRoute });
@@ -58,17 +59,17 @@ export const CreateRouteScreen = () => {
         />
 
         <Box display="flex" gap={2} mt={2}>
-          <Button 
-            variant="outlined" 
-            fullWidth 
+          <Button
+            variant="outlined"
+            fullWidth
             onClick={() => navigate(-1)}
             disabled={loading}
           >
             Cancelar
           </Button>
-          <Button 
-            variant="contained" 
-            fullWidth 
+          <Button
+            variant="contained"
+            fullWidth
             onClick={handleCreate}
             disabled={!name.trim() || loading}
           >

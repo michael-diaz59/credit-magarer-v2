@@ -54,8 +54,7 @@ export type DocumentTypeG =
 
 /**deuda tecnica */
 function buildPath(companyId: string, costumerId: string, type: DocumentTypeG) {
-  const extension = type === "foto_casa" ? "jpg" : "pdf";
-  return `companies/${companyId}/customers/${costumerId}/${type}.${extension}`;
+  return `companies/${companyId}/customers/${costumerId}/${type}`;
 }
 
 export async function getCustomerDocumentUrl(params: {
@@ -82,12 +81,18 @@ export async function customerDocumentExists(params: {
     const fileRef = ref(storage, buildPath(companyId, costumerId, type));
     await getMetadata(fileRef);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof FirebaseError) {
+      console.log(error.code)
+      switch (error.code) {
+        case "storage/object-not-found":
+          return false;
+      }
+    }
+    throw error;
   }
 }
 
-/** <-deuda tecnica */
 export class FirebaseCostumerRepository implements CostumerGateway {
 
   async getCustomersListCase(
@@ -140,19 +145,13 @@ export class FirebaseCostumerRepository implements CostumerGateway {
   }) {
     const { companyId, costumerId, file, type } = params;
 
-    const ext = file.name.split(".").pop(); // pdf, jpg, etc
-    const path = `companies/${companyId}/customers/${costumerId}/${type}.${ext}`;
+    const path = `companies/${companyId}/customers/${costumerId}/${type}`;
 
     const fileRef = ref(storage, path);
-
     await uploadBytes(fileRef, file);
-
     const url = await getDownloadURL(fileRef);
 
-    return {
-      path,
-      url,
-    };
+    return { path, url };
   }
 
   async getCostumerByIdNumber(

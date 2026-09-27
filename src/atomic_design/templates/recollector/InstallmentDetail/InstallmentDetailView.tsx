@@ -35,6 +35,8 @@ import type {
     UseInstallmentDetail,
     PartialPaymentForm,
 } from "./UseInstallmentDetail";
+import { getLocalDate } from "../../../../core/helpers/dates/calculateDays";
+import { HasValidCoordinates } from "../../../../core/shared/helpers/geoLocation";
 
 type InstallmentDetailViewProps = ReturnType<typeof UseInstallmentDetail>;
 
@@ -60,12 +62,13 @@ export const InstallmentDetailView = ({
     paymentMethodDialogOpen,
     selectedMethod,
     proofFile,
+    maxDueFromInstallment,
 
     bankAccounts,
     selectedBankAccountId,
 
     canBePaid,
-    maxPaymentAmount,
+    balancesDueFromInstallment,
     remainingBalance,
 
     control,
@@ -122,7 +125,7 @@ export const InstallmentDetailView = ({
         return "success";
     };
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDate(new Date())
 
     return (
         <Box p={2}>
@@ -134,7 +137,7 @@ export const InstallmentDetailView = ({
                 onClick={handleCloseDialog}
             />
 
-            {/* LOCATION DIALOG */}
+            {/* dialogo de ubicacion */}
             <Dialog
                 open={locationDialogOpen}
                 onClose={() => handleLocationDialogResponse(false)}
@@ -163,7 +166,7 @@ export const InstallmentDetailView = ({
                 </DialogActions>
             </Dialog>
 
-            {/* PAYMENT METHOD DIALOG */}
+            {/* dialogo de metodos de pago inicial */}
             <Dialog
                 open={paymentMethodDialogOpen}
                 onClose={() => setPaymentMethodDialogOpen(false)}
@@ -268,7 +271,7 @@ export const InstallmentDetailView = ({
                             (!proofFile || !selectedBankAccountId)
                         }
                     >
-                        Continuar
+                        Pagar
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -335,7 +338,7 @@ export const InstallmentDetailView = ({
                 </DialogActions>
             </Dialog>
 
-            {/* DIALOGO PAGO PARCIAL */}
+            {/* DIALOGO de abono */}
             <Dialog
                 open={partialPaymentDialogOpen}
                 onClose={() => setPartialPaymentDialogOpen(false)}
@@ -347,8 +350,12 @@ export const InstallmentDetailView = ({
                 <DialogContent>
                     <Box mt={1}>
                         <Typography variant="body2" gutterBottom>
-                            Monto pendiente: ${maxPaymentAmount.toLocaleString()}
+                            Monto base: ${installment.outstandingReceivablesAmount.toLocaleString()};
+                            <br />
+                            Interes moratorio: ${(installment.outstandingReceivablesArrears + installment.outstandingReceivablesDeferment).toLocaleString()};
                         </Typography>
+
+                        <Box sx={{ mt: 4 }} />
 
                         <form
                             id="partial-payment-form"
@@ -358,26 +365,61 @@ export const InstallmentDetailView = ({
                                 name="amount"
                                 control={control}
                                 rules={{
-                                    required: "El monto es obligatorio",
                                     min: {
-                                        value: 1,
-                                        message: "El monto debe ser mayor a 0",
+                                        value: 0,
+                                        message: "El monto debe ser mayor o igual a 0",
                                     },
                                     max: {
-                                        value: maxPaymentAmount,
-                                        message:
-                                            `El monto no puede superar $${maxPaymentAmount.toLocaleString()}`,
+                                        value: installment.outstandingReceivablesAmount,
+                                        message: `El monto no puede superar $${installment.outstandingReceivablesAmount.toLocaleString()}`,
                                     },
                                 }}
                                 render={({ field }) => (
                                     <TextField
                                         {...field}
+                                        value={field.value ?? 0}
+                                        onChange={(event) => field.onChange(Number(event.target.value))}
                                         label="Monto a pagar"
                                         type="number"
                                         fullWidth
                                         error={!!errors.amount}
                                         helperText={errors.amount?.message}
                                         autoFocus
+                                    />
+                                )}
+                            />
+
+                            <Box sx={{ mt: 4 }} />
+
+                            <Controller<PartialPaymentForm>
+                                name="arrears"
+                                control={control}
+                                rules={{
+                                    min: {
+                                        value: 0,
+                                        message: "El monto debe ser mayor o igual a 0",
+                                    },
+                                    max: {
+                                        value:
+                                            installment.outstandingReceivablesArrears +
+                                            installment.outstandingReceivablesDeferment +
+                                            1,
+                                        message: `El monto no puede superar $${(
+                                            installment.outstandingReceivablesArrears +
+                                            installment.outstandingReceivablesDeferment
+                                        ).toLocaleString()}`,
+                                    },
+                                }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        value={field.value ?? 0}
+                                        onChange={(event) => field.onChange(Number(event.target.value))}
+                                        label="Mora a pagar"
+                                        type="number"
+                                        fullWidth
+                                        error={!!errors.arrears}
+                                        helperText={errors.arrears?.message}
                                     />
                                 )}
                             />
@@ -397,7 +439,7 @@ export const InstallmentDetailView = ({
                         form="partial-payment-form"
                         variant="contained"
                     >
-                        Continuar
+                        Pagar abono
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -455,6 +497,18 @@ export const InstallmentDetailView = ({
                                 <br />
                                 Ciudad: {installment.clientAddres.city}
                             </Typography>
+
+                            {HasValidCoordinates(installment.clientAddres.locationGPS?.coordinates) && (
+                                <Box>
+                                    <Typography variant="body2">
+                                        Coordenadas: {installment.clientAddres.locationGPS?.coordinates}
+                                    </Typography>
+
+                                    <Button onClick={() => window.open(`https://www.google.com/maps?q=${installment.clientAddres.locationGPS?.coordinates}`, "_blank")}>
+                                        Abrir en mapa
+                                    </Button>
+                                </Box>
+                            )}
                         </Box>
 
                         {/* CONTACTO */}
@@ -522,8 +576,7 @@ export const InstallmentDetailView = ({
                             </Typography>
 
                             <Typography variant="body2">
-                                Vence:{" "}
-                                {installment.dueDate}
+                                Vence: {installment.dueDate}
                             </Typography>
 
                             <Typography variant="h6">

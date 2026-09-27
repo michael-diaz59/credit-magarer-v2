@@ -6,7 +6,7 @@ export function getFirstPayableInstallment(installments: Installment[]) {
     );
 
     return sorted.find(
-        (i) => i.status === "pendiente" || i.status === "incompleto"
+        (i) => i.status === "pendiente"
     );
 }
 
@@ -23,7 +23,7 @@ export function processInstallments(installments: Installment[]): ProcessedInsta
     );
 
     const firstPendingIndex = sorted.findIndex(
-        (i) => i.status === "pendiente" || i.status === "incompleto"
+        (i) => i.status === "pendiente"
     );
 
     return sorted.map((i, index) => {

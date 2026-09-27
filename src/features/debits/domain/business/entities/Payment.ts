@@ -1,13 +1,15 @@
 import type { LocationGPS } from "../../../../costumers/domain/business/entities/Address";
 /**los estados de un pago realizado: \
  * registrado: el cobrador registro un pago  \
- * conflicto: el contador indica que hay un problema con el pago  \
+ * conflictoCobrador: el contador indica que hay un problema con el pago  \
+ * conflictoCliente:el contador indica que hay un problema con el pago por deposito del cliente
  * confirmado: el contador confirmo el pago  \
  * cancelada: el pago se cancelo  \
  */
 export type PaymentStatus =
   | 'registrado'
-  | 'conflicto'
+  | 'conflictoCobrador'
+  | 'conflictoCliente'
   | 'confirmado'
   | 'cancelada';
 
@@ -31,6 +33,9 @@ export interface Payment {
   /** id del cliente */
   clientId: string;
 
+  /**id del contador que actualiza el pago */
+  accountantId?: string;
+
   /**es el id de la deuda a la que pertenece el pago*/
   debtId: string;
 
@@ -44,14 +49,14 @@ export interface Payment {
   /**nombre del cliente */
   clientName: string;
 
-  /**id del cobrador que realizo el pago*/
+  /**id del cobrador que registro el pago*/
   collectorId: string;
 
   /**nombre del cobrador */
   collectorName: string;
 
   // --- DETALLES FINANCIEROS Y MONTOS ---
-  /**monto del pago*/
+  /**monto del pago(total del pago)*/
   amount: number;
 
   /**monto pagado en capital*/
@@ -63,6 +68,9 @@ export interface Payment {
   /**monto pagado en mora*/
   arrearsPaid: number;
 
+  /**monto pagado por concepto de aplazamiento*/
+  defermentPaid: number;
+
   // --- TRANSACCIÓN Y MÉTODOS DE PAGO ---
   /**metodo de pago*/
   method: PaymentMethod;
@@ -72,7 +80,7 @@ export interface Payment {
 
   //el comprobante se guarda en storage
   /**es el id al documento de comprobante de pago */
-  idProofOfPayment: string;
+  idProofOfPayment?: string;
 
   // --- ESTADO, TRAZABILIDAD Y CIERRE ---
   /**estado del pago*/
@@ -92,23 +100,24 @@ export interface Payment {
 
   // --- OBSERVACIONES ---
   /**observaciones del cobrador */
-  collectorObservation: string;
+  collectorObservation?: string;
 
   /**observaciones del contador */
-  accountantObservation: string;
+  accountantObservation?: string;
 }
 
 export function emptyPayment(): Payment {
   return {
     // --- IDENTIFICACIÓN BASE Y RELACIONES ---
     id: "",
-    clientId: "",
+
     debtId: "",
     installmentId: "",
     idRoute: "",
 
     // --- INFORMACIÓN DE LOS ACTORES ---
     clientName: "",
+    clientId: "",
     collectorId: "",
     collectorName: "",
 
@@ -117,20 +126,14 @@ export function emptyPayment(): Payment {
     capitalPaid: 0,
     interestPaid: 0,
     arrearsPaid: 0,
+    defermentPaid: 0,
 
     // --- TRANSACCIÓN Y MÉTODOS DE PAGO ---
     method: "efectivo",
-    bankAccountId: undefined,
-    idProofOfPayment: "",
 
     // --- ESTADO, TRAZABILIDAD Y CIERRE ---
     status: "registrado",
     paidAt: "",
-    location: undefined,
     isTight: false,
-
-    // --- OBSERVACIONES ---
-    collectorObservation: "",
-    accountantObservation: "",
   };
 }

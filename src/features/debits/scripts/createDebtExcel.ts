@@ -368,7 +368,7 @@ async function createInstallments(
             if (restado >= installmentAmount) {
                 status = "pagada";
             } else if (restado > 0) {
-                status = "incompleto";
+                status = "pendiente";
             }
 
             const capitalPerInstallment = debt.capital / debt.installmentCount;

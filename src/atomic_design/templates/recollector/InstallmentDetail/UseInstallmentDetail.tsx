@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { useAppDispatch, useAppSelector } from "../../../../store/redux/coreRedux";
+import { useAppSelector } from "../../../../store/redux/coreRedux";
 
 import type { Installment } from "../../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../../features/debits/domain/infraestructure/installmentsOrchestrator";
@@ -13,20 +13,25 @@ import {
 import { getCurrentLocation } from "../../../../core/shared/helpers/geoLocation";
 import BankAccountOrchestrator from "../../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
 import type { BankAccount } from "../../../../features/bankAccounts/domain/business/entities/BankAccount";
-import UserOrchestrator from "../../../../features/users/domain/infraestructure/UserOrchestrator";
 import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
 import type { LocationGPS } from "../../../../features/costumers/domain/business/entities/Address";
 import { CollectionAttemptOrchestrator } from "../../../../features/debits/domain/infraestructure/CollectionAttemptOrchestrator";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
+import type { BalancesDueFromInstallmentOutput } from "../../../../features/debits/domain/business/useCases/installment/BalancesDueFromInstallmentCase";
+import type { MaxDueFromInstallmentOutput } from "../../../../features/debits/domain/business/useCases/installment/MaxDueFromInstallmentCase";
+import type { RegisterCashPaymentError } from "../../../../features/debits/domain/business/useCases/payment/RegisterCashPaymentUseCase";
+import type { RegisterConsignmentPaymentError } from "../../../../features/debits/domain/business/useCases/payment/RegisterConsignmentPaymentUseCase";
 
 export interface PartialPaymentForm {
     amount: number;
+    arrears: number;
 }
 
 interface PendingPayment {
     type: "full" | "partial";
     amount?: number;
+    arrears?: number;
     method?: PaymentMethod;
     file?: File | null;
 }
@@ -42,7 +47,6 @@ export const UseInstallmentDetail = ({
     companyId,
     collectorId,
 }: UseInstallmentDetailParams) => {
-    const dispatch = useAppDispatch();
     const navigate = useNavigate();
 
     const user = useAppSelector((state) => state.user.user);
@@ -75,6 +79,19 @@ export const UseInstallmentDetail = ({
 
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
     const [selectedBankAccountId, setSelectedBankAccountId] = useState("");
+    const [balancesDueFromInstallment, setBalancesDueFromInstallment] = useState<BalancesDueFromInstallmentOutput>({
+        sumAmount: 0,
+        sumDeferment: 0,
+        sumArrears: 0,
+    });
+
+    const [maxDueFromInstallment, setMaxDueFromInstallment] = useState<MaxDueFromInstallmentOutput>({
+        maxArrears: 0,
+        maxOutstandingAmount: 0,
+    });
+
+
+
 
     const bankAccountOrchestrator = useMemo(
         () => new BankAccountOrchestrator(),
@@ -91,6 +108,25 @@ export const UseInstallmentDetail = ({
         [],
     );
 
+    useEffect(() => {
+        const loadBalancesDueFromInstallment = async () => {
+
+            if (!installmentId || !companyId || !debt) return;
+
+            console.log("debt", debt.id);
+
+            const result = await installmentsOrchestrator.balancesDueFromDebt({ companyId, debtId: debt.id });
+
+            if (result.ok) {
+                console.log("balancesDueFromInstallment", result.value);
+                setBalancesDueFromInstallment(result.value);
+
+            }
+        };
+
+        loadBalancesDueFromInstallment();
+    }, [installmentId, companyId, debt]);
+
     const {
         control,
         handleSubmit,
@@ -99,6 +135,7 @@ export const UseInstallmentDetail = ({
     } = useForm<PartialPaymentForm>({
         defaultValues: {
             amount: 0,
+            arrears: 0,
         },
     });
 
@@ -117,6 +154,20 @@ export const UseInstallmentDetail = ({
     }, [companyId, bankAccountOrchestrator]);
 
     useEffect(() => {
+        const loadMaxDueFromInstallment = async () => {
+            if (!installmentId || !companyId) return;
+
+            const result = await installmentsOrchestrator.maxDueFromInstallment({ companyId, installmentId });
+
+            if (result.ok) {
+                setMaxDueFromInstallment(result.value);
+            }
+        };
+
+        loadMaxDueFromInstallment();
+    }, [installmentId, companyId, installmentsOrchestrator]);
+
+    useEffect(() => {
         if (!installmentId || !companyId) return;
 
         const fetchInstallment = async () => {
@@ -133,7 +184,7 @@ export const UseInstallmentDetail = ({
                     return;
                 }
 
-                const currentInstallment = result.value.state;
+                const currentInstallment: Installment = result.value.state;
                 setInstallment(currentInstallment);
 
                 const debtOrchestrator = new DebtOrchestrator();
@@ -181,6 +232,7 @@ export const UseInstallmentDetail = ({
             capitalPaid: installment.capitalPaid,
             interestPaid: installment.interestPaid,
             arrearsPaid: installment.arrearsPaid,
+            defermentPaid: installment.defermentPaid,
             debtId: installment.debtId,
             clientId: installment.clientId,
             isTight: false,
@@ -202,112 +254,42 @@ export const UseInstallmentDetail = ({
         };
     };
 
-    const processPayment = async (
+    // --- FUNCIÓN PRINCIPAL DE EJECUCIÓN DEL FLUJO ---
+    const executePaymentFlow = async (
         amount: number,
-        location?: LocationGPS,
-        paymentId?: string,
-        proofUrl?: string,
-        method: PaymentMethod = "efectivo",
+        arrears: number,
+        method: PaymentMethod,
+        file?: File | null,
+        forceLocationData?: LocationGPS | null,
     ) => {
-        if (!installmentId || !installment) return;
+        setLoading(true);
 
+        // 1. Obtención segura de Ubicación GPS
+        let location = forceLocationData;
+        if (location === undefined || location === null) {
+            try {
+                location = await getCurrentLocation();
+            } catch (error) {
+                console.warn("Could not get location:", error);
+                setPendingPayment({ type: "partial", amount, method, file });
+                setLocationDialogOpen(true);
+                setLoading(false);
+                return;
+            }
+        }
+
+        // 2. Enrutamiento por Método de Pago
         try {
-            setLoading(true);
-
             if (method === "consignacion") {
-                const selectedAccount = bankAccounts.find(
-                    (account) => account.id === selectedBankAccountId,
-                );
-
-                if (!selectedAccount) {
-                    throw new Error("No se seleccionó una cuenta bancaria.");
-                }
-
-                const newMonto = selectedAccount.monto + amount;
-
-                const updateResult = await bankAccountOrchestrator.update({
-                    companyId,
-                    bankAccount: {
-                        ...selectedAccount,
-                        monto: newMonto,
-                    },
-                });
-
-                if (!updateResult.ok) {
-                    throw new Error("Error al actualizar el saldo de la cuenta bancaria.");
-                }
-            }
-
-            if (method === "efectivo" && user) {
-                const userOrchestrator = new UserOrchestrator(dispatch);
-                const newTotalAmount = (user.totalAmount || 0) + amount;
-
-                const userUpdateResult = await userOrchestrator.updateTotalAmount({
-                    userId: user.id,
-                    companyId: user.companyId,
-                    newAmount: newTotalAmount,
-                });
-
-                if (!userUpdateResult.ok) {
-                    console.error(
-                        "Error updating user total amount",
-                        userUpdateResult.error,
-                    );
-                }
-            }
-
-            const payment = createPaymentObject(
-                amount,
-                location,
-                paymentId,
-                proofUrl,
-                method,
-                method === "consignacion"
-                    ? selectedBankAccountId
-                    : undefined,
-            );
-
-            const registerResult = await paymentOrchestrator.registerPayment({
-                payment,
-                companyId,
-                payLatePayment: false,
-            });
-
-            if (!registerResult.ok) {
-                if (registerResult.error.code === "EXCEEDS_TOTAL_DEBT") {
-                    setDialogTitle("Límite de Abono Excedido");
-
-                    const max = (registerResult.error as any).maxAllowed;
-
-                    setDialogBody(
-                        `No puedes abonar más de $${max.toLocaleString()}. ` +
-                        "Este valor corresponde a la deuda total pendiente de la cuota " +
-                        "actual más el valor base de las cuotas futuras.",
-                    );
-
-                    setLoading(false);
-                    setDialogOpen(true);
-                    return;
-                }
-
-                throw new Error("Error al registrar el pago.");
-            }
-
-            const { installment: updatedInstallment } = registerResult.value;
-
-            setInstallment(updatedInstallment);
-
-            if (updatedInstallment.status === "pagada") {
-                setDialogTitle("Pago Registrado");
-                setDialogBody("El pago completo fue registrado correctamente.");
+                await handleConsignmentPayment(amount, arrears, file, location);
             } else {
-                setDialogTitle("Abono Registrado");
-                setDialogBody(`Se registró un abono de $${amount.toLocaleString()}.`);
+                await handleCashPayment(amount, location);
             }
-        } catch (error) {
-            console.error(error);
+        } catch (error: unknown) {
+            console.error("Error en el flujo de pago:", error);
             setDialogTitle("Error");
-            setDialogBody("Ocurrió un error al procesar el pago.");
+            const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al procesar el pago.";
+            setDialogBody(errorMessage);
         } finally {
             setLoading(false);
             setDialogOpen(true);
@@ -316,105 +298,135 @@ export const UseInstallmentDetail = ({
         }
     };
 
-    const executePaymentFlow = async (
-        amount: number,
-        method: PaymentMethod,
-        file?: File | null,
-        forceLocationData?: LocationGPS | null,
-    ) => {
-        setLoading(true);
+    // --- ESTRATEGIA 1: PAGO EN EFECTIVO (ATÓMICO) ---
+    const handleCashPayment = async (amount: number, location?: LocationGPS) => {
+        if (!installment) return;
 
-        let location = forceLocationData;
-
-        if (location === undefined) {
-            try {
-                location = await getCurrentLocation();
-            } catch (error) {
-                console.warn("Could not get location:", error);
-
-                setPendingPayment({
-                    type: "partial",
-                    amount,
-                    method,
-                    file,
-                });
-
-                setLocationDialogOpen(true);
-                setLoading(false);
-                return;
-            }
-        }
-
-        let generatedId: string | undefined;
-        let proofUrl: string | undefined;
-
-        if (method === "consignacion") {
-            if (!file) {
-                setLoading(false);
-                setDialogTitle("Error");
-                setDialogBody(
-                    "Debe adjuntar un comprobante para pagos por consignación.",
-                );
-                setDialogOpen(true);
-                return;
-            }
-
-            try {
-                generatedId = paymentOrchestrator.generatePaymentId(companyId);
-
-                const uploadResult = await paymentOrchestrator.uploadProof({
-                    file,
-                    companyId,
-                    paymentId: generatedId,
-                });
-
-                if (!uploadResult.ok) {
-                    throw new Error("Upload Failed");
-                }
-
-                proofUrl = uploadResult.value;
-            } catch (error) {
-                console.error("Upload error", error);
-                setLoading(false);
-                setDialogTitle("Error");
-                setDialogBody(
-                    "No se puede registrar el pago como consignación por el momento. " +
-                    "Inténtelo más tarde o comuníquese con un asesor.",
-                );
-                setDialogOpen(true);
-                setProofFile(null);
-                return;
-            }
-        }
-
-        await processPayment(
+        const payment = createPaymentObject(
             amount,
-            location || undefined,
-            generatedId,
-            proofUrl,
-            method,
+            location,
+            undefined,
+            undefined,
+            "efectivo",
         );
+        payment.installmentId = installment.id;
+
+        // Delegamos el registro y la actualización del saldo del cobrador a un solo llamado del Orquestador
+        const registerResult = await paymentOrchestrator.registerCashPayment({
+            payment,
+            companyId,
+            collectorId: user?.id || "",
+            currentCollectorAmount: user?.totalAmount || 0,
+        });
+
+        if (!registerResult.ok) {
+            handlePaymentError(registerResult.error);
+            return;
+        }
+
+        handlePaymentSuccess(registerResult.value.installment, amount);
     };
+
+    // --- ESTRATEGIA 2: PAGO POR CONSIGNACIÓN (CON COMPENSACIÓN / ROLLBACK) ---
+    const handleConsignmentPayment = async (
+        amount: number,
+        arrears: number,
+        file?: File | null,
+        location?: LocationGPS,
+    ) => {
+        if (!file) {
+            throw new Error("Debe adjuntar un comprobante para pagos por consignación.");
+        }
+        if (!selectedBankAccountId) {
+            throw new Error("No se seleccionó una cuenta bancaria.");
+        }
+
+        const selectedAccount = bankAccounts.find((acc) => acc.id === selectedBankAccountId);
+        if (!selectedAccount) {
+            throw new Error("La cuenta bancaria seleccionada no es válida.");
+        }
+
+        // Delegamos al Orquestador la transacción segura (Validar -> Subir Comprobante -> Registrar Pago -> Actualizar Saldo Banco)
+        const registerResult = await paymentOrchestrator.registerConsignmentPayment({
+            companyId,
+            amount,
+            installment: installment!,
+            arrears,
+            debtType: installment!.type,
+            location,
+            file,
+            bankAccount: selectedAccount,
+            installmentId: installment!.id,
+            debtId: installment!.debtId,
+            clientId: installment!.clientId,
+        });
+
+        if (!registerResult.ok) {
+            handlePaymentError(registerResult.error);
+            return;
+        }
+
+        handlePaymentSuccess(registerResult.value.installment, amount);
+    };
+
+    // --- HELPERS AUXILIARES DE RESPUESTA DE UI ---
+    const handlePaymentError = (
+        error: RegisterCashPaymentError | RegisterConsignmentPaymentError | { message?: string }
+    ) => {
+        if ("code" in error && error.code === "EXCEEDS_TOTAL_DEBT") {
+            setDialogTitle("Límite de Abono Excedido");
+            const max = error.maxAllowed;
+            setDialogBody(
+                `No puedes abonar más de $${max.toLocaleString()}. ` +
+                "Este valor corresponde a la deuda total pendiente de la cuota " +
+                "actual más el valor base de las cuotas futuras.",
+            );
+        } else {
+            const msg = "message" in error && typeof error.message === "string"
+                ? error.message
+                : "Error al registrar el pago.";
+            throw new Error(msg);
+        }
+    };
+
+    const handlePaymentSuccess = (updatedInstallment: Installment, amount: number) => {
+        setInstallment(updatedInstallment);
+        if (updatedInstallment.status === "pagada") {
+            setDialogTitle("Pago Registrado");
+            setDialogBody("El pago completo fue registrado correctamente.");
+        } else {
+            setDialogTitle("Abono Registrado");
+            setDialogBody(`Se registró un abono de $${amount.toLocaleString()}.`);
+        }
+    };
+
+
+
+
 
     const initiatePayment = (
         type: "full" | "partial",
         amount: number,
+        arrears: number,
     ) => {
         setPendingPayment({
             type,
             amount,
+            arrears,
         });
 
         setPaymentMethodDialogOpen(true);
     };
 
     const handlePaymentMethodConfirm = () => {
-        if (!pendingPayment?.amount) return;
+        if (!pendingPayment?.amount || !pendingPayment?.arrears) return;
+
 
         setPaymentMethodDialogOpen(false);
 
         executePaymentFlow(
             pendingPayment.amount,
+            pendingPayment.arrears,
             selectedMethod,
             proofFile,
         );
@@ -423,11 +435,12 @@ export const UseInstallmentDetail = ({
     const handleLocationDialogResponse = (confirm: boolean) => {
         setLocationDialogOpen(false);
 
-        if (confirm && pendingPayment?.amount) {
-            const { amount, method, file } = pendingPayment;
+        if (confirm && pendingPayment?.amount && pendingPayment?.arrears) {
+            const { amount, method, arrears, file } = pendingPayment;
 
             executePaymentFlow(
                 amount,
+                arrears,
                 method || "efectivo",
                 file,
                 null,
@@ -445,7 +458,10 @@ export const UseInstallmentDetail = ({
         const amountToPay =
             installment.amount - (installment.amountPaid || 0);
 
-        initiatePayment("full", amountToPay);
+        const arrearsToPay =
+            installment.arrears - (installment.arrearsPaid || 0);
+
+        initiatePayment("full", amountToPay, arrearsToPay);
     };
 
     const onPartialPaymentSubmit: SubmitHandler<PartialPaymentForm> = (
@@ -453,7 +469,7 @@ export const UseInstallmentDetail = ({
     ) => {
         setPartialPaymentDialogOpen(false);
         reset();
-        initiatePayment("partial", Number(data.amount));
+        initiatePayment("partial", Number(data.amount), Number(data.arrears));
     };
 
     const handleRegisterAttempt = async () => {
@@ -593,12 +609,7 @@ export const UseInstallmentDetail = ({
     };
 
     const canBePaid =
-        installment?.status === "pendiente" ||
-        installment?.status === "incompleto";
-
-    const maxPaymentAmount = installment
-        ? installment.amount - (installment.amountPaid || 0)
-        : 0;
+        installment?.status === "pendiente"
 
     const totalPaidForDebt = installmentsOfDebt.reduce(
         (acc, curr) => acc + (curr.amountPaid || 0),
@@ -637,9 +648,11 @@ export const UseInstallmentDetail = ({
         selectedBankAccountId,
 
         canBePaid,
-        maxPaymentAmount,
+        balancesDueFromInstallment,
         totalPaidForDebt,
         remainingBalance,
+
+        maxDueFromInstallment,
 
         control,
         handleSubmit,

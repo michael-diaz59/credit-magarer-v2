@@ -10,6 +10,7 @@ import { get } from "react-hook-form";
 import { textFieldSX } from "../../atoms/textFieldSX";
 import { useWatch } from "react-hook-form";
 import { extractCoordinates } from "../../sub_atomic_particles/extractCoordinates";
+import { HasValidCoordinates } from "../../../core/shared/helpers/geoLocation";
 
 interface Props {
   control: Control<CostumerFormValues>;
@@ -39,9 +40,7 @@ export const AddressForm = ({ control, prefix }: Props) => {
     name: name("location.coordenadas"),
   });
 
-  const hasValidCoordinates =
-    typeof coordenadas === "string" &&
-    /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(coordenadas.trim());
+  const hasValidCoordinates = HasValidCoordinates(coordenadas)
 
   const openInMaps = () => {
     const url = `https://www.google.com/maps?q=${coordenadas}`;

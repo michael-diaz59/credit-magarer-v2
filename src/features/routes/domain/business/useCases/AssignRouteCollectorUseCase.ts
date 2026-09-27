@@ -26,7 +26,7 @@ export class AssignRouteCollectorUseCase {
     const { route, newCobradorId, oldCobradorId, companyId } = input;
 
     // 1. Actualizar la entidad Route
-    const updatedRoute: Route = { ...route, cobradorId: newCobradorId };
+    const updatedRoute: Route = { ...route, collectorId: newCobradorId };
     const routeUpdateResult = await this.routeGateway.updateRoute({ route: updatedRoute });
 
     if (!routeUpdateResult.ok) {
@@ -39,10 +39,10 @@ export class AssignRouteCollectorUseCase {
       if (oldUserResult.ok && oldUserResult.value) {
         const currentUserRoutes = oldUserResult.value.idRoutes || [];
         const filteredRoutes = currentUserRoutes.filter(id => id !== route.id);
-        
+
         await this.userGateway.updateUserRoutes(
-          oldCobradorId, 
-          companyId, 
+          oldCobradorId,
+          companyId,
           filteredRoutes
         );
       }
@@ -56,8 +56,8 @@ export class AssignRouteCollectorUseCase {
         if (!currentUserRoutes.includes(route.id)) {
           const updatedRoutes = [...currentUserRoutes, route.id];
           await this.userGateway.updateUserRoutes(
-            newCobradorId, 
-            companyId, 
+            newCobradorId,
+            companyId,
             updatedRoutes
           );
         }

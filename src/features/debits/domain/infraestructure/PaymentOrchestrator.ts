@@ -17,6 +17,8 @@ import { FirebaseRouteRepository } from "../../../routes/provider/firebase/Fireb
 import { UpdatePaymentUseCase, type UpdatePaymentInput as UpdatePaymentFullInput, type UpdatePaymentOutput as UpdatePaymentFullOutput, type UpdatePaymentError as UpdatePaymentFullError } from "../business/useCases/payment/UpdatePaymentUseCase";
 import { UpdateMultiplePaymentsIsTightUseCase, type UpdateMultiplePaymentsIsTightError, type UpdateMultiplePaymentsIsTightInput, type UpdateMultiplePaymentsIsTightOutput } from "../business/useCases/payment/UpdateMultiplePaymentsIsTight";
 import { GetSumPaymentsUseCase, type GetSumPaymentsInput, type GetSumPaymentsOutput, type GetSumPaymentsError } from "../business/useCases/payment/GetSumPaymentsUseCase";
+import { RegisterCashPaymentUseCase, type RegisterCashPaymentInput, type RegisterCashPaymentOutput, type RegisterCashPaymentError } from "../business/useCases/payment/RegisterCashPaymentUseCase";
+import { RegisterConsignmentPaymentUseCase, type RegisterConsignmentPaymentInput, type RegisterConsignmentPaymentOutput, type RegisterConsignmentPaymentError } from "../business/useCases/payment/RegisterConsignmentPaymentUseCase";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -25,6 +27,8 @@ export default class PaymentOrchestrator {
     private readonly uploadProofCase: UploadProofCase;
     private readonly getByInstallmentCase: GetPaymentsByInstallmentCase;
     private readonly registerPaymentCase: RegisterPaymentUseCase;
+    private readonly registerCashPaymentCase: RegisterCashPaymentUseCase;
+    private readonly registerConsignmentPaymentCase: RegisterConsignmentPaymentUseCase;
     private readonly getPaymentsByStatusCase: GetPaymentsByStatusUseCase;
     private readonly updatePaymentStatusCase: UpdatePaymentStatusUseCase;
     private readonly updatePaymentUseCase: UpdatePaymentUseCase;
@@ -41,12 +45,14 @@ export default class PaymentOrchestrator {
         const installmentGateway = new FirebaseInstallmentRepository();
         const debtGateway = new FirebaseDebtRepository();
         this.registerPaymentCase = new RegisterPaymentUseCase(this.paymentGateway, installmentGateway, debtGateway);
+        this.registerCashPaymentCase = new RegisterCashPaymentUseCase(this.paymentGateway);
+        this.registerConsignmentPaymentCase = new RegisterConsignmentPaymentUseCase(this.paymentGateway);
 
         const routeGateway = new FirebaseRouteRepository();
         this.getPaymentsByStatusCase = new GetPaymentsByStatusUseCase(this.paymentGateway);
         this.updatePaymentStatusCase = new UpdatePaymentStatusUseCase(this.paymentGateway, routeGateway);
         this.updatePaymentUseCase = new UpdatePaymentUseCase(this.paymentGateway);
-        this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway, routeGateway);
+        this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway);
         this.getSumPaymentsUseCase = new GetSumPaymentsUseCase(this.paymentGateway);
     }
 
@@ -54,7 +60,13 @@ export default class PaymentOrchestrator {
         return this.registerPaymentCase.execute(input);
     }
 
+    async registerCashPayment(input: RegisterCashPaymentInput): Promise<Result<RegisterCashPaymentOutput, RegisterCashPaymentError>> {
+        return this.registerCashPaymentCase.execute(input);
+    }
 
+    async registerConsignmentPayment(input: RegisterConsignmentPaymentInput): Promise<Result<RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError>> {
+        return this.registerConsignmentPaymentCase.execute(input);
+    }
 
     async deletePayment(input: DeletePaymentInput): Promise<Result<DeletePaymentOutput, DeletePaymentError>> {
         return this.deletePaymentCase.execute(input);

@@ -53,7 +53,7 @@ export function groupInstallmentsByRoute(
   const oldestInstallmentsByDebt = new Map<string, Installment>();
 
   for (const installment of installments) {
-    if (installment.status !== "pendiente" && installment.status !== "incompleto") continue;
+    if (installment.status !== "pendiente") continue;
 
     const currentOldest = oldestInstallmentsByDebt.get(installment.debtId);
 

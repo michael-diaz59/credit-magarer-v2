@@ -1,4 +1,5 @@
 import type { Result } from "../../../../../../core/helpers/ResultC";
+import type { Address } from "../../../../../costumers/domain/business/entities/Address";
 import type { Customer } from "../../../../../costumers/domain/business/entities/Customer";
 import type { PersonalInfo } from "../../../../../costumers/domain/business/entities/PersonalInfo";
 import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
@@ -6,7 +7,6 @@ import type { Debt, DebtTerms } from "../../entities/Debt";
 import {
   defaultInstallment,
   type Installment,
-  type InstallmentAddress,
 } from "../../entities/Installment";
 
 export type CreateInstallmentsError =
@@ -129,7 +129,7 @@ export class CreateInstallmentsUseCase {
 
   generateInstallmentsFromDebt(
     debt: Debt,
-    costumerAddress: InstallmentAddress,
+    costumerAddress: Address,
     customer: Customer,
     companyId: string,
     options?: {

@@ -1,4 +1,4 @@
-import { FirebaseAnotherPaymentRepository } from "../../repository/FirebaseAnotherPaymentRepository";
+import { FirebaseAnotherPaymentRepository } from "../../repository/firebase/FirebaseAnotherPaymentRepository";
 import { CreateAnotherPaymentUseCase, type CreateAnotherPaymentInput, type CreateAnotherPaymentOutput, type CreateAnotherPaymentError } from "../business/useCases/CreateAnotherPaymentUseCase";
 import { GetAnotherPaymentsByCompanyUseCase, type GetAnotherPaymentsByCompanyInput, type GetAnotherPaymentsByCompanyOutput, type GetAnotherPaymentsByCompanyError } from "../business/useCases/GetAnotherPaymentsByCompanyUseCase";
 import { UpdateAnotherPaymentUseCase, type UpdateAnotherPaymentInput, type UpdateAnotherPaymentOutput, type UpdateAnotherPaymentError } from "../business/useCases/UpdateAnotherPaymentUseCase";

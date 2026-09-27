@@ -95,7 +95,7 @@ export class RegisterPaymentUseCase {
             const currentIndex = allInstallments.findIndex(i => i.id === payment.installmentId);
 
             //obtiene todas las cuotas desde la actual hasta que se acaben y que no esten pagadas, liquidadas o canceladas
-            const installmentsToPay: Installment[] = allInstallments.slice(currentIndex).filter(i => i.status !== 'pagada' && i.status !== 'liquidada' && i.status !== 'cancelada');
+            const installmentsToPay: Installment[] = allInstallments.slice(currentIndex).filter(i => i.isLife);
 
             /**
              * valor a pagar por retraso
@@ -208,7 +208,7 @@ export class RegisterPaymentUseCase {
             installment.status = "pagada";
             installment.paidAt = new Date().toISOString().split("T")[0];
         } else if (totalPaid > 0) {
-            installment.status = "incompleto";
+            installment.status = "pendiente";
         }
     }
 }

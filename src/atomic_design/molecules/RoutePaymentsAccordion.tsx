@@ -15,6 +15,8 @@ import FormatNumberToMoney from "../sub_atomic_particles/FormatNumberToMoney";
 type RoutePaymentsAccordionProps = {
     route: Route;
     payments: Payment[];
+    cashBalances: number;
+    depositBalances: number;
     selectedIds: string[];
     onTogglePayment: (paymentId: string) => void;
     onCardClick: (payment: Payment) => void;
@@ -23,6 +25,8 @@ type RoutePaymentsAccordionProps = {
 export const RoutePaymentsAccordion = ({
     route,
     payments,
+    cashBalances,
+    depositBalances,
     selectedIds,
     onTogglePayment,
     onCardClick,
@@ -44,8 +48,7 @@ export const RoutePaymentsAccordion = ({
 
                     <Typography color="primary" fontWeight="bold">
                         {FormatNumberToMoney(
-                            (route.totalCash2 || []).reduce((acc, c) => acc + c.amount, 0) +
-                            (route.totalDeposit || []).reduce((acc, d) => acc + d.amount, 0)
+                            (cashBalances || 0) + (depositBalances || 0)
                         )}
                     </Typography>
                 </Box>

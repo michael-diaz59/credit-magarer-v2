@@ -2,7 +2,7 @@
 import type { Result } from "../../../../../../core/helpers/ResultC";
 import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
 import type { Debt } from "../../entities/Debt";
-import type { CreateDebtError } from "./CreateDebtUseCase";
+import type { CreateDebtError2 } from "./CreateDebtUseCase";
 
 export interface CreateDebtFromExcelInput {
     companyId: string;
@@ -16,7 +16,7 @@ export class CreateDebtFromExcelCase {
         this.debtGateway = debtGateway;
     }
 
-    async execute(input: CreateDebtFromExcelInput): Promise<Result<void, CreateDebtError>> {
+    async execute(input: CreateDebtFromExcelInput): Promise<Result<void, CreateDebtError2>> {
         return this.debtGateway.createMany({
             companyId: input.companyId,
             debts: input.debts

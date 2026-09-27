@@ -85,7 +85,7 @@ export const TaxtPaymentDetailsScreen: React.FC = () => {
                 backgroundColor:
                   payment.status === "confirmado"
                     ? theme.palette.success.main
-                    : payment.status === "conflicto"
+                    : payment.status === "conflictoCliente" || payment.status === "conflictoCobrador"
                       ? theme.palette.error.main
                       : theme.palette.warning.main,
                 color: "#fff",

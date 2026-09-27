@@ -2,7 +2,7 @@ import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { FirebaseDebtRepository } from "../../provider/firebase/DebtRepository";
 import { FirebaseInstallmentRepository } from "../../provider/firebase/FirebaseInstallmentRepository";
 import { FirebaseCostumerRepository } from "../../../costumers/repository/FirebaseCostumerRepository";
-import { CreateDebtUseCase, type CreateDebtError, type CreateDebtUInput, type CreateDebtUOutput } from "../business/useCases/debt/CreateDebtUseCase";
+import { CreateDebtUseCase2, type CreateDebtError2, type CreateDebtUInput2, type CreateDebtUOutput2 } from "../business/useCases/debt/CreateDebtUseCase2";
 import { GetByFiltersCase, type GetByFiltersError, type GetByFiltersInput, type GetByFiltersOutput } from "../business/useCases/debt/GetByFiltersCase";
 import { GetDebitByIdCase, type GetDebitByIdInput, type GetDebitByIdOutput } from "../business/useCases/debt/GetDebitByIdCase";
 import { GetDebstByCostumerDocumentCase, type GetDebstByCostumerDocumentInput, type GetDebstByCostumerDocumentOutput } from "../business/useCases/debt/GetDebstByCostumerDocumentCase";
@@ -22,16 +22,18 @@ import type { DebtGateway } from "./DebtGatweay";
 import { SimulateDebtVariableCase } from "../business/useCases/debt/SimulateDebtVariableCase";
 import { UpdateSimpleDebtCase, type UpdateSimpleDebtInput, type UpdateSimpleDebtOutput } from "../business/useCases/debt/UpdateSimpleDebtCase";
 import { GoToPreparationUseCase, type GoToPreparationInput } from "../business/useCases/debt/GoToPreparationUseCase";
-import { GoToPreAbrovesUseCase, type GoToPreAbrovesInput } from "../business/useCases/debt/GoToPreAbrovesUseCase";
+import { GoToPreAbrovesUseCase, type GoToPreAbrovesInput, type UpdateDebtStatusOutput2 } from "../business/useCases/debt/GoToPreAbrovesUseCase";
 import { GoToAnnularUseCase, type GoToAnnularInput } from "../business/useCases/debt/GoToAnnularUseCase";
 import { GoToDeactivateUseCase, type GoToDeactivateInput } from "../business/useCases/debt/GoToDeactivateUseCase";
-import { GoToActivateUseCase, type GoToActivateInput } from "../business/useCases/debt/GoToActivateUseCase";
+import { GoToActivateUseCase, type GoToActivateError, type GoToActivateInput, type GoToActivateOutput } from "../business/useCases/debt/GoToActivateUseCase";
 import { MarkAsPaidUseCase, type MarkAsPaidError, type MarkAsPaidInput, type MarkAsPaidOutput } from "../business/useCases/debt/MarkAsPaidUseCase";
 import type { InstallmentGateway } from "./InstallmentGateway";
+import { GetDebtsForPreparationUseCase, type GetDebtsForPreparationError, type GetDebtsForPreparationInput, type GetDebtsForPreparationOutput } from "../business/useCases/debt/GetDebtsForPreparationCase";
+
 
 export default class DebtOrchestrator {
 
-    private createDebtCase: CreateDebtUseCase
+    private createDebtCase: CreateDebtUseCase2
     private getDebtsCase: GetDebtsCase
     private getByFiltersCase: GetByFiltersCase
     private getDebitByIdCase: GetDebitByIdCase
@@ -39,6 +41,7 @@ export default class DebtOrchestrator {
     private updateDebtUseCase: UpdateDebtUseCase
     private updateDebtStatusUseCase: UpdateDebtStatusUseCase
     private updateSimpleDebtCase: UpdateSimpleDebtCase
+    private getDebtsForPreparationUseCase: GetDebtsForPreparationUseCase
     private debtGateway: DebtGateway
     private simulateDebtCase: SimulateDebtCase
     private goToPreparationUseCase: GoToPreparationUseCase
@@ -48,6 +51,7 @@ export default class DebtOrchestrator {
     private goToActivateUseCase: GoToActivateUseCase
     private markAsPaidUseCase: MarkAsPaidUseCase
     private simulateDebtVariableCase: SimulateDebtVariableCase
+    private createDebtUseCase2: CreateDebtUseCase2
     private getDebtsValidByCollectorUseCase: GetDebtsValidByCollectorUseCase
     private getDebtsByRouteUseCase: GetDebtsByRouteUseCase
     private getTotalDeliveredCapitalUseCase: GetTotalDeliveredCapitalUseCase
@@ -62,19 +66,22 @@ export default class DebtOrchestrator {
 
     constructor() {
         this.debtGateway = new FirebaseDebtRepository()
+        this.getDebtsForPreparationUseCase = new GetDebtsForPreparationUseCase(this.debtGateway)
         this.updateSimpleDebtCase = new UpdateSimpleDebtCase(this.debtGateway)
         this.goToPreparationUseCase = new GoToPreparationUseCase(this.debtGateway)
+
         this.goToPreAbrovesUseCase = new GoToPreAbrovesUseCase(this.debtGateway)
         this.goToAnnularUseCase = new GoToAnnularUseCase(this.debtGateway)
         this.goToDeactivateUseCase = new GoToDeactivateUseCase(this.debtGateway)
-        this.goToActivateUseCase = new GoToActivateUseCase(this.debtGateway)
         this.markAsPaidUseCase = new MarkAsPaidUseCase(this.debtGateway)
 
         this.simulateDebtCase = new SimulateDebtCase()
         this.simulateDebtVariableCase = new SimulateDebtVariableCase()
         this.installmentGateway = new FirebaseInstallmentRepository()
         const costumerGateway = new FirebaseCostumerRepository()
-        this.createDebtCase = new CreateDebtUseCase(this.debtGateway, costumerGateway, this.installmentGateway)
+        this.goToActivateUseCase = new GoToActivateUseCase(this.debtGateway, costumerGateway)
+        this.createDebtUseCase2 = new CreateDebtUseCase2(this.debtGateway, costumerGateway)
+        this.createDebtCase = new CreateDebtUseCase2(this.debtGateway, costumerGateway)
         this.getDebitByIdCase = new GetDebitByIdCase(this.debtGateway)
         this.getByFiltersCase = new GetByFiltersCase(this.debtGateway)
         this.getDebtsCase = new GetDebtsCase(this.debtGateway)
@@ -91,6 +98,14 @@ export default class DebtOrchestrator {
         this.createDebtFromExcelCase = new CreateDebtFromExcelCase(this.debtGateway)
     }
 
+    async createDebt2(input: CreateDebtUInput2): Promise<Result<CreateDebtUOutput2, CreateDebtError2>> {
+        return this.createDebtUseCase2.execute(input)
+    }
+
+    async getDebtsForPreparation(input: GetDebtsForPreparationInput): Promise<Result<GetDebtsForPreparationOutput, GetDebtsForPreparationError>> {
+        return this.getDebtsForPreparationUseCase.execute(input)
+    }
+
     async getDebts(input: GetDebtsInput): Promise<GetDebtsOutput> {
         return this.getDebtsCase.execute(input)
     }
@@ -103,7 +118,7 @@ export default class DebtOrchestrator {
         return this.goToPreparationUseCase.execute(input)
     }
 
-    async goToPreAbroves(input: GoToPreAbrovesInput): Promise<UpdateSimpleDebtOutput> {
+    async goToPreAbroves(input: GoToPreAbrovesInput): Promise<UpdateDebtStatusOutput2> {
         return this.goToPreAbrovesUseCase.execute(input)
     }
 
@@ -115,7 +130,7 @@ export default class DebtOrchestrator {
         return this.goToDeactivateUseCase.execute(input)
     }
 
-    async goToActivate(input: GoToActivateInput): Promise<UpdateSimpleDebtOutput> {
+    async goToActivate(input: GoToActivateInput): Promise<Result<GoToActivateOutput, GoToActivateError>> {
         return this.goToActivateUseCase.execute(input)
     }
 
@@ -167,11 +182,11 @@ export default class DebtOrchestrator {
 
 
 
-    async createDebt(input: CreateDebtUInput): Promise<Result<CreateDebtUOutput, CreateDebtError>> {
+    async createDebt(input: CreateDebtUInput2): Promise<Result<CreateDebtUOutput2, CreateDebtError2>> {
         return this.createDebtCase.execute(input)
     }
 
-    async createDebtFromExcel(input: CreateDebtFromExcelInput): Promise<Result<void, CreateDebtError>> {
+    async createDebtFromExcel(input: CreateDebtFromExcelInput): Promise<Result<void, CreateDebtError2>> {
         return this.createDebtFromExcelCase.execute(input)
     }
 

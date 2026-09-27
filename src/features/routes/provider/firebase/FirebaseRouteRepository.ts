@@ -1,42 +1,14 @@
-import { collection, doc, getDocs, query, setDoc, increment, getDoc, type DocumentData } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, increment, type DocumentData, writeBatch, where, getAggregateFromServer, sum } from "firebase/firestore";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
 import { firestore } from "../../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
 import type { RouteGateway, CreateRouteGatewayInput, GetRoutesGatewayInput, UpdateRouteGatewayInput } from "../../domain/infraestructure/RouteGateway";
-import type { Route, CashBalances, DepositBalances } from "../../domain/business/entities/Route";
+import type { Route } from "../../domain/business/entities/Route";
 import type { RouteError } from "../../domain/business/entities/routeErrors";
+import type { PutMoneyToRoutesError, PutMoneyToRoutesInput, PutMoneyToRoutesOutput } from "../../domain/business/useCases/PutMoneyToRoutesCase";
 
 export class FirebaseRouteRepository implements RouteGateway {
 
-  private documentToRoute(id: string, data: DocumentData): Route {
-    return {
-      id: id,
-      name: data.name,
-      description: data.description,
-      companyId: data.companyId,
-      startDisabled: data.startDisabled ?? undefined,
-      endDisabled: data.endDisabled ?? undefined,
-      cobradorId: data.cobradorId ?? undefined,
-      totalCash: data.totalCollected ?? 0,
-      totalCash2: data.totalCash2 ?? [],
-      totalDeposit: data.totalDeposit ?? [],
-    } as Route;
-  }
-
-  private routeToDocument(route: Route): DocumentData {
-    const data: DocumentData = {};
-    data.name = route.name;
-    data.description = route.description;
-    data.companyId = route.companyId;
-    data.startDisabled = route.startDisabled ?? null;
-    data.endDisabled = route.endDisabled ?? null;
-    data.cobradorId = route.cobradorId ?? null;
-    data.totalCollected = route.totalCash ?? 0;
-    data.totalCash2 = route.totalCash2 ?? [];
-    data.totalDeposit = route.totalDeposit ?? [];
-
-    return data;
-  }
 
   async createRoute(input: CreateRouteGatewayInput): Promise<Result<void, RouteError>> {
     try {
@@ -45,7 +17,7 @@ export class FirebaseRouteRepository implements RouteGateway {
       const refRoutesColl = collection(firestore, "companies", companyId, "routes");
       const refRoute = input.route.id ? doc(refRoutesColl, input.route.id) : doc(refRoutesColl);
 
-      const routeData = this.routeToDocument({
+      const routeData = routeToDocument({
         ...input.route,
         id: refRoute.id,
       });
@@ -54,6 +26,7 @@ export class FirebaseRouteRepository implements RouteGateway {
 
       return ok(undefined);
     } catch (error) {
+      console.error("[CreateRouteRepository]", error);
       if (error instanceof FirebaseError) {
         switch (error.code) {
           case "permission-denied":
@@ -66,16 +39,107 @@ export class FirebaseRouteRepository implements RouteGateway {
     }
   }
 
+  async getBalancesByRoute(
+    companyId: string,
+    routes: Route[],
+  ): Promise<Route[]> {
+    try {
+      if (routes.length === 0) {
+        return routes;
+      }
+
+      const refRoutes = collection(
+        firestore,
+        "companies",
+        companyId,
+        "routes",
+      );
+
+      const balances = new Map<
+        string,
+        {
+          cashBalances: number;
+          depositBalances: number;
+        }
+      >();
+
+      // Inicializamos todos los balances
+      for (const route of routes) {
+        balances.set(route.id, {
+          cashBalances: 0,
+          depositBalances: 0,
+        });
+      }
+
+      // Ejecutamos las rutas en paralelo
+      await Promise.all(
+        routes.map(async (route) => {
+          const cashQuery = query(
+            refRoutes,
+            where("status", "==", "confirmado"),
+            where("method", "==", "efectivo"),
+            where("idRoute", "==", route.id),
+          );
+
+          const depositQuery = query(
+            refRoutes,
+            where("status", "==", "confirmado"),
+            where("method", "==", "consignacion"),
+            where("idRoute", "==", route.id),
+          );
+
+          const [
+            cashSnapshot,
+            depositSnapshot,
+          ] = await Promise.all([
+            getAggregateFromServer(cashQuery, {
+              amount: sum("amount"),
+            }),
+
+            getAggregateFromServer(depositQuery, {
+              amount: sum("amount"),
+            }),
+          ]);
+
+          const balance = balances.get(route.id);
+
+          if (!balance) {
+            return;
+          }
+
+          balance.cashBalances =
+            cashSnapshot.data().amount ?? 0;
+
+          balance.depositBalances =
+            depositSnapshot.data().amount ?? 0;
+        }),
+      );
+
+      return routes.map((route) => {
+        const balance = balances.get(route.id);
+
+        return {
+          ...route,
+          cashBalances: balance?.cashBalances ?? 0,
+          depositBalances: balance?.depositBalances ?? 0,
+        };
+      });
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  }
+
   async getRoutesByCompany(input: GetRoutesGatewayInput): Promise<Result<Route[], RouteError>> {
     try {
       const refRoutes = collection(firestore, "companies", input.companyId, "routes");
       const routesQuery = query(refRoutes);
       const snapshot = await getDocs(routesQuery);
 
-      const routes: Route[] = snapshot.docs.map((doc) => this.documentToRoute(doc.id, doc.data()));
-      console.log("routes", routes);
+      const routes: Route[] = snapshot.docs.map((doc) => documentToRoute(doc.id, doc.data(), 0, 0));
+      const routesWithBalances = await this.getBalancesByRoute(input.companyId, routes);
 
-      return ok(routes);
+      return ok(routesWithBalances);
     } catch (error) {
       if (error instanceof FirebaseError) {
         switch (error.code) {
@@ -93,15 +157,7 @@ export class FirebaseRouteRepository implements RouteGateway {
       const companyId = input.route.companyId;
       const refRoute = doc(firestore, "companies", companyId, "routes", input.route.id);
 
-      const routeData = this.routeToDocument({
-        companyId: input.route.companyId,
-        id: input.route.id,
-        name: input.route.name,
-        description: input.route.description,
-        startDisabled: input.route.startDisabled,
-        endDisabled: input.route.endDisabled,
-        cobradorId: input.route.cobradorId,
-      });
+      const routeData = routeToDocument(input.route);
 
       await setDoc(refRoute, routeData, { merge: true });
 
@@ -138,63 +194,180 @@ export class FirebaseRouteRepository implements RouteGateway {
     }
   }
 
-  async updateSpecificBalances(input: {
+  async UpdateDepositBalances(input: {
     companyId: string,
     routeId: string,
-    cashEntries: CashBalances[],
-    depositEntries: DepositBalances[]
-  }): Promise<Result<void, any>> {
+    BankAccountId: string,
+  }) {
+    const { companyId, routeId } = input;
     try {
-      const { companyId, routeId, cashEntries, depositEntries } = input;
-      const refRoute = doc(firestore, "companies", companyId, "routes", routeId);
+      const refRoute = doc(firestore, "companies", companyId, "routes", routeId,);
+      console.log("refRoute", refRoute);
 
-      // Leemos primero la ruta actual para actualizar los arrays
-      const snapshot = await getDoc(refRoute);
-      let currentCash2: CashBalances[] = [];
-      let currentDeposit: DepositBalances[] = [];
-      let currentTotalCollected = 0;
+    } catch {
 
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        currentCash2 = data.totalCash2 ?? [];
-        currentDeposit = data.totalDeposit ?? [];
-        currentTotalCollected = data.totalCollected ?? 0;
-      }
+    }
 
-      // Actualizar saldos en efectivo
-      for (const entry of cashEntries) {
-        const existing = currentCash2.find(c => c.collectorId === entry.collectorId);
-        if (existing) {
-          existing.amount += entry.amount;
-        } else {
-          currentCash2.push({ ...entry });
+  }
+
+  async PutMoneyToRoutes(input: PutMoneyToRoutesInput): Promise<Result<PutMoneyToRoutesOutput, PutMoneyToRoutesError>> {
+    try {
+      const CHUNK_SIZE = 200; // Dividir los movimientos en chunks
+
+      for (let i = 0; i < input.putMoneyToRoutes.length; i += CHUNK_SIZE) {
+        const chunk = input.putMoneyToRoutes.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(firestore);
+
+        for (const putMoneyToRoute of chunk) {
+          const routeRef = doc(
+            firestore,
+            "companies",
+            putMoneyToRoute.companyId,
+            "routes",
+            putMoneyToRoute.routeId
+          );
+
+          const balanceData = {
+            capitalPaid: increment(putMoneyToRoute.capitalPaid),
+            interestPaid: increment(putMoneyToRoute.interestPaid),
+            arrearsPaid: increment(putMoneyToRoute.arrearsPaid),
+            defermentPaid: increment(putMoneyToRoute.defermentPaid),
+            totalPaid: increment(putMoneyToRoute.totalPaid)
+          };
+
+          // ============================================
+          // BALANCE DEL COBRADOR
+          // ============================================
+          if (putMoneyToRoute.CollectorId) {
+            const cashBalanceRef = doc(
+              firestore,
+              "companies",
+              putMoneyToRoute.companyId,
+              "routes",
+              putMoneyToRoute.routeId,
+              "cashBalances",
+              putMoneyToRoute.CollectorId
+            );
+
+            batch.set(cashBalanceRef, balanceData, { merge: true });
+          }
+          // ============================================
+          // BALANCE BANCARIO
+          // ============================================
+          else if (putMoneyToRoute.BankAccountId) {
+            const bankBalanceRef = doc(
+              firestore,
+              "companies",
+              putMoneyToRoute.companyId,
+              "routes",
+              putMoneyToRoute.routeId,
+              "bankBalances",
+              putMoneyToRoute.BankAccountId
+            );
+
+            batch.set(bankBalanceRef, balanceData, { merge: true });
+          }
+
+          // ============================================
+          // BALANCE GENERAL DE LA RUTA
+          // ============================================
+          batch.set(routeRef, balanceData, { merge: true });
         }
-        currentTotalCollected += entry.amount;
+
+        // Commit del chunk actual
+        await batch.commit();
       }
 
-      // Actualizar depósitos
-      for (const entry of depositEntries) {
-        const existing = currentDeposit.find(d => d.bankAccountId === entry.bankAccountId);
-        if (existing) {
-          existing.amount += entry.amount;
-        } else {
-          currentDeposit.push({ ...entry });
-        }
-        currentTotalCollected += entry.amount;
-      }
-
-      await setDoc(refRoute, {
-        totalCash2: currentCash2,
-        totalDeposit: currentDeposit,
-        totalCollected: currentTotalCollected, // Mantenemos este por retrocompatibilidad
-        id: routeId,
-        companyId: companyId
-      }, { merge: true });
-
-      return ok(undefined);
+      return ok({ state: true });
     } catch (error) {
-      console.error("[updateSpecificBalances]", error);
+      console.error("[PutMoneyToRoutes]", error);
       return fail({ code: "UNKNOWN_ERROR" });
     }
   }
+}
+
+// ==========================================
+// 1. ROUTE MAPPERS
+// ==========================================
+
+export function documentToRoute(
+  id: string,
+  data: DocumentData,
+  cashBalances: number,
+  depositBalances: number
+): Route {
+  return {
+    // --- IDENTIFICACIÓN ---
+    id,
+    name: data.name ?? "",
+    description: data.description ?? "",
+    companyId: data.companyId ?? "",
+
+    // --- BLOQUEO DE RUTA ---
+    startDisabled: data.startDisabled ?? undefined,
+    endDisabled: data.endDisabled ?? undefined,
+
+    // --- COBRADOR ASIGNADO ---
+    collectorId: data.collectorId ?? undefined,
+    collectorName: data.collectorName ?? undefined,
+
+    // --- VALORES FINANCIEROS ---
+    capital: Number(data.capital ?? 0),
+    interest: Number(data.interest ?? 0),
+    amount: Number(data.amount ?? 0),
+
+    arrears: Number(data.arrears ?? 0),
+    arrearsDays: Number(data.arrearsDays ?? 0),
+
+    deferment: Number(data.deferment ?? 0),
+    defermentDays: Number(data.defermentDays ?? 0),
+
+    total: Number(data.total ?? 0),
+    cashBalances: cashBalances,
+    depositBalances: depositBalances
+  };
+}
+
+export function routeToDocument(
+  route: Omit<Route, "id"> | Route
+): DocumentData {
+  const docData: DocumentData = {
+    // --- IDENTIFICACIÓN ---
+    name: route.name,
+    description: route.description,
+    companyId: route.companyId,
+
+    // --- VALORES FINANCIEROS ---
+    capital: route.capital,
+    interest: route.interest,
+    amount: route.amount,
+
+    arrears: route.arrears,
+    arrearsDays: route.arrearsDays,
+
+    deferment: route.deferment,
+    defermentDays: route.defermentDays,
+
+    total: route.total,
+  };
+
+  // --- BLOQUEO DE RUTA ---
+  if (route.startDisabled !== undefined) {
+    docData.startDisabled = route.startDisabled;
+  }
+
+  if (route.endDisabled !== undefined) {
+    docData.endDisabled = route.endDisabled;
+  }
+
+  // --- COBRADOR ASIGNADO ---
+  if (route.collectorId !== undefined) {
+    docData.collectorId = route.collectorId;
+  }
+
+  if (route.collectorName !== undefined) {
+    docData.collectorName = route.collectorName;
+  }
+
+  return docData;
 }
