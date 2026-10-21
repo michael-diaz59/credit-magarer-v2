@@ -21,6 +21,7 @@ import type {
   UpdateInstallmentByDebtInput,
   UpdateInstallmentByDebtOutput,
 } from "../../domain/business/useCases/installment/UpdateInstallmentsByDebtCase";
+import type { GetInstallmentByDebtAndNumberError } from "../../domain/business/useCases/installment/GetInstallmentByDebtAndNumberUseCase";
 import type {
   GetInstallmentsByDebtInput,
   GetInstallmentsByDebtOutput,
@@ -472,7 +473,7 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
     companyId: string;
     debtId: string;
     installmentNumber: number;
-  }): Promise<Result<Installment | null, any>> {
+  }): Promise<Result<Installment | null, GetInstallmentByDebtAndNumberError>> {
     try {
       const { companyId, debtId, installmentNumber } = input;
       const ref = collection(firestore, "companies", companyId, "installments");
@@ -495,7 +496,10 @@ export class FirebaseInstallmentRepository implements InstallmentGateway {
       return ok(installment);
     } catch (error) {
       console.error("[getByDebtAndNumber]", error);
-      return fail({ code: "UNKNOWN_ERROR" });
+      return fail({
+        code: "UNKNOWN_ERROR",
+        message: error instanceof Error ? error.message : "Error al obtener la cuota",
+      });
     }
   }
 
@@ -711,6 +715,7 @@ export function InstallmentToDocument(
   const result: DocumentData = {
     // --- IDENTIFICACIÓN Y RUTA ---
     debtId: installment.debtId,
+    debtName: installment.debtName ?? null,
     companyId: installment.companyId,
     routeId: installment.routeId,
     routeName: installment.routeName,
@@ -887,6 +892,7 @@ export function DocumentToInstallment(
     // --- IDENTIFICACIÓN Y RUTA ---
     id,
     debtId: data.debtId ?? "",
+    debtName: data.debtName ?? undefined,
     companyId: data.companyId ?? "",
     routeId: data.routeId ?? "",
     routeName: data.routeName ?? "",

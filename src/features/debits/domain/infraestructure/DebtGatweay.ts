@@ -86,6 +86,11 @@ export interface DebtGateway {
     companyId: string;
     debts: Debt[];
   }): Promise<Result<void, CreateDebtError2>>;
+
+  getDebtsByIds(input: {
+    companyId: string;
+    debtIds: string[];
+  }): Promise<Result<Debt[], { code: "UNKNOWN_ERROR" } | { code: "NETWORK_ERROR" }>>;
 }
 
 

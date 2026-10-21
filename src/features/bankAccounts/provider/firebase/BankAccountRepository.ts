@@ -4,7 +4,6 @@ import {
     doc,
     getDocs,
     setDoc,
-    updateDoc,
     deleteDoc,
     query,
 } from "firebase/firestore";
@@ -17,6 +16,43 @@ import type { CreateBankAccountInput, CreateBankAccountOutput, CreateBankAccount
 import type { GetBankAccountsInput, GetBankAccountsOutput, GetBankAccountsError } from "../../domain/business/useCases/GetBankAccountsUseCase";
 import type { UpdateBankAccountInput, UpdateBankAccountOutput, UpdateBankAccountError } from "../../domain/business/useCases/UpdateBankAccountUseCase";
 import type { DeleteBankAccountInput, DeleteBankAccountOutput, DeleteBankAccountError } from "../../domain/business/useCases/DeleteBankAccountUseCase";
+
+import type { DocumentData } from "firebase/firestore";
+
+export interface BankAccountDTO {
+    name: string | null;
+    bankName: string | null;
+    accountNumber: string | null;
+    accountType: string | null;
+    tope: number | null;
+    monto: number | null;
+    idUser: string | null;
+}
+
+export function BankAccountToDocumentData(account: Partial<BankAccount>): BankAccountDTO {
+    return {
+        name: account.name ?? null,
+        bankName: account.bankName ?? null,
+        accountNumber: account.accountNumber ?? null,
+        accountType: account.accountType ?? null,
+        tope: account.tope ?? null,
+        monto: account.monto ?? null,
+        idUser: account.idUser ?? null,
+    };
+}
+
+export function DocumentToBankAccount(id: string, data: DocumentData): BankAccount {
+    return {
+        id,
+        name: data.name ?? "",
+        bankName: data.bankName ?? "",
+        accountNumber: data.accountNumber ?? "",
+        accountType: data.accountType ?? "",
+        tope: data.tope ?? 0,
+        monto: data.monto ?? 0,
+        idUser: data.idUser ?? "",
+    };
+}
 
 export class FirebaseBankAccountRepository implements BankAccountGateway {
 
@@ -32,10 +68,9 @@ export class FirebaseBankAccountRepository implements BankAccountGateway {
             const newDocRef = doc(bankAccountsCol);
             const id = newDocRef.id;
 
-            await setDoc(newDocRef, {
-                ...input.bankAccount,
-                id: id
-            });
+            const documentData = BankAccountToDocumentData(input.bankAccount);
+
+            await setDoc(newDocRef, documentData);
 
             return ok({ id });
         } catch (error) {
@@ -60,18 +95,7 @@ export class FirebaseBankAccountRepository implements BankAccountGateway {
             const snapshot = await getDocs(q);
 
             const bankAccounts: BankAccount[] = snapshot.docs.map(doc => {
-                const data = doc.data();
-                console.log("bankAccounts data: ", data);
-                return {
-                    id: doc.id,
-                    name: data.name ?? "",
-                    bankName: data.bankName ?? "",
-                    accountNumber: data.accountNumber ?? "",
-                    accountType: data.accountType ?? "",
-                    tope: data.tope ?? 0,
-                    monto: data.monto ?? 0,
-                    idUser: data.idUser ?? ""
-                } as BankAccount;
+                return DocumentToBankAccount(doc.id, doc.data());
             });
 
             return ok({ bankAccounts });
@@ -94,9 +118,9 @@ export class FirebaseBankAccountRepository implements BankAccountGateway {
                 input.bankAccount.id
             );
 
-            const { id, ...updateData } = input.bankAccount;
+            const documentData = BankAccountToDocumentData(input.bankAccount);
 
-            await updateDoc(bankAccountRef, updateData);
+            await setDoc(bankAccountRef, documentData, { merge: true });
 
             return ok({ success: true });
         } catch (error) {

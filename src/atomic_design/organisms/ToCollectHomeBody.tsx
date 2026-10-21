@@ -1,5 +1,7 @@
-import { Box, Button, Typography, Stack, Card, CardContent } from "@mui/material";
+import { Box, Button, Typography, Stack, Card, CardContent, Chip } from "@mui/material";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
+import type { Debt } from "../../features/debits/domain/business/entities/Debt";
+import { calculateInstallmentArrears } from "../../features/debits/domain/business/services/calculateInstallmentArrears";
 import { useState } from "react";
 import { groupInstallmentsByRoute } from "../../features/collector/helpers/groupInstallmentsByRoute";
 import { RouteGroup } from "../molecules/RouteGroup";
@@ -9,6 +11,8 @@ import type { CollectorPayment } from "../../features/collector/domain/business/
 export interface ToCollectBodyProps {
   pending: Installment[];
   overdue: Installment[];
+  debtNames?: Record<string, string>;
+  debtsById?: Record<string, Debt>;
   onClick: (installment: Installment) => void;
   // Props para rutas
   collectorRoutes?: Record<string, string[]>;
@@ -18,18 +22,24 @@ export interface ToCollectBodyProps {
 export const ToCollectBody = ({
   pending,
   overdue,
+  debtNames,
+  debtsById,
   onClick,
   collectorRoutes,
   onOpenRouteManagement,
 }: ToCollectBodyProps) => {
   const [expandedRoutes, setExpandedRoutes] = useState<Map<string, boolean>>(new Map());
   const [expandedUnassigned, setExpandedUnassigned] = useState<Map<string, boolean>>(new Map());
-  console.log("atrasadas");
-  console.log(overdue);
 
   // Agrupar cuotas
   const allInstallments = [...pending, ...overdue];
-  const { routeGroups, unassigned } = groupInstallmentsByRoute(allInstallments, collectorRoutes);
+  const totalToCollect = allInstallments.reduce((sum, i) => {
+    const basePending = i.outstandingReceivablesAmount ?? i.amount ?? 0;
+    const debt = i.debtId ? debtsById?.[i.debtId] : undefined;
+    const arrearsInfo = calculateInstallmentArrears({ installment: i, debt });
+    return sum + basePending + arrearsInfo.totalPendingArrears;
+  }, 0);
+  const { routeGroups, unassigned } = groupInstallmentsByRoute(allInstallments, collectorRoutes, debtNames, debtsById);
 
   const toggleRoute = (route: string, isExpanded: boolean) => {
     const newExpanded = new Map(expandedRoutes);
@@ -45,6 +55,39 @@ export const ToCollectBody = ({
 
   return (
     <Box position="relative" minHeight="100%">
+      {/* Resumen total por cobrar */}
+      {allInstallments.length > 0 && (
+        <Card variant="outlined" sx={{ mb: 2, borderRadius: 3, bgcolor: "background.paper" }}>
+          <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Total pendiente por cobrar
+                </Typography>
+                <Typography variant="h6" fontWeight="bold" color="primary.main">
+                  ${totalToCollect.toLocaleString("es-CO")}
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                {overdue.length > 0 && (
+                  <Chip
+                    label={`${overdue.length} en mora`}
+                    color="error"
+                    size="small"
+                  />
+                )}
+                {pending.length > 0 && (
+                  <Chip
+                    label={`${pending.length} al día`}
+                    color="info"
+                    size="small"
+                  />
+                )}
+              </Stack>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Botón para gestionar rutas */}
       {onOpenRouteManagement && (
@@ -66,6 +109,7 @@ export const ToCollectBody = ({
           key={routeName}
           routeName={routeName}
           customers={data.customers}
+          debtsById={debtsById}
           expanded={expandedRoutes.get(routeName) ?? true} // Por defecto expandido
           onChange={(isExpanded) => toggleRoute(routeName, isExpanded)}
           onClick={onClick}
@@ -87,6 +131,9 @@ export const ToCollectBody = ({
               customerName={data.customerName}
               pending={data.pending}
               overdue={data.overdue}
+              debts={data.debts}
+              debtNames={debtNames}
+              debtsById={debtsById}
               expanded={expandedUnassigned.get(customerId) ?? true}
               onChange={(isExpanded) => toggleUnassignedCustomer(customerId, isExpanded)}
               onClick={onClick}
@@ -107,10 +154,11 @@ export const ToCollectBody = ({
 
 export interface CollectedBodyProps {
   paid: Installment[];
+  debtNames?: Record<string, string>;
   onClick: (installment: Installment) => void;
 }
 
-export const CollectedBody = ({ paid, onClick }: CollectedBodyProps) => {
+export const CollectedBody = ({ paid, debtNames, onClick }: CollectedBodyProps) => {
   const [expandedCustomers, setExpandedCustomers] = useState<Map<string, boolean>>(new Map());
 
   // Agrupar por cliente (aquí no filtramos por deuda vieja porque ya están pagadas, pero agrupamos por cliente)
@@ -141,7 +189,9 @@ export const CollectedBody = ({ paid, onClick }: CollectedBodyProps) => {
           customerName={data.customerName}
           pending={data.installments} // Reutilizamos pending para mostrar las pagadas
           overdue={[]}
+          debtNames={debtNames}
           expanded={expandedCustomers.get(customerId) ?? false}
+          isCollectedView={true}
           onChange={(isExpanded) => toggleCustomer(customerId, isExpanded)}
           onClick={onClick}
         />

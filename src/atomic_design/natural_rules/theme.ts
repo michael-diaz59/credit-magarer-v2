@@ -4,11 +4,11 @@ import { typographyTokens } from "../sub_atomic_particles/typography.ts";
 import type { ThemeMode } from "./theme_modes.ts";
 
 
-export function getTheme(mode: ThemeMode) {
+export function getTheme(_mode: ThemeMode) {
 
   return createTheme({
 
-    palette: getPaletteTokens(mode),
+    palette: getPaletteTokens("light"),
 
     typography: typographyTokens,
 

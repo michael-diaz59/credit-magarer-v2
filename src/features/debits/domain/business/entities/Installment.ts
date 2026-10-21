@@ -42,6 +42,9 @@ export interface Installment {
   /**id de la deuda */
   debtId: string;
 
+  /**nombre secuencial o alias de la deuda (ej: DEBT-001 o 1) */
+  debtName?: string;
+
   /**id de la comañia usada para las reglas de seguridad de grupos */
   companyId: string;
 

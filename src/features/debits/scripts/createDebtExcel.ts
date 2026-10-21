@@ -546,6 +546,7 @@ async function migratePaymentsFromInstallments(input: {
                     capitalPaid: installment.capitalPaid,
                     interestPaid: installment.interestPaid,
                     arrearsPaid: 0,
+                    defermentPaid: 0,
                     clientId: installment.clientId,
                     debtId: installment.debtId,
                     idProofOfPayment: "",

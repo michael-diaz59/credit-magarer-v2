@@ -19,6 +19,12 @@ import { UpdateMultiplePaymentsIsTightUseCase, type UpdateMultiplePaymentsIsTigh
 import { GetSumPaymentsUseCase, type GetSumPaymentsInput, type GetSumPaymentsOutput, type GetSumPaymentsError } from "../business/useCases/payment/GetSumPaymentsUseCase";
 import { RegisterCashPaymentUseCase, type RegisterCashPaymentInput, type RegisterCashPaymentOutput, type RegisterCashPaymentError } from "../business/useCases/payment/RegisterCashPaymentUseCase";
 import { RegisterConsignmentPaymentUseCase, type RegisterConsignmentPaymentInput, type RegisterConsignmentPaymentOutput, type RegisterConsignmentPaymentError } from "../business/useCases/payment/RegisterConsignmentPaymentUseCase";
+import {
+    RegisterCascadingPaymentUseCase,
+    type RegisterCascadingPaymentInput,
+    type RegisterCascadingPaymentOutput,
+    type RegisterCascadingPaymentError,
+} from "../business/useCases/payment/RegisterCascadingPaymentUseCase";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -29,6 +35,7 @@ export default class PaymentOrchestrator {
     private readonly registerPaymentCase: RegisterPaymentUseCase;
     private readonly registerCashPaymentCase: RegisterCashPaymentUseCase;
     private readonly registerConsignmentPaymentCase: RegisterConsignmentPaymentUseCase;
+    private readonly registerCascadingPaymentCase: RegisterCascadingPaymentUseCase;
     private readonly getPaymentsByStatusCase: GetPaymentsByStatusUseCase;
     private readonly updatePaymentStatusCase: UpdatePaymentStatusUseCase;
     private readonly updatePaymentUseCase: UpdatePaymentUseCase;
@@ -47,6 +54,7 @@ export default class PaymentOrchestrator {
         this.registerPaymentCase = new RegisterPaymentUseCase(this.paymentGateway, installmentGateway, debtGateway);
         this.registerCashPaymentCase = new RegisterCashPaymentUseCase(this.paymentGateway);
         this.registerConsignmentPaymentCase = new RegisterConsignmentPaymentUseCase(this.paymentGateway);
+        this.registerCascadingPaymentCase = new RegisterCascadingPaymentUseCase(this.paymentGateway);
 
         const routeGateway = new FirebaseRouteRepository();
         this.getPaymentsByStatusCase = new GetPaymentsByStatusUseCase(this.paymentGateway);
@@ -66,6 +74,12 @@ export default class PaymentOrchestrator {
 
     async registerConsignmentPayment(input: RegisterConsignmentPaymentInput): Promise<Result<RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError>> {
         return this.registerConsignmentPaymentCase.execute(input);
+    }
+
+    async registerCascadingPayment(
+        input: RegisterCascadingPaymentInput
+    ): Promise<Result<RegisterCascadingPaymentOutput, RegisterCascadingPaymentError>> {
+        return this.registerCascadingPaymentCase.execute(input);
     }
 
     async deletePayment(input: DeletePaymentInput): Promise<Result<DeletePaymentOutput, DeletePaymentError>> {

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
+import { Box, Typography } from "@mui/material";
 
 import type { Installment } from "../../../../features/debits/domain/business/entities/Installment";
 import InstallmentsOrchestrator from "../../../../features/debits/domain/infraestructure/installmentsOrchestrator";
 import PaymentOrchestrator from "../../../../features/debits/domain/infraestructure/PaymentOrchestrator";
-import {
-    type Payment,
-    type PaymentMethod,
+import type {
+    Payment,
+    PaymentMethod,
 } from "../../../../features/debits/domain/business/entities/Payment";
 import { getCurrentLocation } from "../../../../core/shared/helpers/geoLocation";
 import BankAccountOrchestrator from "../../../../features/bankAccounts/domain/infraestructure/BankAccountOrchestrator";
@@ -20,8 +21,14 @@ import { CollectionAttemptOrchestrator } from "../../../../features/debits/domai
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
 import type { BalancesDueFromInstallmentOutput } from "../../../../features/debits/domain/business/useCases/installment/BalancesDueFromInstallmentCase";
 import type { MaxDueFromInstallmentOutput } from "../../../../features/debits/domain/business/useCases/installment/MaxDueFromInstallmentCase";
+import type { GetDebtPaymentCapacityOutput } from "../../../../features/debits/domain/business/useCases/installment/GetDebtPaymentCapacityCase";
 import type { RegisterCashPaymentError } from "../../../../features/debits/domain/business/useCases/payment/RegisterCashPaymentUseCase";
 import type { RegisterConsignmentPaymentError } from "../../../../features/debits/domain/business/useCases/payment/RegisterConsignmentPaymentUseCase";
+import type { RegisterCascadingPaymentError } from "../../../../features/debits/domain/business/useCases/payment/RegisterCascadingPaymentUseCase";
+import {
+    getLocalDate,
+} from "../../../../core/helpers/dates/calculateDays";
+import { calculateInstallmentArrears } from "../../../../features/debits/domain/business/services/calculateInstallmentArrears";
 
 export interface PartialPaymentForm {
     amount: number;
@@ -58,7 +65,7 @@ export const UseInstallmentDetail = ({
     const [loading, setLoading] = useState(false);
 
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [dialogBody, setDialogBody] = useState("");
+    const [dialogBody, setDialogBody] = useState<ReactNode>("");
     const [dialogTitle, setDialogTitle] = useState<string | undefined>(undefined);
 
     const [attemptDialogOpen, setAttemptDialogOpen] = useState(false);
@@ -90,8 +97,7 @@ export const UseInstallmentDetail = ({
         maxOutstandingAmount: 0,
     });
 
-
-
+    const [debtPaymentCapacity, setDebtPaymentCapacity] = useState<GetDebtPaymentCapacityOutput | null>(null);
 
     const bankAccountOrchestrator = useMemo(
         () => new BankAccountOrchestrator(),
@@ -107,6 +113,24 @@ export const UseInstallmentDetail = ({
         () => new InstallmentsOrchestrator(),
         [],
     );
+
+    useEffect(() => {
+        const loadDebtPaymentCapacity = async () => {
+            if (!companyId || !debt?.id) return;
+
+            const result = await installmentsOrchestrator.getDebtPaymentCapacity({
+                companyId,
+                debtId: debt.id,
+                todayDateStr: getLocalDate(new Date()),
+            });
+
+            if (result.ok) {
+                setDebtPaymentCapacity(result.value);
+            }
+        };
+
+        loadDebtPaymentCapacity();
+    }, [companyId, debt?.id, installmentsOfDebt, installmentsOrchestrator]);
 
     useEffect(() => {
         const loadBalancesDueFromInstallment = async () => {
@@ -132,6 +156,7 @@ export const UseInstallmentDetail = ({
         handleSubmit,
         formState: { errors },
         reset,
+        setValue,
     } = useForm<PartialPaymentForm>({
         defaultValues: {
             amount: 0,
@@ -216,43 +241,193 @@ export const UseInstallmentDetail = ({
         fetchInstallment();
     }, [installmentId, companyId, installmentsOrchestrator]);
 
-    const createPaymentObject = (
-        amount: number,
-        location?: LocationGPS,
-        paymentId?: string,
-        proofUrl?: string,
-        method: PaymentMethod = "efectivo",
-        bankAccountId?: string,
-    ): Payment => {
-        if (!installment) {
-            throw new Error("No hay una cuota cargada.");
+    // 1. Separar cuotas de la deuda completa: vencidas antes de hoy, cuotas de hoy, cuotas futuras y pagadas
+    const { overdueInstallments, dueTodayInstallments, futureInstallments, paidInstallments } = useMemo(() => {
+        const todayStr = getLocalDate(new Date());
+
+        const overdue: Installment[] = [];
+        const dueToday: Installment[] = [];
+        const future: Installment[] = [];
+        const paid: Installment[] = [];
+
+        for (const inst of installmentsOfDebt) {
+            const isPaid =
+                inst.status === "pagada" ||
+                (inst.outstandingReceivables !== undefined && inst.outstandingReceivables <= 0);
+
+            if (isPaid || !inst.isLife || (inst.outstandingReceivables ?? inst.amount ?? 0) <= 0) {
+                paid.push(inst);
+                continue;
+            }
+
+            const rawDate = inst.paymentDate || inst.dueDate;
+            if (!rawDate) {
+                dueToday.push(inst);
+                continue;
+            }
+
+            const dateStr = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
+
+            if (dateStr < todayStr) {
+                overdue.push(inst);
+            } else if (dateStr === todayStr) {
+                dueToday.push(inst);
+            } else {
+                future.push(inst);
+            }
         }
 
         return {
-            capitalPaid: installment.capitalPaid,
-            interestPaid: installment.interestPaid,
-            arrearsPaid: installment.arrearsPaid,
-            defermentPaid: installment.defermentPaid,
-            debtId: installment.debtId,
-            clientId: installment.clientId,
-            isTight: false,
-            idRoute: debt?.routeId || "",
-            id: paymentId || "",
-            idProofOfPayment: proofUrl || "",
-            collectorObservation: "",
-            accountantObservation: "",
-            installmentId: installment.id,
-            clientName: installment.clientName,
-            collectorName: user?.name || "Desconocido",
-            collectorId,
-            amount,
-            method,
-            status: "registrado",
-            paidAt: new Date().toISOString(),
-            location,
-            bankAccountId,
+            overdueInstallments: overdue,
+            dueTodayInstallments: dueToday,
+            futureInstallments: future,
+            paidInstallments: paid,
         };
-    };
+    }, [installmentsOfDebt]);
+
+    // 2. Resumen financiero de lo exigible a día de hoy (ÚNICAMENTE cuotas vencidas y cuotas que vencen hoy)
+    const creditFinancialSummary = useMemo(() => {
+        let totalBaseAmount = 0;
+        let totalDelayArrears = 0;
+        let totalDefermentArrears = 0;
+
+        // Solo se suman las cuotas exigibles a día de hoy (<= hoy)
+        const dueUpToToday = [...overdueInstallments, ...dueTodayInstallments];
+
+        for (const inst of dueUpToToday) {
+            const base = inst.outstandingReceivablesAmount ?? inst.amount ?? 0;
+            const arrearsInfo = calculateInstallmentArrears({ installment: inst, debt });
+
+            totalBaseAmount += base;
+            totalDelayArrears += arrearsInfo.pendingArrears;
+            totalDefermentArrears += arrearsInfo.pendingDeferment;
+        }
+
+        const totalDueToday = totalBaseAmount + totalDelayArrears + totalDefermentArrears;
+
+        return {
+            totalBaseAmount,
+            totalDelayArrears,
+            totalDefermentArrears,
+            totalDueToday,
+            overdueCount: overdueInstallments.length,
+            dueTodayCount: dueTodayInstallments.length,
+            futureCount: futureInstallments.length,
+            pendingCount: dueTodayInstallments.length,
+            totalDueTodayCount: dueUpToToday.length,
+            totalActiveCount: installmentsOfDebt.filter((i) => i.isLife && (i.outstandingReceivables ?? 0) > 0).length,
+        };
+    }, [overdueInstallments, dueTodayInstallments, futureInstallments, installmentsOfDebt, debt]);
+
+    // 3. Simulación del valor real restante para liquidar/cancelar el crédito completo
+    const liquidationSimulation = useMemo(() => {
+        if (!debt) return null;
+
+        const remainingCapital = debt.remainingCapitalToPay ?? 0;
+
+        const getInstallmentPendingInterest = (inst: Installment): number => {
+            if (typeof inst.remainingInterestToPay === "number" && inst.remainingInterestToPay > 0) {
+                return inst.remainingInterestToPay;
+            }
+            const interest = inst.interest ?? 0;
+            const paid = (inst.interestPaid ?? 0) + (inst.pendeningInterest ?? 0);
+            return Math.max(0, interest - paid);
+        };
+
+        const overdueInterest = overdueInstallments.reduce(
+            (sum, inst) => sum + getInstallmentPendingInterest(inst),
+            0
+        );
+
+        // 1. Identificar cuotas que están en mora o se cobran hoy
+        const dueUpToToday = [...overdueInstallments, ...dueTodayInstallments];
+
+        // 2. Número máximo de cuota entre las exigibles a hoy
+        const maxDueNumber =
+            dueUpToToday.length > 0
+                ? Math.max(...dueUpToToday.map((i) => i.installmentNumber ?? 0))
+                : (debt.installmentsPaid ?? 0);
+
+        const totalInstallmentsCount =
+            debt.installmentCount ??
+            (installmentsOfDebt[0]?.installmentTotalNumber ?? 0);
+
+        // 3. ¿Quedan más cuotas a parte de las que están en mora o se cobran hoy?
+        const hasRemainingInstallments =
+            totalInstallmentsCount > 0
+                ? maxDueNumber < totalInstallmentsCount
+                : installmentsOfDebt.some((i) => (i.installmentNumber ?? 0) > maxDueNumber);
+
+        const targetNextInstallmentNumber = hasRemainingInstallments ? maxDueNumber + 1 : null;
+
+        // 4. Traer la cuota siguiente exacta en base al installmentNumber
+        const nextInstallment = targetNextInstallmentNumber
+            ? installmentsOfDebt.find(
+                  (i) => i.installmentNumber === targetNextInstallmentNumber
+              ) ?? null
+            : null;
+
+        // Si no quedan más cuotas: 0. Si quedan más cuotas: extraer exactamente inst.interest
+        const nextInstallmentInterest =
+            hasRemainingInstallments && nextInstallment
+                ? (nextInstallment.interest ?? 0)
+                : 0;
+
+        const nextInstallmentNumber = hasRemainingInstallments
+            ? (nextInstallment?.installmentNumber ?? targetNextInstallmentNumber)
+            : null;
+
+        const hasNextInstallment = hasRemainingInstallments && Boolean(nextInstallment);
+
+        const remainingDeferment = Math.max(
+            debt.remainingDefermentToPay ?? 0,
+            creditFinancialSummary.totalDefermentArrears
+        );
+
+        const delayArrears = Math.max(
+            debt.remainingArrearsToPay ?? 0,
+            creditFinancialSummary.totalDelayArrears
+        );
+
+        const isFixed = (debt.type ?? "fijo") === "fijo";
+
+        const basePayoff = isFixed
+            ? remainingCapital + overdueInterest + nextInstallmentInterest + remainingDeferment
+            : (debt.remainingAmountToPay ?? remainingCapital) + overdueInterest + nextInstallmentInterest + remainingDeferment;
+
+        const totalPayoff = basePayoff + delayArrears;
+
+        const maxAllowedArrears = delayArrears + remainingDeferment;
+        const maxAllowedBase = remainingCapital + overdueInterest + nextInstallmentInterest;
+
+        return {
+            isFixed,
+            remainingCapital,
+            overdueInterest,
+            nextInstallmentInterest,
+            nextInstallmentNumber: hasNextInstallment ? nextInstallmentNumber : null,
+            remainingDeferment,
+            delayArrears,
+            basePayoff,
+            totalPayoff,
+            maxAllowedBase,
+            maxAllowedArrears,
+        };
+    }, [debt, overdueInstallments, dueTodayInstallments, futureInstallments, creditFinancialSummary, installment]);
+
+    // 4. Detalle dinámico de la cuota seleccionada
+    const currentInstallmentArrears = useMemo(() => {
+        if (!installment) return null;
+        const info = calculateInstallmentArrears({ installment, debt });
+        return {
+            ...info,
+            totalDueThisInstallment:
+                (installment.outstandingReceivablesAmount ?? 0) +
+                info.pendingArrears +
+                info.pendingDeferment,
+        };
+    }, [installment, debt]);
+
 
     // --- FUNCIÓN PRINCIPAL DE EJECUCIÓN DEL FLUJO ---
     const executePaymentFlow = async (
@@ -271,7 +446,7 @@ export const UseInstallmentDetail = ({
                 location = await getCurrentLocation();
             } catch (error) {
                 console.warn("Could not get location:", error);
-                setPendingPayment({ type: "partial", amount, method, file });
+                setPendingPayment({ type: "partial", amount, arrears, method, file });
                 setLocationDialogOpen(true);
                 setLoading(false);
                 return;
@@ -283,7 +458,7 @@ export const UseInstallmentDetail = ({
             if (method === "consignacion") {
                 await handleConsignmentPayment(amount, arrears, file, location);
             } else {
-                await handleCashPayment(amount, location);
+                await handleCashPayment(amount, arrears, location);
             }
         } catch (error: unknown) {
             console.error("Error en el flujo de pago:", error);
@@ -298,25 +473,21 @@ export const UseInstallmentDetail = ({
         }
     };
 
-    // --- ESTRATEGIA 1: PAGO EN EFECTIVO (ATÓMICO) ---
-    const handleCashPayment = async (amount: number, location?: LocationGPS) => {
-        if (!installment) return;
+    // --- ESTRATEGIA 1: PAGO EN EFECTIVO EN CASCADA ---
+    const handleCashPayment = async (amount: number, arrears: number, location?: LocationGPS) => {
+        if (!installment || !debt) return;
 
-        const payment = createPaymentObject(
-            amount,
-            location,
-            undefined,
-            undefined,
-            "efectivo",
-        );
-        payment.installmentId = installment.id;
-
-        // Delegamos el registro y la actualización del saldo del cobrador a un solo llamado del Orquestador
-        const registerResult = await paymentOrchestrator.registerCashPayment({
-            payment,
+        const registerResult = await paymentOrchestrator.registerCascadingPayment({
             companyId,
-            collectorId: user?.id || "",
-            currentCollectorAmount: user?.totalAmount || 0,
+            amount,
+            arrears,
+            collectorId: user?.id || collectorId,
+            collectorName: user?.name || "",
+            debt,
+            allInstallments: installmentsOfDebt,
+            method: "efectivo",
+            location,
+            todayDateStr: getLocalDate(new Date()),
         });
 
         if (!registerResult.ok) {
@@ -324,10 +495,15 @@ export const UseInstallmentDetail = ({
             return;
         }
 
-        handlePaymentSuccess(registerResult.value.installment, amount);
+        handleCascadingPaymentSuccess(
+            registerResult.value.installments,
+            registerResult.value.debt,
+            registerResult.value.payments,
+            amount + arrears
+        );
     };
 
-    // --- ESTRATEGIA 2: PAGO POR CONSIGNACIÓN (CON COMPENSACIÓN / ROLLBACK) ---
+    // --- ESTRATEGIA 2: PAGO POR CONSIGNACIÓN EN CASCADA ---
     const handleConsignmentPayment = async (
         amount: number,
         arrears: number,
@@ -346,19 +522,19 @@ export const UseInstallmentDetail = ({
             throw new Error("La cuenta bancaria seleccionada no es válida.");
         }
 
-        // Delegamos al Orquestador la transacción segura (Validar -> Subir Comprobante -> Registrar Pago -> Actualizar Saldo Banco)
-        const registerResult = await paymentOrchestrator.registerConsignmentPayment({
-            companyId,
+        const registerResult = await paymentOrchestrator.registerCascadingPayment({
             amount,
-            installment: installment!,
             arrears,
-            debtType: installment!.type,
+            companyId,
+            collectorId: user?.id || collectorId,
+            collectorName: user?.name || "",
+            debt: debt!,
+            allInstallments: installmentsOfDebt,
+            method: "consignacion",
             location,
             file,
             bankAccount: selectedAccount,
-            installmentId: installment!.id,
-            debtId: installment!.debtId,
-            clientId: installment!.clientId,
+            todayDateStr: getLocalDate(new Date()),
         });
 
         if (!registerResult.ok) {
@@ -366,20 +542,29 @@ export const UseInstallmentDetail = ({
             return;
         }
 
-        handlePaymentSuccess(registerResult.value.installment, amount);
+        handleCascadingPaymentSuccess(
+            registerResult.value.installments,
+            registerResult.value.debt,
+            registerResult.value.payments,
+            amount + arrears
+        );
     };
 
     // --- HELPERS AUXILIARES DE RESPUESTA DE UI ---
     const handlePaymentError = (
-        error: RegisterCashPaymentError | RegisterConsignmentPaymentError | { message?: string }
+        error: RegisterCascadingPaymentError | RegisterCashPaymentError | RegisterConsignmentPaymentError | { message?: string }
     ) => {
         if ("code" in error && error.code === "EXCEEDS_TOTAL_DEBT") {
             setDialogTitle("Límite de Abono Excedido");
             const max = error.maxAllowed;
             setDialogBody(
-                `No puedes abonar más de $${max.toLocaleString()}. ` +
-                "Este valor corresponde a la deuda total pendiente de la cuota " +
-                "actual más el valor base de las cuotas futuras.",
+                `No puedes abonar más de $${max.toLocaleString()} en monto base a la deuda.`,
+            );
+        } else if ("code" in error && error.code === "EXCEEDS_ARREARS_LIMIT") {
+            setDialogTitle("Límite de Mora Excedido");
+            const max = error.maxAllowed;
+            setDialogBody(
+                `No puedes abonar más de $${max.toLocaleString()} en concepto de mora o aplazamiento.`,
             );
         } else {
             const msg = "message" in error && typeof error.message === "string"
@@ -389,20 +574,70 @@ export const UseInstallmentDetail = ({
         }
     };
 
-    const handlePaymentSuccess = (updatedInstallment: Installment, amount: number) => {
-        setInstallment(updatedInstallment);
-        if (updatedInstallment.status === "pagada") {
-            setDialogTitle("Pago Registrado");
-            setDialogBody("El pago completo fue registrado correctamente.");
-        } else {
-            setDialogTitle("Abono Registrado");
-            setDialogBody(`Se registró un abono de $${amount.toLocaleString()}.`);
+    const handleCascadingPaymentSuccess = (
+        updatedInstallments: Installment[],
+        updatedDebt: Debt,
+        payments: Payment[],
+        totalPaid: number
+    ) => {
+        const currentUpdated = updatedInstallments.find((i) => i.id === installmentId);
+        if (currentUpdated) {
+            setInstallment(currentUpdated);
         }
+        setDebt(updatedDebt);
+
+        setInstallmentsOfDebt((prev) =>
+            prev.map((inst) => {
+                const found = updatedInstallments.find((u) => u.id === inst.id);
+                return found || inst;
+            })
+        );
+
+        setDialogTitle("Abono Registrado con Éxito");
+        setDialogBody(
+            <Box display="flex" flexDirection="column" gap={1.5} pt={0.5}>
+                <Typography variant="body2" color="text.primary">
+                    Se registró un recaudo de <strong>${totalPaid.toLocaleString()}</strong> distribuido en <strong>{payments.length} pago(s)</strong>:
+                </Typography>
+                <Box
+                    component="ul"
+                    sx={{
+                        pl: 2.5,
+                        m: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                    }}
+                >
+                    {payments.map((p) => {
+                        const inst =
+                            updatedInstallments.find((i) => i.id === p.installmentId) ||
+                            installmentsOfDebt.find((i) => i.id === p.installmentId);
+                        const cuotaLabel = inst ? `Cuota #${inst.installmentNumber}` : "Cuota";
+
+                        const concepts: string[] = [];
+                        if (p.capitalPaid > 0) concepts.push(`Capital: $${p.capitalPaid.toLocaleString()}`);
+                        if (p.interestPaid > 0) concepts.push(`Interés: $${p.interestPaid.toLocaleString()}`);
+                        if (p.arrearsPaid > 0) concepts.push(`Mora: $${p.arrearsPaid.toLocaleString()}`);
+                        if (p.defermentPaid > 0) concepts.push(`Aplazamiento: $${p.defermentPaid.toLocaleString()}`);
+
+                        return (
+                            <Box component="li" key={p.id}>
+                                <Typography variant="body2" fontWeight={600}>
+                                    {cuotaLabel}: ${p.amount.toLocaleString()}
+                                </Typography>
+                                {concepts.length > 0 && (
+                                    <Typography variant="caption" color="text.secondary" display="block">
+                                        {concepts.join(" | ")}
+                                    </Typography>
+                                )}
+                            </Box>
+                        );
+                    })}
+                </Box>
+            </Box>
+        );
     };
-
-
-
-
 
     const initiatePayment = (
         type: "full" | "partial",
@@ -419,14 +654,13 @@ export const UseInstallmentDetail = ({
     };
 
     const handlePaymentMethodConfirm = () => {
-        if (!pendingPayment?.amount || !pendingPayment?.arrears) return;
-
+        if (!pendingPayment || ((pendingPayment.amount || 0) <= 0 && (pendingPayment.arrears || 0) <= 0)) return;
 
         setPaymentMethodDialogOpen(false);
 
         executePaymentFlow(
-            pendingPayment.amount,
-            pendingPayment.arrears,
+            pendingPayment.amount || 0,
+            pendingPayment.arrears || 0,
             selectedMethod,
             proofFile,
         );
@@ -435,12 +669,12 @@ export const UseInstallmentDetail = ({
     const handleLocationDialogResponse = (confirm: boolean) => {
         setLocationDialogOpen(false);
 
-        if (confirm && pendingPayment?.amount && pendingPayment?.arrears) {
+        if (confirm && pendingPayment && ((pendingPayment.amount || 0) > 0 || (pendingPayment.arrears || 0) > 0)) {
             const { amount, method, arrears, file } = pendingPayment;
 
             executePaymentFlow(
-                amount,
-                arrears,
+                amount || 0,
+                arrears || 0,
                 method || "efectivo",
                 file,
                 null,
@@ -452,24 +686,71 @@ export const UseInstallmentDetail = ({
         setProofFile(null);
     };
 
-    const handleFullPayment = () => {
+    const handlePayCurrentInstallment = () => {
         if (!installmentId || !installment) return;
 
-        const amountToPay =
-            installment.amount - (installment.amountPaid || 0);
-
+        const amountToPay = installment.outstandingReceivablesAmount;
         const arrearsToPay =
-            installment.arrears - (installment.arrearsPaid || 0);
+            (currentInstallmentArrears?.pendingArrears ?? installment.outstandingReceivablesArrears ?? 0) +
+            (currentInstallmentArrears?.pendingDeferment ?? installment.outstandingReceivablesDeferment ?? 0);
 
         initiatePayment("full", amountToPay, arrearsToPay);
     };
 
+    const handlePayDueToday = () => {
+        if (!debt) return;
+        const amountToPay = creditFinancialSummary.totalBaseAmount;
+        const arrearsToPay = creditFinancialSummary.totalDelayArrears + creditFinancialSummary.totalDefermentArrears;
+
+        initiatePayment("full", amountToPay, arrearsToPay);
+    };
+
+    const handlePayoffDebt = () => {
+        if (!liquidationSimulation) return;
+        const amountToPay = liquidationSimulation.maxAllowedBase;
+        const arrearsToPay = liquidationSimulation.maxAllowedArrears;
+
+        initiatePayment("full", amountToPay, arrearsToPay);
+    };
+
+    const handleSetAbonoPreset = (preset: "current" | "dueToday" | "payoff") => {
+        if (preset === "current" && installment) {
+            setValue("amount", installment.outstandingReceivablesAmount);
+            setValue(
+                "arrears",
+                (currentInstallmentArrears?.pendingArrears ?? installment.outstandingReceivablesArrears ?? 0) +
+                (currentInstallmentArrears?.pendingDeferment ?? installment.outstandingReceivablesDeferment ?? 0)
+            );
+        } else if (preset === "dueToday") {
+            setValue("amount", creditFinancialSummary.totalBaseAmount);
+            setValue(
+                "arrears",
+                creditFinancialSummary.totalDelayArrears + creditFinancialSummary.totalDefermentArrears
+            );
+        } else if (preset === "payoff" && liquidationSimulation) {
+            setValue("amount", liquidationSimulation.maxAllowedBase);
+            setValue("arrears", liquidationSimulation.maxAllowedArrears);
+        }
+    };
+
+    const handleFullPayment = handlePayCurrentInstallment;
+
     const onPartialPaymentSubmit: SubmitHandler<PartialPaymentForm> = (
         data,
     ) => {
+        const amountNum = Number(data.amount) || 0;
+        const arrearsNum = Number(data.arrears) || 0;
+
+        if (amountNum <= 0 && arrearsNum <= 0) {
+            setDialogTitle("Monto Inválido");
+            setDialogBody("Debes ingresar un valor mayor a $0 en monto base o en mora.");
+            setDialogOpen(true);
+            return;
+        }
+
         setPartialPaymentDialogOpen(false);
         reset();
-        initiatePayment("partial", Number(data.amount), Number(data.arrears));
+        initiatePayment("partial", amountNum, arrearsNum);
     };
 
     const handleRegisterAttempt = async () => {
@@ -604,7 +885,7 @@ export const UseInstallmentDetail = ({
     };
 
     const handleOpenPartialPayment = () => {
-        reset({ amount: 0 });
+        reset({ amount: 0, arrears: 0 });
         setPartialPaymentDialogOpen(true);
     };
 
@@ -653,6 +934,7 @@ export const UseInstallmentDetail = ({
         remainingBalance,
 
         maxDueFromInstallment,
+        debtPaymentCapacity,
 
         control,
         handleSubmit,
@@ -680,5 +962,18 @@ export const UseInstallmentDetail = ({
         handleNavigateToDebt,
         handleRenewalSuccess,
         handleOpenPartialPayment,
+
+        dueTodayInstallments,
+        futureInstallments,
+        overdueInstallments,
+        paidInstallments,
+        creditFinancialSummary,
+        liquidationSimulation,
+        currentInstallmentArrears,
+        handlePayCurrentInstallment,
+        handlePayDueToday,
+        handlePayoffDebt,
+        handleSetAbonoPreset,
+        setValue,
     }
 }

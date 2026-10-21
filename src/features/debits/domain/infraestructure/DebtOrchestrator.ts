@@ -29,9 +29,10 @@ import { GoToActivateUseCase, type GoToActivateError, type GoToActivateInput, ty
 import { MarkAsPaidUseCase, type MarkAsPaidError, type MarkAsPaidInput, type MarkAsPaidOutput } from "../business/useCases/debt/MarkAsPaidUseCase";
 import type { InstallmentGateway } from "./InstallmentGateway";
 import { GetDebtsForPreparationUseCase, type GetDebtsForPreparationError, type GetDebtsForPreparationInput, type GetDebtsForPreparationOutput } from "../business/useCases/debt/GetDebtsForPreparationCase";
-
+import { GetDebtsByIdsUseCase, type GetDebtsByIdsError, type GetDebtsByIdsInput, type GetDebtsByIdsOutput } from "../business/useCases/debt/GetDebtsByIdsUseCase";
 
 export default class DebtOrchestrator {
+    private getDebtsByIdsUseCase: GetDebtsByIdsUseCase
 
     private createDebtCase: CreateDebtUseCase2
     private getDebtsCase: GetDebtsCase
@@ -96,6 +97,7 @@ export default class DebtOrchestrator {
         this.getSumRenewalPaymentUseCase = new GetSumRenewalPaymentUseCase(this.debtGateway)
         this.confirmDebtDeliveryUseCase = new ConfirmDebtDeliveryUseCase(this.debtGateway)
         this.createDebtFromExcelCase = new CreateDebtFromExcelCase(this.debtGateway)
+        this.getDebtsByIdsUseCase = new GetDebtsByIdsUseCase(this.debtGateway)
     }
 
     async createDebt2(input: CreateDebtUInput2): Promise<Result<CreateDebtUOutput2, CreateDebtError2>> {
@@ -232,5 +234,9 @@ export default class DebtOrchestrator {
 
     async confirmDebtDelivery(input: ConfirmDebtDeliveryInput): Promise<Result<null, any>> {
         return this.confirmDebtDeliveryUseCase.execute(input);
+    }
+
+    async getDebtsByIds(input: GetDebtsByIdsInput): Promise<Result<GetDebtsByIdsOutput, GetDebtsByIdsError>> {
+        return this.getDebtsByIdsUseCase.execute(input);
     }
 }

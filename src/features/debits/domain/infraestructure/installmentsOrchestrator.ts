@@ -17,6 +17,18 @@ import { MarkInstallmentAsCanceledCase, type MarkInstallmentAsCanceledInput } fr
 import type { InstallmentGateway } from "./InstallmentGateway";
 import { BalancesDueFromInstallmentCase, type BalancesDueFromInstallmentError, type BalancesDueFromInstallmentInput, type BalancesDueFromInstallmentOutput } from "../business/useCases/installment/BalancesDueFromInstallmentCase";
 import { MaxDueFromInstallmentCase, type MaxDueFromInstallmentError, type MaxDueFromInstallmentInput, type MaxDueFromInstallmentOutput } from "../business/useCases/installment/MaxDueFromInstallmentCase";
+import {
+  GetDebtPaymentCapacityCase,
+  type GetDebtPaymentCapacityError,
+  type GetDebtPaymentCapacityInput,
+  type GetDebtPaymentCapacityOutput,
+} from "../business/useCases/installment/GetDebtPaymentCapacityCase";
+import {
+  GetInstallmentByDebtAndNumberUseCase,
+  type GetInstallmentByDebtAndNumberError,
+  type GetInstallmentByDebtAndNumberInput,
+  type GetInstallmentByDebtAndNumberOutput,
+} from "../business/useCases/installment/GetInstallmentByDebtAndNumberUseCase";
 
 export default class InstallmentsOrchestrator {
 
@@ -31,8 +43,10 @@ export default class InstallmentsOrchestrator {
   private readonly balancesDueFromInstallmentCase: BalancesDueFromInstallmentCase
   private readonly getNextByRouteCase: GetNextInstallmentsByRouteUseCase
   private readonly maxDueFromInstallmentCase: MaxDueFromInstallmentCase
+  private readonly getDebtPaymentCapacityCase: GetDebtPaymentCapacityCase
   private readonly getInstallmentsSummaryCase: GetInstallmentsSummaryUseCase
   private readonly getManagementInstallmentsCase: GetManagementInstallmentsUseCase
+  private readonly getByDebtAndNumberUseCase: GetInstallmentByDebtAndNumberUseCase
 
 
   constructor() {
@@ -41,6 +55,7 @@ export default class InstallmentsOrchestrator {
 
     this.maxDueFromInstallmentCase = new MaxDueFromInstallmentCase(installmentsGateway)
     this.balancesDueFromInstallmentCase = new BalancesDueFromInstallmentCase(installmentsGateway)
+    this.getDebtPaymentCapacityCase = new GetDebtPaymentCapacityCase(installmentsGateway, debtGateway)
 
 
     this.getManagementInstallmentsByRoutesUseCase = new GetManagementInstallmentsByRoutesUseCase(installmentsGateway)
@@ -54,6 +69,13 @@ export default class InstallmentsOrchestrator {
     this.getNextByRouteCase = new GetNextInstallmentsByRouteUseCase(debtGateway, installmentsGateway)
     this.getInstallmentsSummaryCase = new GetInstallmentsSummaryUseCase(installmentsGateway)
     this.getManagementInstallmentsCase = new GetManagementInstallmentsUseCase(installmentsGateway)
+    this.getByDebtAndNumberUseCase = new GetInstallmentByDebtAndNumberUseCase(installmentsGateway)
+  }
+
+  async getDebtPaymentCapacity(
+    input: GetDebtPaymentCapacityInput
+  ): Promise<Result<GetDebtPaymentCapacityOutput, GetDebtPaymentCapacityError>> {
+    return this.getDebtPaymentCapacityCase.execute(input);
   }
 
   async getInstallmentsSummary(input: GetInstallmentsSummaryInput): Promise<Result<GetInstallmentsSummaryOutput, GetInstallmentsSummaryError>> {
@@ -105,6 +127,12 @@ export default class InstallmentsOrchestrator {
 
   async getManagementInstallments(input: GetManagementInstallmentsInput): Promise<Result<GetManagementInstallmentsOutput, GetManagementInstallmentsError>> {
     return this.getManagementInstallmentsCase.execute(input);
+  }
+
+  async getByDebtAndNumber(
+    input: GetInstallmentByDebtAndNumberInput
+  ): Promise<Result<GetInstallmentByDebtAndNumberOutput, GetInstallmentByDebtAndNumberError>> {
+    return this.getByDebtAndNumberUseCase.execute(input);
   }
 
 };

@@ -7,14 +7,143 @@ import type { Payment } from "../business/entities/Payment"
 import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../business/useCases/payment/UpdatePaymentStatusUseCase"
 import type { UpdateMultiplePaymentsIsTightError } from "../business/useCases/payment/UpdateMultiplePaymentsIsTight"
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../business/useCases/payment/GetPaymentsByStatusUseCase"
+import type { Installment } from "../business/entities/Installment"
+import type { Debt } from "../business/entities/Debt"
+import type { BankAccount } from "../../../bankAccounts/domain/business/entities/BankAccount"
 
 
-import type { RegisterCashPaymentInput, RegisterCashPaymentOutput, RegisterCashPaymentError } from "../business/useCases/payment/RegisterCashPaymentUseCase"
-import type { RegisterConsignmentPaymentRepositoryInput, RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError } from "../business/useCases/payment/RegisterConsignmentPaymentUseCase"
+export interface RegisterPaymentRepositoryInput {
+  companyId: string;
+  payment: Payment;
+  bankAccount?: BankAccount;
+  expectedInstallmentState: {
+    capitalPaid: number;
+    interestPaid: number;
+    arrearsPaid: number;
+    defermentPaid: number;
+  };
+  expectedDebtState: {
+    capitalPaid: number;
+    interestPaid: number;
+    arrearsPaid: number;
+    defermentPaid: number;
+  };
+  installmentOutstandingReceivables: {
+    outstandingReceivablesAmount: number;
+    outstandingReceivablesDeferment: number;
+    outstandingReceivablesArrears: number;
+    outstandingReceivables: number;
+  };
+  debtOutstandingReceivables: {
+    outstandingReceivablesAmount: number;
+    outstandingReceivablesDeferment: number;
+    outstandingReceivablesArrears: number;
+    outstandingReceivables: number;
+  };
+}
 
+export interface RegisterPaymentRepositoryOutput {
+  payment: Payment;
+  installment: Installment;
+  debt: Debt;
+  bankAccount?: BankAccount;
+}
+
+export type RegisterPaymentRepositoryError =
+  | { code: "BANK_ACCOUNT_NOT_FOUND" }
+  | { code: "DEBT_NOT_FOUND" }
+  | { code: "INSTALLMENT_NOT_FOUND" }
+  | { code: "INSTALLMENT_STATE_MISMATCH" }
+  | { code: "DEBT_STATE_MISMATCH" }
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "NETWORK_ERROR" };
+
+export interface RegisterCashPaymentRepositoryInput {
+  companyId: string;
+  payment: Payment;
+  collectorId?: string;
+  expectedInstallmentState: {
+    capitalPaid: number;
+    interestPaid: number;
+    arrearsPaid: number;
+    defermentPaid: number;
+  };
+  expectedDebtState: {
+    capitalPaid: number;
+    interestPaid: number;
+    arrearsPaid: number;
+    defermentPaid: number;
+  };
+  installmentOutstandingReceivables: {
+    outstandingReceivablesAmount: number;
+    outstandingReceivablesDeferment: number;
+    outstandingReceivablesArrears: number;
+    outstandingReceivables: number;
+  };
+  debtOutstandingReceivables: {
+    outstandingReceivablesAmount: number;
+    outstandingReceivablesDeferment: number;
+    outstandingReceivablesArrears: number;
+    outstandingReceivables: number;
+  };
+}
+
+export interface RegisterCashPaymentRepositoryOutput {
+  payment: Payment;
+  installment: Installment;
+  debt: Debt;
+  newCollectorAmount?: number;
+}
+
+export type RegisterCashPaymentRepositoryError =
+  | { code: "USER_NOT_FOUND" }
+  | { code: "DEBT_NOT_FOUND" }
+  | { code: "INSTALLMENT_NOT_FOUND" }
+  | { code: "INSTALLMENT_STATE_MISMATCH" }
+  | { code: "DEBT_STATE_MISMATCH" }
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "NETWORK_ERROR" };
+
+export interface CascadingPaymentItemInput {
+  installment: Installment;
+  payment: Payment;
+}
+
+export interface RegisterCascadingPaymentRepositoryInput {
+  companyId: string;
+  debt: Debt;
+  items: CascadingPaymentItemInput[];
+  collectorId: string;
+  totalCollected: number;
+  capitalCollected: number;
+  interestCollected: number;
+  arrearsCollected: number;
+  defermentCollected: number;
+  method: "efectivo" | "consignacion";
+  bankAccount?: BankAccount;
+}
+
+export interface RegisterCascadingPaymentRepositoryOutput {
+  payments: Payment[];
+  installments: Installment[];
+  debt: Debt;
+  newCollectorAmount?: number;
+  bankAccount?: BankAccount;
+}
+
+export type RegisterCascadingPaymentRepositoryError =
+  | { code: "USER_NOT_FOUND" }
+  | { code: "DEBT_NOT_FOUND" }
+  | { code: "BANK_ACCOUNT_NOT_FOUND" }
+  | { code: "INSTALLMENT_NOT_FOUND" }
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "NETWORK_ERROR" };
 
 /** contrato de acceso a datos para payments */
 export interface PaymentGateway {
+
+
+  getNewId(companyId: string): Promise<string>
 
   /** guarda un payment en la bd */
   create(
@@ -37,6 +166,12 @@ export interface PaymentGateway {
     companyId: string,
     paymentId: string
   ): Promise<Result<string, Error>>
+
+  deleteProof(
+    companyId: string,
+    paymentId: string,
+    fileName: string
+  ): Promise<void>
 
   getByInstallment(
     input: GetPaymentsByInstallmentInput
@@ -74,10 +209,15 @@ export interface PaymentGateway {
   }): Promise<Result<void, CreatePaymentError>>;
 
   registerCashPayment(
-    input: RegisterCashPaymentInput
-  ): Promise<Result<RegisterCashPaymentOutput, RegisterCashPaymentError>>;
+    input: RegisterCashPaymentRepositoryInput
+  ): Promise<Result<RegisterCashPaymentRepositoryOutput, RegisterCashPaymentRepositoryError>>;
 
-  registerConsignmentPayment(
-    input: RegisterConsignmentPaymentRepositoryInput
-  ): Promise<Result<RegisterConsignmentPaymentOutput, RegisterConsignmentPaymentError>>;
+
+  registerPayment(
+    input: RegisterPaymentRepositoryInput
+  ): Promise<Result<RegisterPaymentRepositoryOutput, RegisterPaymentRepositoryError>>;
+
+  registerCascadingPayment(
+    input: RegisterCascadingPaymentRepositoryInput
+  ): Promise<Result<RegisterCascadingPaymentRepositoryOutput, RegisterCascadingPaymentRepositoryError>>;
 }

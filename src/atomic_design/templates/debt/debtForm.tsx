@@ -787,14 +787,17 @@ export const DebtForm = forwardRef<DebtFormRef, Props>(
 );
 
 function normalizeDebtForm(values: DebtFormValues): DebtFormValues {
+  const lateInterestRate = Number(values.lateInterestRate) || 0;
   if (values.calculationMode === "installments") {
     return {
       ...values,
+      lateInterestRate,
       months: 0,
     };
   } else {
     return {
       ...values,
+      lateInterestRate,
       installmentCount: 0,
     };
   }
@@ -857,12 +860,18 @@ export function mergeDebtWithForm(
     status: formValues.status,
     clientDocument: formValues.clientDocument,
     type: formValues.type,
-    capital: formValues.capital,
+    capital: Number(formValues.capital) || 0,
     debtTerms: formValues.debtTerms,
-    interestRate: formValues.interestRate,
-    installmentCount: formValues.installmentCount,
+    interestRate: Number(formValues.interestRate) || 0,
+    lateInterestRate: Number(formValues.lateInterestRate) || 0,
+    installmentCount: Number(formValues.installmentCount) || 0,
     startDate: formValues.startDate,
-    daysPerMonth: formValues.daysPerMonth,
+    daysPerMonth: Number(formValues.daysPerMonth) || 0,
+    pledge: formValues.pledge,
+    pledgeDescription: formValues.pledgeDescription,
+    pledgeValue: Number(formValues.pledgeValue) || 0,
+    prepayment: formValues.prepayment,
+    requiredArrears: formValues.requiredState,
 
     // la suma del capital mas intereses se hace en el caso de uso
     amount: 0,

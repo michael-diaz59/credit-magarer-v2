@@ -4,12 +4,14 @@ import { useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "../../../store/redux/coreRedux";
 
 import type { Installment } from "../../../features/debits/domain/business/entities/Installment";
+import type { Debt } from "../../../features/debits/domain/business/entities/Debt";
 import InstallmentsOrchestrator from "../../../features/debits/domain/infraestructure/installmentsOrchestrator";
 
 import type { CollectorPayment } from "../../../features/collector/domain/business/entities/CollectorPayment";
 import PayCollectorOrhectrator from "../../../features/collector/domain/infraestructure/PayCollectorOrhectrator";
 
 import UserOrchestrator from "../../../features/users/domain/infraestructure/UserOrchestrator";
+import DebtOrchestrator from "../../../features/debits/domain/infraestructure/DebtOrchestrator";
 
 import { ScreenPaths } from "../../../core/helpers/name_routes";
 import {
@@ -44,6 +46,8 @@ export const RecolectorHome = () => {
   const [payments, setPayments] = useState<CollectorPayment[]>([]);
   const [tab, setTab] = useState<CollectorHomeTab>("to_collect");
   const [paymentsLoaded, setPaymentsLoaded] = useState(false);
+  const [debtNames, setDebtNames] = useState<Record<string, string>>({});
+  const [debtsById, setDebtsById] = useState<Record<string, Debt>>({});
 
   const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
 
@@ -123,6 +127,48 @@ export const RecolectorHome = () => {
     fetchInstallments();
   }, [collectorId, companyId]);
 
+  /* =======================
+     CARGAR NOMBRES DE CRÉDITOS
+     ======================= */
+  useEffect(() => {
+    if (!companyId || items.length === 0) return;
+
+    const debtIdsToFetch = Array.from(
+      new Set(
+        items
+          .map((i) => i.debtId)
+          .filter((id): id is string => Boolean(id) && !debtNames[id])
+      )
+    );
+
+    if (debtIdsToFetch.length === 0) return;
+
+    const fetchDebtNames = async () => {
+      try {
+        const debtOrchestrator = new DebtOrchestrator();
+        const result = await debtOrchestrator.getDebtsByIds({
+          companyId,
+          debtIds: debtIdsToFetch,
+        });
+
+        if (result.ok && result.value.length > 0) {
+          const newNames: Record<string, string> = {};
+          const newDebts: Record<string, Debt> = {};
+          for (const debt of result.value) {
+            newNames[debt.id] = debt.name || debt.id;
+            newDebts[debt.id] = debt;
+          }
+          setDebtNames((prev) => ({ ...prev, ...newNames }));
+          setDebtsById((prev) => ({ ...prev, ...newDebts }));
+        }
+      } catch (error) {
+        console.error("Error cargando nombres de créditos:", error);
+      }
+    };
+
+    fetchDebtNames();
+  }, [items, companyId]);
+
   /**
    * obtiene los ids de los intentos de cobro
    */
@@ -154,17 +200,22 @@ export const RecolectorHome = () => {
     return {
       pending: filteredItems.filter(
         (i) =>
-          (i.status === "pendiente") &&
-          IsFutureOrToday(i.dueDate)
+          i.status !== "pagada" &&
+          (i.outstandingReceivables ?? i.amount ?? 0) > 0 &&
+          IsFutureOrToday(i.paymentDate || i.dueDate)
       ),
       overdue: filteredItems.filter(
         (i) =>
-          (i.status === "pendiente") &&
-          IsPastDate(i.dueDate)
+          i.status !== "pagada" &&
+          (i.outstandingReceivables ?? i.amount ?? 0) > 0 &&
+          IsPastDate(i.paymentDate || i.dueDate)
       ),
-      paid: items.filter((i) => i.status === "pagada"), // Paid items should stay
+      paid: items.filter(
+        (i) =>
+          i.status === "pagada" ||
+          (i.outstandingReceivables !== undefined && i.outstandingReceivables <= 0)
+      ),
     };
-
   }, [filteredItems, items]);
 
   const allCustomers = useMemo(() => {
@@ -271,6 +322,8 @@ export const RecolectorHome = () => {
           <ToCollectBody
             pending={pending}
             overdue={overdue}
+            debtNames={debtNames}
+            debtsById={debtsById}
             onClick={goToInstallmentDetails}
             collectorRoutes={user?.collectorRoutes ?? {}}
             onOpenRouteManagement={() => setIsRouteDialogOpen(true)}
@@ -278,7 +331,11 @@ export const RecolectorHome = () => {
         )}
 
         {tab === "collected" && (
-          <CollectedBody paid={paid} onClick={goToInstallmentDetails} />
+          <CollectedBody
+            paid={paid}
+            debtNames={debtNames}
+            onClick={goToInstallmentDetails}
+          />
         )}
 
         {tab === "to_pay" && <ToDisburseBody payments={payments} />}

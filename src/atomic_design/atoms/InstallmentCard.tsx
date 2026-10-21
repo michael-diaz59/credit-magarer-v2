@@ -1,12 +1,16 @@
-import { Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
+import type { Debt } from "../../features/debits/domain/business/entities/Debt";
 import { formatISOToInputDate } from "../../core/helpers/dates/dateConvert";
+import { calculateInstallmentArrears } from "../../features/debits/domain/business/services/calculateInstallmentArrears";
 
 export const InstallmentCard = ({
   installment,
+  debt,
   onClick,
 }: {
   installment: Installment;
+  debt?: Debt | null;
   onClick?: (installment: Installment) => void;
 }) => {
   return (
@@ -64,16 +68,35 @@ export const InstallmentCard = ({
             {installment.clientAddres.neighborhood}
           </Typography>
 
-          <Typography variant="body2">
-            💰 Cuota {installment.installmentNumber} –{" "}
-            <strong>
-              ${installment.amount.toLocaleString()}
-            </strong>
-          </Typography>
+          {(() => {
+            const pendingBase = installment.outstandingReceivablesAmount ?? installment.amount;
+            const arrearsInfo = calculateInstallmentArrears({ installment, debt });
+            const pendingArrears = arrearsInfo.totalPendingArrears;
+            const isPartiallyPaid = (installment.amountPaid ?? 0) > 0 || (installment.outstandingReceivablesAmount < installment.amount);
+
+            return (
+              <Box>
+                <Typography variant="body2" sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                  💰 Cuota {installment.installmentNumber} –{" "}
+                  <strong>${pendingBase.toLocaleString()}</strong>
+                  {pendingArrears > 0 && (
+                    <Typography component="span" variant="caption" color="error.main" sx={{ fontWeight: 600 }}>
+                      (+ ${pendingArrears.toLocaleString()} mora)
+                    </Typography>
+                  )}
+                </Typography>
+                {isPartiallyPaid && (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Abonado: ${(installment.amountPaid ?? 0).toLocaleString()} de ${(installment.amount ?? 0).toLocaleString()}
+                  </Typography>
+                )}
+              </Box>
+            );
+          })()}
 
           <Typography variant="body2">
             📅 Vence:{" "}
-            {formatISOToInputDate(installment.dueDate)}
+            {formatISOToInputDate(installment.paymentDate || installment.dueDate)}
           </Typography>
         </Stack>
       </CardContent>

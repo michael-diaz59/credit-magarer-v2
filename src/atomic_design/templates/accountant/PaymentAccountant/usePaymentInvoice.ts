@@ -16,6 +16,7 @@ export const usePaymentInvoice = () => {
         interestPaid: 0,
         arrearsPaid: 0,
         idProofOfPayment: "proof1",
+        defermentPaid: 0,
         idRoute: "route1",
         collectorObservation: "El cliente pagó completo.",
         accountantObservation: "",

@@ -361,7 +361,8 @@ export class FirebaseDebtRepository implements DebtGateway {
 
                 /** 📌 Crear cuotas */
                 for (const installment of input.installments) {
-                    installment.debtId = debtId
+                    installment.debtId = debtId;
+                    installment.debtName = debtName;
                     const installmentRef = doc(installmentsCol);
 
                     tx.set(installmentRef, {
@@ -1048,6 +1049,41 @@ export class FirebaseDebtRepository implements DebtGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
+
+    async getDebtsByIds(input: {
+        companyId: string;
+        debtIds: string[];
+    }): Promise<Result<Debt[], { code: "UNKNOWN_ERROR" } | { code: "NETWORK_ERROR" }>> {
+        try {
+            const { companyId, debtIds } = input;
+            if (!debtIds || debtIds.length === 0) {
+                return ok([]);
+            }
+
+            const uniqueIds = Array.from(new Set(debtIds)).filter(Boolean);
+            const docPromises = uniqueIds.map(async (id) => {
+                const debtRef = doc(firestore, "companies", companyId, "debts", id);
+                const snap = await getDoc(debtRef);
+                if (snap.exists()) {
+                    return documentToDebt(snap.data(), snap.id);
+                }
+                return null;
+            });
+
+            const results = await Promise.all(docPromises);
+            const debts: Debt[] = results.filter((d): d is Debt => d !== null);
+
+            return ok(debts);
+        } catch (error) {
+            console.error("[getDebtsByIds]", error);
+            if (error instanceof FirebaseError) {
+                if (error.code === "unavailable") {
+                    return fail({ code: "NETWORK_ERROR" });
+                }
+            }
+            return fail({ code: "UNKNOWN_ERROR" });
+        }
+    }
 }
 
 export function documentToDebt(
@@ -1105,6 +1141,7 @@ export function documentToDebt(
         interest: data.interest ?? 0,
         amount: data.amount ?? 0,
         arrears: data.arrears ?? 0,
+        deferment: data.deferment ?? 0,
         total: data.total ?? 0,
 
         processingFee: data.processingFee ?? 0,
@@ -1129,6 +1166,7 @@ export function documentToDebt(
         interestPaid: data.interestPaid ?? 0,
         amountPaid: data.amountPaid ?? 0,
         arrearsPaid: data.arrearsPaid ?? 0,
+        defermentPaid: data.defermentPaid ?? 0,
         totalPaid: data.totalPaid ?? 0,
 
         // ---------------------------------------------------------
@@ -1145,6 +1183,9 @@ export function documentToDebt(
 
         remainingArrearsToPay:
             data.remainingArrearsToPay ?? 0,
+
+        remainingDefermentToPay:
+            data.remainingDefermentToPay ?? 0,
 
         remainingTotalToPay:
             data.remainingTotalToPay ?? 0,
@@ -1163,6 +1204,9 @@ export function documentToDebt(
 
         porcentageOfArrearsPaid:
             data.porcentageOfArrearsPaid ?? 100,
+
+        percentageOfDefermentPaid:
+            data.percentageOfDefermentPaid ?? 100,
 
         percentageOfTotalPaid:
             data.percentageOfTotalPaid ?? 100,
@@ -1311,6 +1355,7 @@ export function DebtToDocumentData(
         interest: debt.interest,
         amount: debt.amount,
         arrears: debt.arrears,
+        deferment: debt.deferment,
         total: debt.total,
 
         processingFee: debt.processingFee,
@@ -1335,6 +1380,7 @@ export function DebtToDocumentData(
         interestPaid: debt.interestPaid,
         amountPaid: debt.amountPaid,
         arrearsPaid: debt.arrearsPaid,
+        defermentPaid: debt.defermentPaid,
         totalPaid: debt.totalPaid,
 
         // ---------------------------------------------------------
@@ -1351,6 +1397,9 @@ export function DebtToDocumentData(
 
         remainingArrearsToPay:
             debt.remainingArrearsToPay,
+
+        remainingDefermentToPay:
+            debt.remainingDefermentToPay,
 
         remainingTotalToPay:
             debt.remainingTotalToPay,
@@ -1369,6 +1418,9 @@ export function DebtToDocumentData(
 
         porcentageOfArrearsPaid:
             debt.porcentageOfArrearsPaid,
+
+        percentageOfDefermentPaid:
+            debt.percentageOfDefermentPaid,
 
         percentageOfTotalPaid:
             debt.percentageOfTotalPaid,

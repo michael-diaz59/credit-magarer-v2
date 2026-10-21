@@ -13,6 +13,7 @@ const allDebtFormFields: (keyof DebtFormValues)[] = [
     "capital",
     "debtTerms",
     "interestRate",
+    "lateInterestRate",
     "installmentCount",
     "startDate",
     "daysPerMonth",
@@ -39,6 +40,7 @@ export const allDebtFormFieldsWithoutType: (keyof DebtFormValues)[] = [
     "pledgeDescription",
     "pledgeValue",
     "interestRate",
+    "lateInterestRate",
     "installmentCount",
     "startDate",
     "daysPerMonth",
@@ -85,6 +87,7 @@ export const renewalComparisonConfig: DebtFormConfig = {
         "daysPerMonth",
         "calculationMode",
         "months",
+        "lateInterestRate",
     ],
     requiredFields: Array.from(new Set([
         ...CREATE_DEBT_FIELDS_MONTHS,

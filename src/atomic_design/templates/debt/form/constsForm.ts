@@ -8,6 +8,7 @@ export const CREATE_DEBT_FIELDS_MONTHS: (keyof DebtFormValues)[] = [
     "routeId",
     "capital",
     "interestRate",
+    "lateInterestRate",
 ];
 
 export const CREATE_DEBT_FIELDS_INSTALLMENTS: (keyof DebtFormValues)[] = [
@@ -17,6 +18,7 @@ export const CREATE_DEBT_FIELDS_INSTALLMENTS: (keyof DebtFormValues)[] = [
     "routeId",
     "capital",
     "interestRate",
+    "lateInterestRate",
 ];
 
 export const CREATE_DEBT_FIELDS_IN_VISIT: (keyof DebtFormValues)[] = [

@@ -1,11 +1,21 @@
 import { IsFutureOrToday, IsPastDate } from "../../../core/helpers/dates/calculateDays";
 import type { Installment } from "../../debits/domain/business/entities/Installment";
+import type { Debt } from "../../debits/domain/business/entities/Debt";
 
 
+
+export interface DebtGroupData {
+  debtId: string;
+  debtName: string;
+  debt?: Debt;
+  pending: Installment[];
+  overdue: Installment[];
+}
 
 export interface CustomerGroupData {
   customerId: string;
   customerName: string;
+  debts: Map<string, DebtGroupData>;
   pending: Installment[];
   overdue: Installment[];
 }
@@ -21,7 +31,9 @@ export interface GroupedInstallments {
 
 export function groupInstallmentsByRoute(
   installments: Installment[],
-  collectorRoutes?: Record<string, string[]>
+  collectorRoutes?: Record<string, string[]>,
+  debtNames?: Record<string, string>,
+  debtsById?: Record<string, Debt>
 ): GroupedInstallments {
   const routeGroups = new Map<string, RouteGroupData>();
   const unassigned: RouteGroupData = { customers: new Map() };
@@ -48,24 +60,16 @@ export function groupInstallmentsByRoute(
   }
 
   /* =========================
-     3. Filtrar Cuotas (solo la más vieja por deuda)
+     3. Clasificar cuotas por Ruta y Cliente
   ========================= */
-  const oldestInstallmentsByDebt = new Map<string, Installment>();
-
   for (const installment of installments) {
-    if (installment.status !== "pendiente") continue;
-
-    const currentOldest = oldestInstallmentsByDebt.get(installment.debtId);
-
-    if (!currentOldest || new Date(installment.dueDate) < new Date(currentOldest.dueDate)) {
-      oldestInstallmentsByDebt.set(installment.debtId, installment);
+    if (
+      installment.status === "pagada" ||
+      (installment.outstandingReceivables ?? installment.amount ?? 0) <= 0
+    ) {
+      continue;
     }
-  }
 
-  /* =========================
-     4. Clasificar cuotas filtradas por Ruta y Cliente
-  ========================= */
-  for (const installment of oldestInstallmentsByDebt.values()) {
     const routeName = customerToRoute.get(installment.clientId);
     const targetRoute =
       routeName && routeGroups.has(routeName)
@@ -76,17 +80,62 @@ export function groupInstallmentsByRoute(
       targetRoute.customers.set(installment.clientId, {
         customerId: installment.clientId,
         customerName: installment.clientName,
+        debts: new Map(),
         pending: [],
         overdue: [],
       });
     }
 
     const customerGroup = targetRoute.customers.get(installment.clientId)!;
+    const debtId = installment.debtId || "sin_credito";
 
-    if (IsFutureOrToday(installment.dueDate)) {
-      customerGroup.pending.push(installment);
-    } else if (IsPastDate(installment.dueDate)) {
+    if (!customerGroup.debts.has(debtId)) {
+      const resolvedName =
+        debtNames?.[debtId] ||
+        installment.debtName ||
+        (installment.debtId ? `Crédito #${installment.debtId.slice(-4).toUpperCase()}` : "Crédito");
+
+      customerGroup.debts.set(debtId, {
+        debtId,
+        debtName: resolvedName,
+        debt: debtsById?.[debtId],
+        pending: [],
+        overdue: [],
+      });
+    }
+
+    const debtGroup = customerGroup.debts.get(debtId)!;
+    const effectiveDate = installment.paymentDate || installment.dueDate;
+
+    if (IsPastDate(effectiveDate)) {
       customerGroup.overdue.push(installment);
+      debtGroup.overdue.push(installment);
+    } else if (IsFutureOrToday(effectiveDate)) {
+      customerGroup.pending.push(installment);
+      debtGroup.pending.push(installment);
+    }
+  }
+
+  /* =========================
+     4. Ordenar cuotas de cada cliente y crédito cronológicamente
+  ========================= */
+  const sortInstallments = (a: Installment, b: Installment): number => {
+    if (a.installmentNumber !== b.installmentNumber) {
+      return a.installmentNumber - b.installmentNumber;
+    }
+    const dateA = new Date(a.paymentDate || a.dueDate).getTime();
+    const dateB = new Date(b.paymentDate || b.dueDate).getTime();
+    return dateA - dateB;
+  };
+
+  for (const route of [...routeGroups.values(), unassigned]) {
+    for (const customer of route.customers.values()) {
+      customer.pending.sort(sortInstallments);
+      customer.overdue.sort(sortInstallments);
+      for (const debt of customer.debts.values()) {
+        debt.pending.sort(sortInstallments);
+        debt.overdue.sort(sortInstallments);
+      }
     }
   }
 

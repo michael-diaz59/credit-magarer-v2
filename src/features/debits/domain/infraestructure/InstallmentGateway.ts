@@ -11,6 +11,7 @@ import type { MarkInstallAsPaidError, MarkInstallAsPaidOutput } from "../busines
 import type { GetManagementInstallmentsByRoutesError, GetManagementInstallmentsByRoutesInput } from "../business/useCases/installment/GetManagementInstallmentsByRoutesUseCase";
 import type { BalancesDueFromInstallmentError, BalancesDueFromInstallmentInput, BalancesDueFromInstallmentOutput } from "../business/useCases/installment/BalancesDueFromInstallmentCase";
 import type { MaxDueFromInstallmentError, MaxDueFromInstallmentInput, MaxDueFromInstallmentOutput } from "../business/useCases/installment/MaxDueFromInstallmentCase";
+import type { GetInstallmentByDebtAndNumberError } from "../business/useCases/installment/GetInstallmentByDebtAndNumberUseCase";
 
 export interface MarkInstallAsPaidInGate {
     payStatus: InstallmentStatus;
@@ -53,7 +54,7 @@ export interface InstallmentGateway {
         companyId: string;
         debtId: string;
         installmentNumber: number;
-    }): Promise<Result<Installment | null, any>>;
+    }): Promise<Result<Installment | null, GetInstallmentByDebtAndNumberError>>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deleteBatch(companyId: string, installmentIds: string[]): Promise<Result<null, any>>;
 

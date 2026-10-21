@@ -23,9 +23,12 @@ import {
     InputLabel,
     Checkbox,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import PhoneIcon from "@mui/icons-material/Phone";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { Controller } from "react-hook-form";
 
 import type { PaymentMethod } from "../../../../features/debits/domain/business/entities/Payment";
@@ -62,13 +65,11 @@ export const InstallmentDetailView = ({
     paymentMethodDialogOpen,
     selectedMethod,
     proofFile,
-    maxDueFromInstallment,
 
     bankAccounts,
     selectedBankAccountId,
 
     canBePaid,
-    balancesDueFromInstallment,
     remainingBalance,
 
     control,
@@ -85,7 +86,6 @@ export const InstallmentDetailView = ({
     handleCloseDialog,
     handlePaymentMethodConfirm,
     handleLocationDialogResponse,
-    handleFullPayment,
     onPartialPaymentSubmit,
     handleRegisterAttempt,
     handleToggleManaged,
@@ -95,6 +95,14 @@ export const InstallmentDetailView = ({
     handleNavigateToDebt,
     handleRenewalSuccess,
     handleOpenPartialPayment,
+
+    creditFinancialSummary,
+    liquidationSimulation,
+    currentInstallmentArrears,
+    handlePayCurrentInstallment,
+    handlePayDueToday,
+    handlePayoffDebt,
+    handleSetAbonoPreset,
 }: InstallmentDetailViewProps) => {
     if (loading && !installment) {
         return (
@@ -345,17 +353,73 @@ export const InstallmentDetailView = ({
                 fullWidth
                 maxWidth="xs"
             >
-                <DialogTitle>Registrar Pago Parcial</DialogTitle>
+                <DialogTitle>Registrar Pago / Abono</DialogTitle>
 
                 <DialogContent>
                     <Box mt={1}>
-                        <Typography variant="body2" gutterBottom>
-                            Monto base: ${installment.outstandingReceivablesAmount.toLocaleString()};
-                            <br />
-                            Interes moratorio: ${(installment.outstandingReceivablesArrears + installment.outstandingReceivablesDeferment).toLocaleString()};
-                        </Typography>
+                        <Box
+                            mb={2}
+                            p={1.5}
+                            borderRadius={2}
+                            bgcolor={(theme) => alpha(theme.palette.info.main, 0.06)}
+                            border="1px solid"
+                            borderColor={(theme) => alpha(theme.palette.info.main, 0.2)}
+                        >
+                            <Typography variant="subtitle2" color="info.dark" fontWeight="bold">
+                                Límites y capacidades de la deuda:
+                            </Typography>
+                            <Typography variant="body2" mt={0.5}>
+                                • <strong>Para quedar al día hoy:</strong> ${creditFinancialSummary.totalDueToday.toLocaleString("es-CO")}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block" ml={1.5}>
+                                (Base: ${creditFinancialSummary.totalBaseAmount.toLocaleString("es-CO")} | Mora/Aplazamiento: ${(creditFinancialSummary.totalDelayArrears + creditFinancialSummary.totalDefermentArrears).toLocaleString("es-CO")})
+                            </Typography>
 
-                        <Box sx={{ mt: 4 }} />
+                            {liquidationSimulation && (
+                                <>
+                                    <Typography variant="body2" mt={0.5}>
+                                        • <strong>Total para liquidar crédito:</strong> ${liquidationSimulation.totalPayoff.toLocaleString("es-CO")}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block" ml={1.5}>
+                                        (Máx. Base: ${liquidationSimulation.maxAllowedBase.toLocaleString("es-CO")} | Máx. Mora: ${liquidationSimulation.maxAllowedArrears.toLocaleString("es-CO")})
+                                    </Typography>
+                                </>
+                            )}
+                        </Box>
+
+                        <Typography variant="caption" fontWeight="bold" color="text.secondary" display="block" mb={0.75}>
+                            Autocompletar valor sugerido:
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap" mb={2} useFlexGap>
+                            <Chip
+                                label={`Cuota #${installment.installmentNumber}: $${(currentInstallmentArrears?.totalDueThisInstallment ?? installment.outstandingReceivables).toLocaleString("es-CO")}`}
+                                size="small"
+                                onClick={() => handleSetAbonoPreset("current")}
+                                clickable
+                                color="default"
+                                variant="outlined"
+                            />
+                            {creditFinancialSummary.totalDueTodayCount > 1 && (
+                                <Chip
+                                    label={`Quedar al día hoy: $${creditFinancialSummary.totalDueToday.toLocaleString("es-CO")}`}
+                                    size="small"
+                                    onClick={() => handleSetAbonoPreset("dueToday")}
+                                    clickable
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                            {liquidationSimulation && (
+                                <Chip
+                                    label={`Liquidar crédito: $${liquidationSimulation.totalPayoff.toLocaleString("es-CO")}`}
+                                    size="small"
+                                    onClick={() => handleSetAbonoPreset("payoff")}
+                                    clickable
+                                    color="info"
+                                    variant="outlined"
+                                />
+                            )}
+                        </Stack>
 
                         <form
                             id="partial-payment-form"
@@ -370,8 +434,14 @@ export const InstallmentDetailView = ({
                                         message: "El monto debe ser mayor o igual a 0",
                                     },
                                     max: {
-                                        value: installment.outstandingReceivablesAmount,
-                                        message: `El monto no puede superar $${installment.outstandingReceivablesAmount.toLocaleString()}`,
+                                        value: liquidationSimulation
+                                            ? liquidationSimulation.maxAllowedBase
+                                            : installment.outstandingReceivablesAmount,
+                                        message: `El monto base no puede superar $${(
+                                            liquidationSimulation
+                                                ? liquidationSimulation.maxAllowedBase
+                                                : installment.outstandingReceivablesAmount
+                                        ).toLocaleString("es-CO")}`,
                                     },
                                 }}
                                 render={({ field }) => (
@@ -379,17 +449,20 @@ export const InstallmentDetailView = ({
                                         {...field}
                                         value={field.value ?? 0}
                                         onChange={(event) => field.onChange(Number(event.target.value))}
-                                        label="Monto a pagar"
+                                        label="Monto base a pagar (Capital + Interés)"
                                         type="number"
                                         fullWidth
                                         error={!!errors.amount}
-                                        helperText={errors.amount?.message}
+                                        helperText={
+                                            errors.amount?.message ||
+                                            `Límite permitido: $${(liquidationSimulation?.maxAllowedBase ?? installment.outstandingReceivablesAmount).toLocaleString("es-CO")}`
+                                        }
                                         autoFocus
                                     />
                                 )}
                             />
 
-                            <Box sx={{ mt: 4 }} />
+                            <Box sx={{ mt: 2.5 }} />
 
                             <Controller<PartialPaymentForm>
                                 name="arrears"
@@ -400,14 +473,14 @@ export const InstallmentDetailView = ({
                                         message: "El monto debe ser mayor o igual a 0",
                                     },
                                     max: {
-                                        value:
-                                            installment.outstandingReceivablesArrears +
-                                            installment.outstandingReceivablesDeferment +
-                                            1,
-                                        message: `El monto no puede superar $${(
-                                            installment.outstandingReceivablesArrears +
-                                            installment.outstandingReceivablesDeferment
-                                        ).toLocaleString()}`,
+                                        value: liquidationSimulation
+                                            ? liquidationSimulation.maxAllowedArrears
+                                            : (currentInstallmentArrears?.pendingArrears ?? 0) + (currentInstallmentArrears?.pendingDeferment ?? 0),
+                                        message: `La mora no puede superar $${(
+                                            liquidationSimulation
+                                                ? liquidationSimulation.maxAllowedArrears
+                                                : (currentInstallmentArrears?.pendingArrears ?? 0) + (currentInstallmentArrears?.pendingDeferment ?? 0)
+                                        ).toLocaleString("es-CO")}`,
                                     },
                                 }}
                                 render={({ field }) => (
@@ -415,11 +488,14 @@ export const InstallmentDetailView = ({
                                         {...field}
                                         value={field.value ?? 0}
                                         onChange={(event) => field.onChange(Number(event.target.value))}
-                                        label="Mora a pagar"
+                                        label="Mora / aplazamiento a pagar"
                                         type="number"
                                         fullWidth
                                         error={!!errors.arrears}
-                                        helperText={errors.arrears?.message}
+                                        helperText={
+                                            errors.arrears?.message ||
+                                            `Límite permitido: $${(liquidationSimulation?.maxAllowedArrears ?? ((currentInstallmentArrears?.pendingArrears ?? 0) + (currentInstallmentArrears?.pendingDeferment ?? 0))).toLocaleString("es-CO")}`
+                                        }
                                     />
                                 )}
                             />
@@ -547,43 +623,6 @@ export const InstallmentDetailView = ({
                             </Box>
                         )}
 
-                        <Divider />
-
-                        {/* INFO CUOTA */}
-                        <Box>
-                            <Typography variant="body2">
-                                Cuota {installment.installmentNumber}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                Valor base ${installment.amount.toLocaleString()}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                Cargo por aplazamiento ${installment.deferment.toLocaleString()}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                Cargo por mora ${installment.arrears.toLocaleString()}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                total acordado ${(installment.amount + installment.arrears).toLocaleString()}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                total con mora ${(installment.total).toLocaleString()}
-                            </Typography>
-
-                            <Typography variant="body2">
-                                Vence: {installment.dueDate}
-                            </Typography>
-
-                            <Typography variant="h6">
-                                Dias de mora: {installment.numberOfArrearsDays}
-                            </Typography>
-                        </Box>
-
                         {/* GESTIÓN DIARIA */}
                         <Box
                             border="1px solid"
@@ -616,97 +655,434 @@ export const InstallmentDetailView = ({
                                             variant="caption"
                                             color="text.secondary"
                                         >
-                                            Indica que ya contactaste u operaste
-                                            sobre esta cuota.
+                                            Indica que ya contactaste u operaste sobre esta cuota.
                                         </Typography>
                                     </Box>
                                 }
                             />
                         </Box>
-
-                        {/* ACCIÓN */}
-                        {canBePaid && (
-                            <Stack spacing={2}>
-                                <Button
-                                    variant="contained"
-                                    color="success"
-                                    size="large"
-                                    disabled={loading}
-                                    onClick={handleFullPayment}
-                                    startIcon={
-                                        loading ? (
-                                            <CircularProgress size={20} />
-                                        ) : null
-                                    }
-                                >
-                                    {loading ? "Procesando..." : "Pago Completo"}
-                                </Button>
-
-                                <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    size="large"
-                                    disabled={loading}
-                                    onClick={handleOpenPartialPayment}
-                                >
-                                    Abono
-                                </Button>
-
-                                <Button
-                                    variant="outlined"
-                                    color="warning"
-                                    size="large"
-                                    disabled={loading || attemptLoading}
-                                    onClick={() => setAttemptDialogOpen(true)}
-                                >
-                                    Intento de Cobro
-                                </Button>
-
-                                <Button
-                                    variant="text"
-                                    color="primary"
-                                    fullWidth
-                                    onClick={handleNavigateToDebt}
-                                    sx={{ mt: 1 }}
-                                >
-                                    Ver todas las cuotas de esta deuda
-                                </Button>
-
-                                {debt && (
-                                    <Box
-                                        mt={2}
-                                        borderTop="1px solid"
-                                        borderColor="divider"
-                                        pt={2}
-                                    >
-                                        <DebtRenewalModule
-                                            companyId={companyId}
-                                            currentDebt={debt}
-                                            context="collector"
-                                            totalPaid={installmentsOfDebt.reduce(
-                                                (acc, curr) =>
-                                                    acc + (curr.amountPaid || 0),
-                                                0,
-                                            )}
-                                            remainingBalance={remainingBalance}
-                                            buttonVariant="contained"
-                                            buttonColor="secondary"
-                                            buttonText="Renovar Deuda"
-                                            onSuccess={handleRenewalSuccess}
-                                        />
-                                    </Box>
-                                )}
-                            </Stack>
-                        )}
-
-                        {!canBePaid && (
-                            <Typography color="text.secondary">
-                                Esta cuota ya no puede ser modificada
-                            </Typography>
-                        )}
                     </Stack>
                 </CardContent>
             </Card>
+
+            {/* RESUMEN FINANCIERO DEL CRÉDITO COMPLETO */}
+            <Card
+                variant="outlined"
+                sx={{
+                    mb: 2,
+                    mt: 2,
+                    borderRadius: 2.5,
+                    borderColor: creditFinancialSummary.overdueCount > 0 ? "error.main" : "divider",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                }}
+            >
+                <CardContent sx={{ p: 2 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5} gap={1}>
+                        <Box display="flex" alignItems="center" gap={1.2}>
+                            <Box
+                                sx={{
+                                    bgcolor: (theme) =>
+                                        alpha(
+                                            creditFinancialSummary.overdueCount > 0 ? theme.palette.error.main : theme.palette.primary.main,
+                                            0.12
+                                        ),
+                                    color: creditFinancialSummary.overdueCount > 0 ? "error.main" : "primary.main",
+                                    borderRadius: 2,
+                                    p: 0.9,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <CreditCardIcon fontSize="small" />
+                            </Box>
+                            <Box>
+                                <Typography fontWeight="bold" variant="subtitle1" lineHeight={1.2}>
+                                    Crédito: {debt?.name || installment.debtName || "Crédito"}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {creditFinancialSummary.totalActiveCount} cuota{creditFinancialSummary.totalActiveCount !== 1 ? "s" : ""} pendiente{creditFinancialSummary.totalActiveCount !== 1 ? "s" : ""}
+                                    {debt?.debtTerms ? ` • Modalidad ${debt.debtTerms}` : ""}
+                                </Typography>
+                            </Box>
+                        </Box>
+
+                        <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                            {creditFinancialSummary.overdueCount > 0 && (
+                                <Chip
+                                    label={`${creditFinancialSummary.overdueCount} en mora`}
+                                    color="error"
+                                    size="small"
+                                    variant="filled"
+                                    sx={{ fontWeight: "bold" }}
+                                />
+                            )}
+                            {creditFinancialSummary.dueTodayCount > 0 && (
+                                <Chip
+                                    label={`${creditFinancialSummary.dueTodayCount} para hoy`}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                            {creditFinancialSummary.futureCount > 0 && (
+                                <Chip
+                                    label={`${creditFinancialSummary.futureCount} futura${creditFinancialSummary.futureCount !== 1 ? "s" : ""}`}
+                                    size="small"
+                                    variant="outlined"
+                                />
+                            )}
+                        </Stack>
+                    </Box>
+
+                    <Divider sx={{ my: 1.2 }} />
+
+                    <Stack spacing={0.75}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="body2" color="text.secondary">
+                                Suma cuotas exigibles a la fecha (Capital + Interés):
+                            </Typography>
+                            <Typography variant="body2" fontWeight="600">
+                                ${creditFinancialSummary.totalBaseAmount.toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography
+                                variant="body2"
+                                color={creditFinancialSummary.totalDelayArrears > 0 ? "error.main" : "text.secondary"}
+                            >
+                                Mora por retraso acumulada (hasta hoy):
+                            </Typography>
+                            <Typography
+                                variant="body2"
+                                fontWeight="600"
+                                color={creditFinancialSummary.totalDelayArrears > 0 ? "error.main" : "text.primary"}
+                            >
+                                ${creditFinancialSummary.totalDelayArrears.toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography
+                                variant="body2"
+                                color={creditFinancialSummary.totalDefermentArrears > 0 ? "warning.main" : "text.secondary"}
+                            >
+                                Mora por aplazamiento (hasta hoy):
+                            </Typography>
+                            <Typography
+                                variant="body2"
+                                fontWeight="600"
+                                color={creditFinancialSummary.totalDefermentArrears > 0 ? "warning.dark" : "text.primary"}
+                            >
+                                ${creditFinancialSummary.totalDefermentArrears.toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Divider sx={{ my: 0.5, borderStyle: "dashed" }} />
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="subtitle2" fontWeight="bold">
+                                Total para quedar a paz y salvo a hoy:
+                            </Typography>
+                            <Typography variant="h6" fontWeight="bold" color="primary.main">
+                                ${creditFinancialSummary.totalDueToday.toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+                    </Stack>
+
+                    {liquidationSimulation && (
+                        <Box
+                            sx={{
+                                mt: 1.5,
+                                p: 1.5,
+                                borderRadius: 2,
+                                bgcolor: (theme) => alpha(theme.palette.info.main, 0.05),
+                                border: "1px solid",
+                                borderColor: (theme) => alpha(theme.palette.info.main, 0.25),
+                            }}
+                        >
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                <Box display="flex" alignItems="center" gap={0.8}>
+                                    <AccountBalanceWalletIcon fontSize="small" color="info" />
+                                    <Typography variant="subtitle2" fontWeight="bold" color="info.dark">
+                                        Saldo real para liquidar crédito
+                                    </Typography>
+                                </Box>
+                                <Chip
+                                    label={liquidationSimulation.isFixed ? "Tipo Fijo" : "Tipo Variable"}
+                                    size="small"
+                                    variant="outlined"
+                                    color="info"
+                                    sx={{ height: 20, fontSize: "0.7rem" }}
+                                />
+                            </Box>
+
+                            <Stack spacing={0.5}>
+                                <Box display="flex" justifyContent="space-between">
+                                    <Typography variant="caption" color="text.secondary">
+                                        • Capital restante ({debt?.type ?? "fijo"}):
+                                    </Typography>
+                                    <Typography variant="caption" fontWeight="600">
+                                        ${liquidationSimulation.remainingCapital.toLocaleString("es-CO")}
+                                    </Typography>
+                                </Box>
+
+                                {liquidationSimulation.overdueInterest > 0 && (
+                                    <Box display="flex" justifyContent="space-between">
+                                        <Typography variant="caption" color="error.main" fontWeight="500">
+                                            • Intereses cuotas vencidas ({creditFinancialSummary.overdueCount} cuota{creditFinancialSummary.overdueCount !== 1 ? "s" : ""}):
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="error.main">
+                                            + ${liquidationSimulation.overdueInterest.toLocaleString("es-CO")}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                {liquidationSimulation.nextInstallmentInterest > 0 && (
+                                    <Box display="flex" justifyContent="space-between">
+                                        <Typography variant="caption" color="text.secondary">
+                                            • Interés próxima cuota {liquidationSimulation.nextInstallmentNumber ? `#${liquidationSimulation.nextInstallmentNumber}` : ""}:
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600">
+                                            + ${liquidationSimulation.nextInstallmentInterest.toLocaleString("es-CO")}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                <Box display="flex" justifyContent="space-between">
+                                    <Typography variant="caption" color="text.secondary">
+                                        • Mora por aplazamiento (total restante):
+                                    </Typography>
+                                    <Typography
+                                        variant="caption"
+                                        fontWeight="600"
+                                        color={liquidationSimulation.remainingDeferment > 0 ? "warning.dark" : "text.secondary"}
+                                    >
+                                        + ${liquidationSimulation.remainingDeferment.toLocaleString("es-CO")}
+                                    </Typography>
+                                </Box>
+
+                                {liquidationSimulation.delayArrears > 0 && (
+                                    <Box display="flex" justifyContent="space-between">
+                                        <Typography variant="caption" color="error.main">
+                                            • Mora por retraso acumulada:
+                                        </Typography>
+                                        <Typography variant="caption" fontWeight="600" color="error.main">
+                                            + ${liquidationSimulation.delayArrears.toLocaleString("es-CO")}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                <Divider sx={{ my: 0.5, borderStyle: "dotted" }} />
+
+                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="body2" fontWeight="bold" color="info.dark">
+                                        Total para cancelar crédito:
+                                    </Typography>
+                                    <Typography variant="subtitle1" fontWeight="bold" color="info.dark">
+                                        ${liquidationSimulation.totalPayoff.toLocaleString("es-CO")}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Box>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* DETALLE DE LA CUOTA SELECCIONADA */}
+            <Card variant="outlined" sx={{ borderRadius: 2.5, mb: 2, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                <CardContent sx={{ p: 2 }}>
+                    <Stack spacing={1.5}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="subtitle1" fontWeight="bold">
+                                Cuota Seleccionada #{installment.installmentNumber}
+                            </Typography>
+                            <Chip
+                                label={installment.status.replace("_", " ")}
+                                color={getStatusColor(installment.status)}
+                                size="small"
+                            />
+                        </Box>
+
+                        <Divider />
+
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" color="text.secondary">
+                                Fecha de vencimiento:
+                            </Typography>
+                            <Typography variant="body2" fontWeight="500">
+                                {installment.dueDate || "N/A"}
+                            </Typography>
+                        </Box>
+
+                        {(currentInstallmentArrears?.delayDays ?? installment.numberOfArrearsDays) > 0 && (
+                            <Box display="flex" justifyContent="space-between">
+                                <Typography variant="body2" color="error.main">
+                                    Días de retraso:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="600" color="error.main">
+                                    {currentInstallmentArrears?.delayDays ?? installment.numberOfArrearsDays} días
+                                </Typography>
+                            </Box>
+                        )}
+
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" color="text.secondary">
+                                Monto base pendiente:
+                            </Typography>
+                            <Typography variant="body2" fontWeight="600">
+                                ${(installment.outstandingReceivablesAmount ?? installment.amount).toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" color="text.secondary">
+                                Mora por retraso cuota:
+                            </Typography>
+                            <Typography
+                                variant="body2"
+                                fontWeight="600"
+                                color={(currentInstallmentArrears?.pendingArrears ?? installment.outstandingReceivablesArrears ?? 0) > 0 ? "error.main" : "text.secondary"}
+                            >
+                                ${(currentInstallmentArrears?.pendingArrears ?? installment.outstandingReceivablesArrears ?? 0).toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography variant="body2" color="text.secondary">
+                                Aplazamiento cuota:
+                            </Typography>
+                            <Typography
+                                variant="body2"
+                                fontWeight="600"
+                                color={(currentInstallmentArrears?.pendingDeferment ?? installment.outstandingReceivablesDeferment ?? 0) > 0 ? "warning.dark" : "text.secondary"}
+                            >
+                                ${(currentInstallmentArrears?.pendingDeferment ?? installment.outstandingReceivablesDeferment ?? 0).toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+
+                        <Divider sx={{ borderStyle: "dashed" }} />
+
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="subtitle2" fontWeight="bold">
+                                Total de esta cuota:
+                            </Typography>
+                            <Typography variant="h6" fontWeight="bold" color="primary.main">
+                                ${(currentInstallmentArrears?.totalDueThisInstallment ?? installment.outstandingReceivables).toLocaleString("es-CO")}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                </CardContent>
+            </Card>
+
+            {/* ACCIONES DE COBRO Y PAGO */}
+            {canBePaid && (
+                <Stack spacing={1.5} mb={2}>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        disabled={loading}
+                        onClick={handlePayCurrentInstallment}
+                        startIcon={loading ? <CircularProgress size={20} /> : null}
+                        sx={{ py: 1.2, fontWeight: "bold" }}
+                    >
+                        Pagar Cuota #{installment.installmentNumber} ($
+                        {(currentInstallmentArrears?.totalDueThisInstallment ?? installment.outstandingReceivables).toLocaleString("es-CO")})
+                    </Button>
+
+                    {creditFinancialSummary.totalDueTodayCount > 1 && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            size="large"
+                            disabled={loading}
+                            onClick={handlePayDueToday}
+                            startIcon={loading ? <CircularProgress size={20} /> : null}
+                            sx={{ py: 1.2, fontWeight: "bold" }}
+                        >
+                            Quedar a Paz y Salvo a Hoy (${creditFinancialSummary.totalDueToday.toLocaleString("es-CO")})
+                        </Button>
+                    )}
+
+                    {liquidationSimulation && liquidationSimulation.totalPayoff > 0 && (
+                        <Button
+                            variant="contained"
+                            color="info"
+                            size="large"
+                            disabled={loading}
+                            onClick={handlePayoffDebt}
+                            startIcon={loading ? <CircularProgress size={20} /> : null}
+                            sx={{ py: 1.2, fontWeight: "bold" }}
+                        >
+                            Cancelar Crédito Completo (${liquidationSimulation.totalPayoff.toLocaleString("es-CO")})
+                        </Button>
+                    )}
+
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        disabled={loading}
+                        onClick={handleOpenPartialPayment}
+                        sx={{ py: 1 }}
+                    >
+                        Abonar otro valor
+                    </Button>
+
+                    <Button
+                        variant="outlined"
+                        color="warning"
+                        size="large"
+                        disabled={loading || attemptLoading}
+                        onClick={() => setAttemptDialogOpen(true)}
+                        sx={{ py: 1 }}
+                    >
+                        Registrar Intento de Cobro
+                    </Button>
+
+                    <Button
+                        variant="text"
+                        color="primary"
+                        fullWidth
+                        onClick={handleNavigateToDebt}
+                        sx={{ mt: 0.5 }}
+                    >
+                        Ver todas las cuotas de esta deuda
+                    </Button>
+
+                    {debt && (
+                        <Box
+                            mt={2}
+                            borderTop="1px solid"
+                            borderColor="divider"
+                            pt={2}
+                        >
+                            <DebtRenewalModule
+                                companyId={companyId}
+                                currentDebt={debt}
+                                context="collector"
+                                totalPaid={installmentsOfDebt.reduce(
+                                    (acc, curr) => acc + (curr.amountPaid || 0),
+                                    0,
+                                )}
+                                remainingBalance={remainingBalance}
+                                buttonVariant="contained"
+                                buttonColor="secondary"
+                                buttonText="Renovar Deuda"
+                                onSuccess={handleRenewalSuccess}
+                            />
+                        </Box>
+                    )}
+                </Stack>
+            )}
+
+            {!canBePaid && (
+                <Typography color="text.secondary">
+                    Esta cuota ya no puede ser modificada
+                </Typography>
+            )}
         </Box>
     );
 };

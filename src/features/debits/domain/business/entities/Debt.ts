@@ -82,7 +82,7 @@ export interface Debt {
   /**nombre de la deuda, debt-001*/
   name: string;
 
-  /**tasa de interes para retraso*/
+  /**tasa de interes para retraso, es arrearsInterestRate de los installments*/
   lateInterestRate: number
 
 
@@ -157,7 +157,10 @@ export interface Debt {
   /**indica el total de la mora a pagarse*/
   arrears: number;
 
-  /**total de la deuda (capital + interes + mora) */
+  /**total de aplazamiento generado en la deuda*/
+  deferment: number;
+
+  /**total de la deuda (capital + interes + mora + aplazamiento) */
   total: number
 
   /**representa las ganancias por papeleria */
@@ -196,7 +199,10 @@ export interface Debt {
   /**mora pagada hasta el momento*/
   arrearsPaid: number;
 
-  /**total pagado hasta el momento (capital+interes+mora) */
+  /**aplazamiento pagado hasta el momento*/
+  defermentPaid: number;
+
+  /**total pagado hasta el momento (capital+interes+mora+aplazamiento) */
   totalPaid: number;
 
   //restante por pagar
@@ -212,7 +218,10 @@ export interface Debt {
   /**mora restante por pagar*/
   remainingArrearsToPay: number;
 
-  /**total del prestamo restante por pagar(capital + intereses + mora) */
+  /**aplazamiento restante por pagar*/
+  remainingDefermentToPay: number;
+
+  /**total del prestamo restante por pagar(capital + intereses + mora + aplazamiento) */
   remainingTotalToPay: number;
 
   //pocentaje pagado
@@ -229,7 +238,10 @@ export interface Debt {
   /**porcentaje de mora pagada */
   porcentageOfArrearsPaid: number;
 
-  /**porcentaje de total pagado (capital + interes + mora)*/
+  /**porcentaje de aplazamiento pagado*/
+  percentageOfDefermentPaid: number;
+
+  /**porcentaje de total pagado (capital + interes + mora + aplazamiento)*/
   percentageOfTotalPaid: number;
 
 
@@ -361,18 +373,21 @@ export function createEmptyDebt(): Debt {
     interest: 0,
     amount: 0,
     arrears: 0,
+    deferment: 0,
     total: 0,
 
     percentageOfCapitalPaid: 100,
     percentageOfInteresPaid: 100,
     percentageOfAmountPaid: 100,
     porcentageOfArrearsPaid: 100,
+    percentageOfDefermentPaid: 100,
     percentageOfTotalPaid: 100,
 
     remainingCapitalToPay: 0,
     remainingInterestToPay: 0,
     remainingAmountToPay: 0,
     remainingArrearsToPay: 0,
+    remainingDefermentToPay: 0,
     remainingTotalToPay: 0,
 
     outstandingReceivables: 0,
@@ -384,6 +399,7 @@ export function createEmptyDebt(): Debt {
     interestPaid: 0,
     amountPaid: 0,
     arrearsPaid: 0,
+    defermentPaid: 0,
     totalPaid: 0,
 
     interestRate: 0,

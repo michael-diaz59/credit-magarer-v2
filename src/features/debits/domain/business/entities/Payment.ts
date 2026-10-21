@@ -82,6 +82,9 @@ export interface Payment {
   /**es el id al documento de comprobante de pago */
   idProofOfPayment?: string;
 
+  /**identificador de grupo de transaccion para pagos en cascada/lote */
+  transactionGroupId?: string;
+
   // --- ESTADO, TRAZABILIDAD Y CIERRE ---
   /**estado del pago*/
   status: PaymentStatus;

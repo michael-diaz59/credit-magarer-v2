@@ -3,10 +3,13 @@ import { CustomerAccordion } from "./CustomerAccordion";
 import { useState } from "react";
 import type { CustomerGroupData } from "../../features/collector/helpers/groupInstallmentsByRoute";
 import type { Installment } from "../../features/debits/domain/business/entities/Installment";
+import type { Debt } from "../../features/debits/domain/business/entities/Debt";
+import { calculateInstallmentArrears } from "../../features/debits/domain/business/services/calculateInstallmentArrears";
 
 interface RouteGroupProps {
     routeName: string;
     customers: Map<string, CustomerGroupData>;
+    debtsById?: Record<string, Debt>;
     expanded: boolean;
     onChange: (isExpanded: boolean) => void;
     onClick: (installment: Installment) => void;
@@ -15,6 +18,7 @@ interface RouteGroupProps {
 export const RouteGroup = ({
     routeName,
     customers,
+    debtsById,
     expanded,
     onChange,
     onClick,
@@ -29,10 +33,18 @@ export const RouteGroup = ({
 
     let totalInstallments = 0;
     let overdueInstallments = 0;
+    let totalRoutePendingAmount = 0;
 
     customers.forEach(customer => {
         totalInstallments += customer.pending.length + customer.overdue.length;
         overdueInstallments += customer.overdue.length;
+        const allItems = [...customer.pending, ...customer.overdue];
+        allItems.forEach(i => {
+            const basePending = i.outstandingReceivablesAmount ?? i.amount ?? 0;
+            const debt = i.debtId ? debtsById?.[i.debtId] : undefined;
+            const arrearsInfo = calculateInstallmentArrears({ installment: i, debt });
+            totalRoutePendingAmount += basePending + arrearsInfo.totalPendingArrears;
+        });
     });
 
     return (
@@ -57,7 +69,12 @@ export const RouteGroup = ({
                 sx={{ backgroundColor: 'action.hover' }}
             >
                 <Box display="flex" alignItems="center" width="100%" justifyContent="space-between" mr={2}>
-                    <Typography fontWeight="bold" variant="h6">{routeName}</Typography>
+                    <Box display="flex" flexDirection="column">
+                        <Typography fontWeight="bold" variant="h6">{routeName}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Por cobrar: ${totalRoutePendingAmount.toLocaleString("es-CO")} • {totalInstallments} cuota{totalInstallments !== 1 ? 's' : ''}
+                        </Typography>
+                    </Box>
 
                     <Box display="flex" gap={1}>
                         {overdueInstallments > 0 && <Chip label={`${overdueInstallments} vencidas`} color="error" size="small" />}
@@ -72,6 +89,8 @@ export const RouteGroup = ({
                         customerName={data.customerName}
                         pending={data.pending}
                         overdue={data.overdue}
+                        debts={data.debts}
+                        debtsById={debtsById}
                         expanded={expandedCustomers.get(customerId) ?? true}
                         onChange={(isExpanded) => toggleCustomer(customerId, isExpanded)}
                         onClick={onClick}
