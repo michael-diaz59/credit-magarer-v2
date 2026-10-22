@@ -23,6 +23,10 @@ export class RouteOrchestrator {
     const userGateway = new FirebaseUserRepository();
     this.assignRouteCollectorUseCase = new AssignRouteCollectorUseCase(this.routeGateway, userGateway);
   }
+
+  async getRoutes(input: { companyId: string }) {
+    return this.getRoutesUseCase.execute(input);
+  }
 }
 
 export const routeOrchestrator = new RouteOrchestrator();

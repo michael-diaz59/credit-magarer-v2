@@ -85,6 +85,7 @@ export const baseFamilyReferenceSchema = z.object({
   address: addressSchema,
   housingType: z.enum(["FAMILIAR", "PROPIA", "ALQUILADA"]).optional(),
   workInfo: workSchema,
+  observations: z.string().optional(),
 });
 
 export const familyReferenceSchema = baseFamilyReferenceSchema

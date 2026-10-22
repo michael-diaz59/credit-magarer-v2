@@ -85,4 +85,5 @@ export const emptyFamilyReference = ():
   address: emptyAddress,
   housingType: "FAMILIAR",
   workInfo: emptyWorkInfo,
+  observations: "",
 });

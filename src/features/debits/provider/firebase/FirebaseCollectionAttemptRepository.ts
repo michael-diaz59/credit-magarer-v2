@@ -1,8 +1,9 @@
-import { collection, doc, setDoc, query, where, getDocs, getDoc, type DocumentData } from "firebase/firestore";
+import { collection, doc, setDoc, query, where, getDocs, getDoc, type DocumentData, Timestamp } from "firebase/firestore";
 import { firestore } from "../../../../store/firebase/firebase";
 import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
 import type {
     CollectionAttemptGateway,
+    CollectionAttemptError,
     CreateCollectionAttemptInput
 } from "../../domain/infraestructure/CollectionAttemptGateway";
 import { FirebaseError } from "firebase/app";
@@ -11,8 +12,6 @@ import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
 import type { CollectionAttempt } from "../../domain/business/entities/CollectionAttempt";
 
 export class FirebaseCollectionAttemptRepository implements CollectionAttemptGateway {
-
-
 
     private toDocumentData(attempt: Omit<CollectionAttempt, "id">): DocumentData {
         const result: DocumentData = {
@@ -49,7 +48,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
         };
     }
 
-    async create(input: CreateCollectionAttemptInput): Promise<Result<null, any>> {
+    async create(input: CreateCollectionAttemptInput): Promise<Result<null, CollectionAttemptError>> {
         const { companyId, attempt } = input;
 
         try {
@@ -74,7 +73,7 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
         }
     }
 
-    async getAllByDate(companyId: string, date: string): Promise<Result<CollectionAttempt[], any>> {
+    async getAllByDate(companyId: string, date: string): Promise<Result<CollectionAttempt[], CollectionAttemptError>> {
         try {
             const colRef = collection(
                 firestore,
@@ -83,18 +82,37 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
                 "collectionAttempts"
             );
 
-            // Calculamos el límite del día siguiente para el rango
-            const nextDayDate = new Date(date);
-            nextDayDate.setDate(nextDayDate.getDate() + 1);
-            const nextDay = nextDayDate.toISOString().split("T")[0];
+            // Rango de medianoche local a medianoche del siguiente día
+            const [year, month, day] = date.split("-").map(Number);
+            const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
+            const endLocal = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+            const startTimestamp = Timestamp.fromDate(startLocal);
+            const endTimestamp = Timestamp.fromDate(endLocal);
 
             const q = query(
                 colRef,
-                where("date", ">=", date),
-                where("date", "<", nextDay)
+                where("date", ">=", startTimestamp),
+                where("date", "<", endTimestamp)
             );
 
-            const snapshot = await getDocs(q);
+            let snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                // Fallback para documentos que hayan guardado date como string
+                const nextDayDate = new Date(date);
+                nextDayDate.setDate(nextDayDate.getDate() + 1);
+                const nextDay = nextDayDate.toISOString().split("T")[0];
+
+                const qString = query(
+                    colRef,
+                    where("date", ">=", date),
+                    where("date", "<", nextDay)
+                );
+                const stringSnapshot = await getDocs(qString);
+                if (!stringSnapshot.empty) {
+                    snapshot = stringSnapshot;
+                }
+            }
 
             const attempts = snapshot.docs.map(doc => this.toCollectionAttempt(doc.id, doc.data()));
 
@@ -105,13 +123,13 @@ export class FirebaseCollectionAttemptRepository implements CollectionAttemptGat
         }
     }
 
-    async getById(companyId: string, id: string): Promise<Result<CollectionAttempt, any>> {
+    async getById(companyId: string, id: string): Promise<Result<CollectionAttempt, CollectionAttemptError>> {
         try {
             const docRef = doc(firestore, "companies", companyId, "collectionAttempts", id);
             const snapshot = await getDoc(docRef);
 
             if (!snapshot.exists()) {
-                return fail({ code: "ATTEMPT_NOT_FOUND" });
+                return fail({ code: "NOT_FOUND" });
             }
 
             return ok(this.toCollectionAttempt(snapshot.id, snapshot.data()));

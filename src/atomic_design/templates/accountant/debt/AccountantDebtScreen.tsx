@@ -18,13 +18,18 @@ import { DebtFormDataProvider } from "../../debt/debts/DebtFormDataProvider";
 import { SIMULATION_FIELDS_INSTALLMENTS, SIMULATION_FIELDS_MONTHS, type DebtSubmitType } from "../../debt/form/constsForm";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import { SimulateDebtResultCard } from "../../../molecules/SimulateDebtResultCard";
+import type { DebtPaymentCapacity } from "../../../../features/debits/domain/business/services/calculateDebtPaymentCapacity";
+import InstallmentsOrchestrator from "../../../../features/debits/domain/infraestructure/installmentsOrchestrator";
+import { getLocalDate } from "../../../../core/helpers/dates/calculateDays";
+import FormatNumberToMoney from "../../../sub_atomic_particles/FormatNumberToMoney";
+import { Grid, Chip } from "@mui/material";
 
 export const AccountantDebtScreen = () => {
   const debtFormRef = useRef<DebtFormRef>(null);
   const [debt, setDebt] = useState<Debt | null>(null);
+  const [capacity, setCapacity] = useState<DebtPaymentCapacity | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const user = useAppSelector((state: any) => state.user.user);
+  const user = useAppSelector((state) => state.user.user);
   const companyId = user?.companyId || "undefined";
   const { debitId } = useParams<{ debitId: string }>();
   const navigate = useNavigate();
@@ -165,6 +170,22 @@ export const AccountantDebtScreen = () => {
         const currentDebt = result.state.value;
         setDebt(currentDebt);
         setForm(currentDebt);
+
+        try {
+          const instOrchestrator = new InstallmentsOrchestrator();
+          const capResult = await instOrchestrator.getDebtPaymentCapacity({
+            companyId,
+            debtId: currentDebt.id,
+            todayDateStr: getLocalDate(new Date()),
+            debt: currentDebt,
+          });
+
+          if (capResult.ok) {
+            setCapacity(capResult.value);
+          }
+        } catch (err) {
+          console.error("Error cargando capacidad de pago:", err);
+        }
       }
     };
 
@@ -191,6 +212,49 @@ export const AccountantDebtScreen = () => {
             <Typography variant="h6" mb={2}>
               Detalle de la deuda (Contador)
             </Typography>
+
+            {debt && (
+              <Box mb={3} p={2} sx={{ bgcolor: "background.default", borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" mb={1.5}>
+                  Estado de Cuenta Actual (Corte a hoy)
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                    <Typography variant="caption" color="text.secondary">Saldo Base (Cap+Int)</Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {FormatNumberToMoney(Math.max(0, debt.amount - debt.amountPaid))}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                    <Typography variant="caption" color="error.main">Mora a Hoy</Typography>
+                    <Typography variant="body1" fontWeight="bold" color="error.main">
+                      {FormatNumberToMoney(capacity?.dueTodayArrears ?? 0)}
+                    </Typography>
+                    {capacity && capacity.overdueInstallmentsCount > 0 && (
+                      <Chip label={`${capacity.overdueInstallmentsCount} cuotas venc.`} size="small" color="error" sx={{ height: 16, fontSize: "0.6rem", mt: 0.5 }} />
+                    )}
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                    <Typography variant="caption" color="warning.dark">Aplazamiento</Typography>
+                    <Typography variant="body1" fontWeight="bold" color="warning.dark">
+                      {FormatNumberToMoney(capacity?.dueTodayDeferment ?? 0)}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                    <Typography variant="caption" color="text.secondary">Exigible Hoy (Al Día)</Typography>
+                    <Typography variant="body1" fontWeight="bold" color={(capacity?.dueTodayTotal ?? 0) > 0 ? "error.dark" : "text.primary"}>
+                      {FormatNumberToMoney(capacity?.dueTodayTotal ?? 0)}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+                    <Typography variant="caption" color="primary.main">Total Liquidación</Typography>
+                    <Typography variant="body1" fontWeight="bold" color="primary.main">
+                      {FormatNumberToMoney(capacity?.maxPayableDebtTotal ?? Math.max(0, debt.amount - debt.amountPaid))}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
 
             <DebtFormDataProvider getRoutes={true}>
               {({ routes, loading }) => {

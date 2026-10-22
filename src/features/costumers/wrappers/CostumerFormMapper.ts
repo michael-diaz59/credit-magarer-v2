@@ -86,6 +86,7 @@ export function normalizeFamilyReference(
 
     address: normalizeAddress(f?.address),
     workInfo: normalizeWorkInfo(f?.workInfo),
+    observations: f?.observations ?? "",
   };
 }
 
@@ -142,7 +143,20 @@ export class CostumerFormMapper {
       coSigner: (costumer.coSigner ?? []).map(personalInfoToForm),
 
       vehicle: costumer.vehicle ?? [],
-      familyReference: costumer.familyReference ?? [],
+      familyReference: (costumer.familyReference ?? []).map((f) => ({
+        fullName: f.fullName ?? "",
+        phone: f.phone ?? "",
+        relationship: f.relationship ?? "",
+        housingType: f.housingType ?? "FAMILIAR",
+        address: addressToForm(f.address),
+        workInfo: f.workInfo ?? {
+          profession: "",
+          economicSector: "",
+          company: "",
+          companyAddress: "",
+        },
+        observations: f.observations ?? "",
+      })),
     };
   }
 }

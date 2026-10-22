@@ -30,18 +30,16 @@ export class UpdateMultiplePaymentsIsTightUseCase {
                 return ok({ updatedCount: 0 });
             }
 
-            const paymentIds = input.payments.map(p => p.id);
-
-            // 1. Actualizar los pagos a isTight: true
-            const result = await this.paymentGateway.updateMultipleIsTight(
-                input.companyId,
-                paymentIds
-            );
+            // 1. Oficializar y actualizar los pagos a isTight: true, asentando cuotas y deudas
+            const result = await this.paymentGateway.updateMultipleIsTight({
+                companyId: input.companyId,
+                payments: input.payments,
+            });
 
             if (!result.ok) {
                 return fail(result.error);
             }
-            return ok({ updatedCount: input.payments.length });
+            return ok({ updatedCount: result.value.updatedCount });
         } catch (error) {
             console.error("[UpdateMultiplePaymentsIsTightUseCase]", error);
             return fail({ code: "UNKNOWN_ERROR" });

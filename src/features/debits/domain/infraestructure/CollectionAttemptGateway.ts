@@ -6,8 +6,13 @@ export interface CreateCollectionAttemptInput {
     attempt: CollectionAttempt;
 }
 
+export type CollectionAttemptError =
+    | { code: "NOT_FOUND" }
+    | { code: "NETWORK_ERROR" }
+    | { code: "UNKNOWN_ERROR" };
+
 export interface CollectionAttemptGateway {
-    create(input: CreateCollectionAttemptInput): Promise<Result<null, any>>;
-    getAllByDate(companyId: string, date: string): Promise<Result<CollectionAttempt[], any>>;
-    getById(companyId: string, id: string): Promise<Result<CollectionAttempt, any>>;
+    create(input: CreateCollectionAttemptInput): Promise<Result<null, CollectionAttemptError>>;
+    getAllByDate(companyId: string, date: string): Promise<Result<CollectionAttempt[], CollectionAttemptError>>;
+    getById(companyId: string, id: string): Promise<Result<CollectionAttempt, CollectionAttemptError>>;
 }

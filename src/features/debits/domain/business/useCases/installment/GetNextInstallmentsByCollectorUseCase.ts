@@ -4,9 +4,12 @@ import type { DebtGateway } from "../../../infraestructure/DebtGatweay";
 import type { InstallmentGateway } from "../../../infraestructure/InstallmentGateway";
 import type { Installment } from "../../entities/Installment";
 
+import { getLocalDate } from "../../../../../../core/helpers/dates/calculateDays";
+
 export interface GetNextInstallmentsByRouteInput {
     companyId: string;
     routeIds: string[];
+    dateLimit?: string;
 }
 
 export interface GetNextInstallmentsByRouteOutput {
@@ -31,14 +34,14 @@ export class GetNextInstallmentsByRouteUseCase {
 
     async execute(input: GetNextInstallmentsByRouteInput): Promise<Result<GetNextInstallmentsByRouteOutput, GetNextInstallmentsByRouteError>> {
         try {
-            const today = new Date().toLocaleDateString().split("T")[0];
+            const limitDate = input.dateLimit || getLocalDate(new Date());
 
-            // 1. Obtener deudas activas o en mora con nextPaymentDue <= today
+            // 1. Obtener deudas activas o en mora con nextPaymentDue <= limitDate
             const debtsResult = await this.debtGateway.getDebtsByRouteAndStatus({
                 companyId: input.companyId,
                 routeIds: input.routeIds,
                 statuses: ["activa", "en_mora"],
-                dateLimit: today
+                dateLimit: limitDate
             });
 
             if (!debtsResult.ok) {

@@ -64,8 +64,8 @@ export const DebtAccordion = ({
   // Cálculo financiero detallado del crédito
   const financialSummary = useMemo(() => {
     let totalBaseAmount = 0;       // Suma del amount de las cuotas pendientes
-    let totalDelayArrears = 0;     // Mora acumulada por retraso
-    let totalDefermentArrears = 0; // Mora acumulada por aplazamiento
+    let rawDelayArrears = 0;       // Mora acumulada por retraso
+    let rawDefermentArrears = 0;   // Mora acumulada por aplazamiento
     let totalPaidAmount = 0;
 
     for (const inst of allItems) {
@@ -78,10 +78,12 @@ export const DebtAccordion = ({
       const arrearsInfo = calculateInstallmentArrears({ installment: inst, debt });
 
       totalBaseAmount += base;
-      totalDelayArrears += arrearsInfo.pendingArrears;
-      totalDefermentArrears += arrearsInfo.pendingDeferment;
+      rawDelayArrears += arrearsInfo.pendingArrears;
+      rawDefermentArrears += arrearsInfo.pendingDeferment;
     }
 
+    const totalDelayArrears = Math.max(rawDelayArrears, debt?.remainingArrearsToPay ?? 0);
+    const totalDefermentArrears = Math.max(rawDefermentArrears, debt?.remainingDefermentToPay ?? 0);
     const totalCreditAmount = totalBaseAmount + totalDelayArrears + totalDefermentArrears;
 
     return {

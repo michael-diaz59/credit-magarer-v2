@@ -1062,6 +1062,7 @@ export const InstallmentDetailView = ({
                             <DebtRenewalModule
                                 companyId={companyId}
                                 currentDebt={debt}
+                                installments={installmentsOfDebt}
                                 context="collector"
                                 totalPaid={installmentsOfDebt.reduce(
                                     (acc, curr) => acc + (curr.amountPaid || 0),

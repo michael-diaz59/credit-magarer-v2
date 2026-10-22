@@ -6,10 +6,13 @@ import {
   type DebtPaymentCapacity,
 } from "../../services/calculateDebtPaymentCapacity";
 
+import type { Debt } from "../../entities/Debt";
+
 export interface GetDebtPaymentCapacityInput {
   companyId: string;
   debtId: string;
   todayDateStr: string;
+  debt?: Debt;
 }
 
 export type GetDebtPaymentCapacityOutput = DebtPaymentCapacity;
@@ -37,16 +40,18 @@ export class GetDebtPaymentCapacityCase {
     try {
       const { companyId, debtId, todayDateStr } = input;
 
-      const debtResult = await this.debtGateway.getById({
-        companyId,
-        idDebt: debtId,
-      });
+      let debt = input.debt;
+      if (!debt) {
+        const debtResult = await this.debtGateway.getById({
+          companyId,
+          idDebt: debtId,
+        });
 
-      if (!debtResult.state.ok || !debtResult.state.value) {
-        return fail({ code: "DEBT_NOT_FOUND" });
+        if (!debtResult.state.ok || !debtResult.state.value) {
+          return fail({ code: "DEBT_NOT_FOUND" });
+        }
+        debt = debtResult.state.value;
       }
-
-      const debt = debtResult.state.value;
 
       const installmentsResult = await this.installmentGateway.getByDebt({
         companyId,

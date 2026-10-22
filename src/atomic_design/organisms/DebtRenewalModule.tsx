@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     Button,
     Dialog,
@@ -22,12 +22,17 @@ import DebtOrchestrator from "../../features/debits/domain/infraestructure/DebtO
 import { createEmptyDebt, type Debt } from "../../features/debits/domain/business/entities/Debt";
 import { createEmptySimulateDebtOutput, type SimulateDebtOutput } from "../../features/debits/domain/business/useCases/debt/SimulateDebtCase";
 import { SimulateDebtResultCard } from "../molecules/SimulateDebtResultCard";
+import FormatNumberToMoney from "../sub_atomic_particles/FormatNumberToMoney";
+import { calculateDebtRenewalFinancialSummary } from "../../features/debits/domain/business/services/calculateDebtRenewalFinancialSummary";
+import type { Installment } from "../../features/debits/domain/business/entities/Installment";
+import InstallmentsOrchestrator from "../../features/debits/domain/infraestructure/installmentsOrchestrator";
 
 interface DebtRenewalModuleProps {
     companyId: string;
     currentDebt: Debt;
-    totalPaid: number;
-    remainingBalance: number;
+    totalPaid?: number;
+    remainingBalance?: number;
+    installments?: Installment[];
     context: "auditor" | "collector" | "advisor";
     onSuccess?: () => void;
     buttonVariant?: "contained" | "outlined" | "text";
@@ -40,6 +45,7 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
     currentDebt,
     totalPaid,
     remainingBalance,
+    installments,
     context,
     onSuccess,
     buttonVariant = "outlined",
@@ -51,6 +57,20 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
     const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
     const [simulating, setSimulating] = useState(false);
     const [renewing, setRenewing] = useState(false);
+
+    const [localInstallments, setLocalInstallments] = useState<Installment[]>(installments ?? []);
+
+    useEffect(() => {
+        if (installments && installments.length > 0) {
+            setLocalInstallments(installments);
+        }
+    }, [installments]);
+
+    const activeInstallments = installments && installments.length > 0 ? installments : localInstallments;
+
+    const summary = useMemo(() => {
+        return calculateDebtRenewalFinancialSummary(currentDebt, activeInstallments);
+    }, [currentDebt, activeInstallments]);
 
     const [SimulateDebtValues, setSimulateDebtValues] =
         useState<SimulateDebtOutput>(createEmptySimulateDebtOutput());
@@ -81,6 +101,22 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
             setRedirectionOpen(true);
             return;
         }
+
+        if ((!installments || installments.length === 0) && currentDebt?.id) {
+            try {
+                const instOrch = new InstallmentsOrchestrator();
+                const instRes = await instOrch.getByDebt({
+                    debtId: currentDebt.id,
+                    companyId,
+                });
+                if (instRes.state.ok) {
+                    setLocalInstallments(instRes.state.value);
+                }
+            } catch (error) {
+                console.error("Error fetching installments for renewal summary", error);
+            }
+        }
+
         setRenewalDialogOpen(true);
     };
 
@@ -225,13 +261,94 @@ export const DebtRenewalModule: React.FC<DebtRenewalModuleProps> = ({
             >
                 <DialogTitle>Renovación de Deuda</DialogTitle>
                 <DialogContent>
-                    <Box mb={3} p={2} border="1px solid" borderColor="divider" borderRadius={2} bgcolor="grey.50">
-                        <Typography variant="subtitle1" fontWeight="bold" mb={1}>
-                            Resumen de Deuda Actual
+                    <Box mb={3} p={2.5} border="1px solid" borderColor="divider" borderRadius={2} bgcolor="grey.50">
+                        <Typography variant="subtitle1" fontWeight="bold" mb={2}>
+                            Resumen Financiero del Crédito a Renovar
                         </Typography>
-                        <Stack direction="row" spacing={4}>
-                            <MoneyTypography label="Monto Pagado:" value={totalPaid} />
-                            <MoneyTypography label="Saldo Pendiente:" value={remainingBalance} />
+
+                        <Stack
+                            direction={{ xs: "column", md: "row" }}
+                            spacing={{ xs: 2, md: 3 }}
+                            sx={{ mb: 2, pb: 2, borderBottom: "1px dashed", borderColor: "divider" }}
+                        >
+                            {/* Capital */}
+                            <Box flex={1}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" textTransform="uppercase">
+                                    🏦 Capital
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                    Pactado: <strong>${FormatNumberToMoney(summary.contractCapital)}</strong>
+                                </Typography>
+                                <Typography variant="body2" color="success.main">
+                                    Pagado: <strong>${FormatNumberToMoney(summary.capitalPaid)}</strong>
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color={summary.capitalPending > 0 ? "error.main" : "text.secondary"}
+                                >
+                                    Por Pagar: <strong>${FormatNumberToMoney(summary.capitalPending)}</strong>
+                                </Typography>
+                            </Box>
+
+                            {/* Interés */}
+                            <Box flex={1}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" textTransform="uppercase">
+                                    📈 Interés
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                    Pactado: <strong>${FormatNumberToMoney(summary.contractInterest)}</strong>
+                                </Typography>
+                                <Typography variant="body2" color="success.main">
+                                    Pagado: <strong>${FormatNumberToMoney(summary.interestPaid)}</strong>
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color={summary.interestPending > 0 ? "error.main" : "text.secondary"}
+                                >
+                                    Por Pagar: <strong>${FormatNumberToMoney(summary.interestPending)}</strong>
+                                </Typography>
+                            </Box>
+
+                            {/* Mora (Arrears) */}
+                            <Box flex={1}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" textTransform="uppercase">
+                                    ⚠️ Mora (Arrears)
+                                </Typography>
+                                <Typography variant="body2" color="success.main" sx={{ mt: 0.5 }}>
+                                    Pagada: <strong>${FormatNumberToMoney(summary.arrearsPaid)}</strong>
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color={summary.arrearsPending > 0 ? "error.main" : "text.secondary"}
+                                >
+                                    Por Pagar: <strong>${FormatNumberToMoney(summary.arrearsPending)}</strong>
+                                </Typography>
+                            </Box>
+
+                            {/* Aplazamiento (Deferment) */}
+                            <Box flex={1}>
+                                <Typography variant="caption" fontWeight={700} color="text.secondary" textTransform="uppercase">
+                                    ⏱️ Aplazamiento (Deferment)
+                                </Typography>
+                                <Typography variant="body2" color="success.main" sx={{ mt: 0.5 }}>
+                                    Pagado: <strong>${FormatNumberToMoney(summary.defermentPaid)}</strong>
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color={summary.defermentPending > 0 ? "warning.main" : "text.secondary"}
+                                >
+                                    Por Pagar: <strong>${FormatNumberToMoney(summary.defermentPending)}</strong>
+                                </Typography>
+                            </Box>
+                        </Stack>
+
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={4}>
+                            <MoneyTypography label="Total Pagado Real:" value={totalPaid !== undefined ? totalPaid : summary.totalPaid} />
+                            <MoneyTypography
+                                label="Total Saldo por Pagar:"
+                                value={remainingBalance !== undefined ? remainingBalance : summary.totalPending}
+                                sx={{ color: "primary.main", fontWeight: "bold" }}
+                            />
                         </Stack>
                     </Box>
 

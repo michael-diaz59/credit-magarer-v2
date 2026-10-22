@@ -1,4 +1,4 @@
-import type { Result } from "../../../../core/helpers/ResultC";
+import { ok, fail, type Result } from "../../../../core/helpers/ResultC";
 import { FirebasePaymentRepository } from "../../provider/firebase/FirebasePaymentRepository";
 import type { Payment } from "../business/entities/Payment";
 import type { PaymentGateway } from "./PaymentGateway";
@@ -25,6 +25,7 @@ import {
     type RegisterCascadingPaymentOutput,
     type RegisterCascadingPaymentError,
 } from "../business/useCases/payment/RegisterCascadingPaymentUseCase";
+import { GetPaymentsByDateUseCase, type GetPaymentsByDateError } from "../business/useCases/payment/GetPaymentsByDateUseCase";
 
 export default class PaymentOrchestrator {
     private readonly paymentGateway: PaymentGateway;
@@ -41,6 +42,7 @@ export default class PaymentOrchestrator {
     private readonly updatePaymentUseCase: UpdatePaymentUseCase;
     private readonly updateMultiplePaymentsIsTightUseCase: UpdateMultiplePaymentsIsTightUseCase;
     private readonly getSumPaymentsUseCase: GetSumPaymentsUseCase;
+    private readonly getPaymentsByDateUseCase: GetPaymentsByDateUseCase;
 
     constructor() {
         this.paymentGateway = new FirebasePaymentRepository();
@@ -62,6 +64,7 @@ export default class PaymentOrchestrator {
         this.updatePaymentUseCase = new UpdatePaymentUseCase(this.paymentGateway);
         this.updateMultiplePaymentsIsTightUseCase = new UpdateMultiplePaymentsIsTightUseCase(this.paymentGateway);
         this.getSumPaymentsUseCase = new GetSumPaymentsUseCase(this.paymentGateway);
+        this.getPaymentsByDateUseCase = new GetPaymentsByDateUseCase(this.paymentGateway);
     }
 
     async registerPayment(input: RegisterPaymentInput): Promise<Result<RegisterPaymentOutput, RegisterPaymentError>> {
@@ -104,8 +107,12 @@ export default class PaymentOrchestrator {
         return this.paymentGateway.generateId(companyId);
     }
 
-    async getByDate(companyId: string, date: string): Promise<Result<Payment[], any>> {
-        return this.paymentGateway.getAllByDate(companyId, date);
+    async getByDate(companyId: string, date: string): Promise<Result<Payment[], GetPaymentsByDateError>> {
+        const res = await this.getPaymentsByDateUseCase.execute({ companyId, date });
+        if (!res.ok) {
+            return fail(res.error);
+        }
+        return ok(res.value.payments);
     }
 
     async getByStatus(input: GetPaymentsByStatusInput): Promise<GetPaymentsByStatusOutput> {

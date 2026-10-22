@@ -5,12 +5,24 @@ import type { DeletePaymentError, DeletePaymentInput, DeletePaymentOutput } from
 import type { GetPaymentsByInstallmentInput, GetPaymentsByInstallmentOutput } from "../business/useCases/payment/GetPaymentsByInstallmentCaseTypes"
 import type { Payment } from "../business/entities/Payment"
 import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../business/useCases/payment/UpdatePaymentStatusUseCase"
-import type { UpdateMultiplePaymentsIsTightError } from "../business/useCases/payment/UpdateMultiplePaymentsIsTight"
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../business/useCases/payment/GetPaymentsByStatusUseCase"
 import type { Installment } from "../business/entities/Installment"
 import type { Debt } from "../business/entities/Debt"
 import type { BankAccount } from "../../../bankAccounts/domain/business/entities/BankAccount"
 
+export interface UpdateMultiplePaymentsIsTightRepositoryInput {
+  companyId: string;
+  payments: Payment[];
+}
+
+export interface UpdateMultiplePaymentsIsTightRepositoryOutput {
+  updatedCount: number;
+}
+
+export type UpdateMultiplePaymentsIsTightRepositoryError =
+  | { code: "PAYMENT_NOT_FOUND" }
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "NETWORK_ERROR" };
 
 export interface RegisterPaymentRepositoryInput {
   companyId: string;
@@ -139,6 +151,10 @@ export type RegisterCascadingPaymentRepositoryError =
   | { code: "UNKNOWN_ERROR" }
   | { code: "NETWORK_ERROR" };
 
+export type GetPaymentsByDateError =
+  | { code: "UNKNOWN_ERROR" }
+  | { code: "NETWORK_ERROR" };
+
 /** contrato de acceso a datos para payments */
 export interface PaymentGateway {
 
@@ -194,12 +210,11 @@ export interface PaymentGateway {
   getAllByDate(
     companyId: string,
     date: string
-  ): Promise<Result<Payment[], any>>
-  /** actualiza el estado isTight de varios pagos */
+  ): Promise<Result<Payment[], GetPaymentsByDateError>>
+  /** Oficializa y actualiza el estado isTight de varios pagos, asentando sus cuotas y deudas */
   updateMultipleIsTight(
-    companyId: string,
-    paymentIds: string[]
-  ): Promise<Result<void, UpdateMultiplePaymentsIsTightError>>
+    input: UpdateMultiplePaymentsIsTightRepositoryInput
+  ): Promise<Result<UpdateMultiplePaymentsIsTightRepositoryOutput, UpdateMultiplePaymentsIsTightRepositoryError>>;
 
   getSumPayments(companyId: string): Promise<Result<number, any>>;
 

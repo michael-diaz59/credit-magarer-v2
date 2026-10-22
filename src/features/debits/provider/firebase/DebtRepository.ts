@@ -20,7 +20,7 @@ import {
     Timestamp,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
-import type { DebtGateway, GetDebtsForPreparationGateInput, GoToActivateGateInput, MarkAsPaidGateInput } from "../../domain/infraestructure/DebtGatweay";
+import type { DebtGateway, GetDebtsByRouteAndStatusError, GetDebtsForPreparationGateInput, GoToActivateGateInput, MarkAsPaidGateInput } from "../../domain/infraestructure/DebtGatweay";
 import type { CreateDebtError2, CreateDebtUInput2, CreateDebtUOutput2, CreateWithInstallmentsInput2 } from "../../domain/business/useCases/debt/CreateDebtUseCase2";
 import { firestore } from "../../../../store/firebase/firebase";
 import { fail, ok, type Result } from "../../../../core/helpers/ResultC";
@@ -902,16 +902,11 @@ export class FirebaseDebtRepository implements DebtGateway {
         routeIds: string[];
         statuses: DebtStatus[];
         dateLimit?: string;
-    }): Promise<Result<GetDebtsOutput, any>> {
+    }): Promise<Result<GetDebtsOutput, GetDebtsByRouteAndStatusError>> {
         try {
             const { companyId, routeIds, statuses, dateLimit } = input;
 
-            console.log("[getDebtsByRouteAndStatus] companyId", companyId);
-            console.log("[getDebtsByRouteAndStatus] routeIds", routeIds);
-            console.log("[getDebtsByRouteAndStatus] statuses", statuses);
-            console.log("[getDebtsByRouteAndStatus] dateLimit", dateLimit);
-
-            if (routeIds.length === 0) {
+            if (routeIds.length === 0 || statuses.length === 0) {
                 return ok({ state: ok([]) });
             }
 
@@ -925,52 +920,45 @@ export class FirebaseDebtRepository implements DebtGateway {
                 routeChunks.push(routeIds.slice(i, i + chunkSize));
             }
 
+            // Ejecutamos una query por cada status para respetar la regla de Firestore de un solo operador 'in'
             const snapshots = await Promise.all(
-                routeChunks.map(async (routes) => {
-                    const constraints: QueryConstraint[] = [
-                        where("delivered", "==", true),
-                    ];
-                    if (statuses.length > 0) {
-                        constraints.push(where("status", "==", statuses[0]));
-                    } else {
-                        constraints.push(where("status", "in", statuses));
-                    }
+                routeChunks.flatMap((routes) =>
+                    statuses.map(async (status) => {
+                        const constraints: QueryConstraint[] = [
+                            where("delivered", "==", true),
+                            where("status", "==", status),
+                        ];
 
-                    if (routes.length === 1) {
-                        constraints.push(where("routeId", "==", routes[0]));
-                    } else {
-                        constraints.push(where("routeId", "in", routes));
-                    }
+                        if (routes.length === 1) {
+                            constraints.push(where("routeId", "==", routes[0]));
+                        } else {
+                            constraints.push(where("routeId", "in", routes));
+                        }
 
-                    if (dateLimit) {
-                        //const [month, day, year] = dateLimit.split("/").map(Number);
+                        if (dateLimit) {
+                            const [year, month, day] = dateLimit.split("-").map(Number);
+                            const endOfLimit = new Date(year, month - 1, day, 23, 59, 59, 999);
+                            const timestampLimit = Timestamp.fromDate(endOfLimit);
+                            constraints.push(where("nextPaymentDue", "<=", timestampLimit));
+                        }
 
-                        //const date = new Date(year, month - 1, day);
-
-                        //const dateLimitFormatted = Timestamp.fromDate(date);
-                        const timestampActual: Timestamp = Timestamp.now();
-                        constraints.push(where("nextPaymentDue", "<=", timestampActual));
-                    }
-                    console.log("[getDebtsByRouteAndStatus] constraints", constraints);
-
-                    const q = query(ref, ...constraints);
-                    return getDocs(q);
-                })
+                        const q = query(ref, ...constraints);
+                        return getDocs(q);
+                    })
+                )
             );
 
-            const debts = snapshots.flatMap(snapshot =>
+            const debts = snapshots.flatMap((snapshot) =>
                 snapshot.docs.map((doc) => documentToDebt(doc))
             );
-            console.log("[getDebtsByRouteAndStatus] debts", debts);
 
             return ok({
-                state: ok(debts)
+                state: ok(debts),
             });
-
         } catch (error) {
             console.error("[getDebtsByRouteAndStatus]", error);
             return fail({
-                code: "UNKNOWN_ERROR"
+                code: "UNKNOWN_ERROR",
             });
         }
     }

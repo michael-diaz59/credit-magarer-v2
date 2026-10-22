@@ -1,6 +1,9 @@
 import type { Debt } from "../entities/Debt";
 import type { Installment } from "../entities/Installment";
-import { calculateInstallmentLateInterest } from "../useCases/helper";
+import {
+  calculateInstallmentArrears,
+  normalizeDateToLocalMidnight,
+} from "./calculateInstallmentArrears";
 
 export type InstallmentPeriodCategory = "vencida" | "en_curso" | "futura";
 
@@ -46,7 +49,7 @@ export function calculateDebtPaymentCapacity(
     .filter((i) => i.isLife && (i.outstandingReceivables ?? 0) > 0)
     .sort((a, b) => a.installmentNumber - b.installmentNumber);
 
-  const today = new Date(`${todayDateStr}T00:00:00`);
+  const today = normalizeDateToLocalMidnight(todayDateStr);
 
   let dueTodayBase = 0;
   let dueTodayArrears = 0;
@@ -62,20 +65,28 @@ export function calculateDebtPaymentCapacity(
 
   for (const item of activeInstallments) {
     const itemDateStr = item.paymentDate || item.dueDate;
-    const itemDate = new Date(`${itemDateStr}T00:00:00`);
+    const itemDate = normalizeDateToLocalMidnight(itemDateStr);
 
     const isOverdue = itemDate <= today;
-    const isBasePaid = (item.amountPaid ?? 0) >= item.amount;
+    const remainingCapital = Math.max(0, (item.capital ?? 0) - (item.capitalPaid ?? 0));
+
+    // Usar la función unificada de mora
+    const arrearsInfo = calculateInstallmentArrears({
+      installment: item,
+      debt,
+      referenceDate: todayDateStr,
+    });
 
     let category: InstallmentPeriodCategory = "futura";
     let basePending = 0;
     let defermentPending = 0;
     let dynamicArrears = 0;
-    const remainingCapital = Math.max(0, (item.capital ?? 0) - (item.capitalPaid ?? 0));
 
     if (isOverdue) {
       category = "vencida";
-      overdueCount++;
+      if (arrearsInfo.delayDays > 0) {
+        overdueCount++;
+      }
 
       const officialBasePending = Math.max(0, (item.amount ?? 0) - (item.amountPaid ?? 0));
       basePending = Math.min(
@@ -83,41 +94,8 @@ export function calculateDebtPaymentCapacity(
         officialBasePending
       );
 
-      const officialDefermentPending = Math.max(0, (item.deferment ?? 0) - (item.defermentPaid ?? 0));
-      defermentPending = Math.min(
-        item.outstandingReceivablesDeferment ?? officialDefermentPending,
-        officialDefermentPending
-      );
-
-      if (isBasePaid) {
-        // La cuota ya saldó su monto base: mora congelada
-        dynamicArrears = Math.max(
-          0,
-          (item.arrears ?? 0) - (item.arrearsPaid ?? 0) - (item.pendingArrears ?? 0)
-        );
-      } else {
-        // Devenga mora sobre el capital pendiente
-        const delayDays = Math.max(0, Math.floor((today.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24)));
-        if (delayDays > 0) {
-          const capitalBase = item.remainingCapitalToPay > 0 ? item.remainingCapitalToPay : item.capital;
-          const calculatedLateInterest = calculateInstallmentLateInterest({
-            capital: capitalBase,
-            interestRate: item.arrearsInterestRate || debt.lateInterestRate || item.interestRate || debt.interestRate || 0,
-            diasDelMes: debt.daysPerMonth || 30,
-            delayDays,
-          });
-
-          dynamicArrears = Math.max(
-            0,
-            calculatedLateInterest - (item.arrearsPaid ?? 0) - (item.pendingArrears ?? 0)
-          );
-        }
-      }
-
-      if ((item.outstandingReceivablesArrears ?? 0) > 0) {
-        dynamicArrears = Math.max(dynamicArrears, item.outstandingReceivablesArrears);
-      }
-      dynamicArrears = Math.round(dynamicArrears);
+      defermentPending = arrearsInfo.pendingDeferment;
+      dynamicArrears = arrearsInfo.pendingArrears;
 
       dueTodayBase += basePending;
       dueTodayDeferment += defermentPending;

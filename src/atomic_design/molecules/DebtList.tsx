@@ -1,14 +1,34 @@
 import { useEffect, useRef } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import DebtTable, { DebtTableAccountant } from "./DebtTable";
+import type { Debt } from "../../features/debits/domain/business/entities/Debt";
+import type { DebtPaymentCapacity } from "../../features/debits/domain/business/services/calculateDebtPaymentCapacity";
+
+export interface DebtListProps {
+    debts: Debt[];
+    loadMore: () => void;
+    hasMore: boolean;
+    loading: boolean;
+    onClick?: (debt: Debt) => void;
+}
+
+export interface DebtListAccountantProps {
+    debts: Debt[];
+    loadMore: () => void;
+    hasMore: boolean;
+    loading: boolean;
+    onClick?: (debt: Debt) => void;
+    capacities?: Record<string, DebtPaymentCapacity>;
+    loadingCapacities?: boolean;
+}
 
 export function DebtList({
     debts,
     loadMore,
     hasMore,
     loading,
-    onClick
-}: any) {
+    onClick,
+}: DebtListProps) {
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -32,9 +52,7 @@ export function DebtList({
 
     return (
         <Box>
-
             <DebtTable debts={debts} onClick={onClick} />
-
 
             {/* Invisible target for the observer */}
             <Box ref={loaderRef} sx={{ height: 20, mt: 2 }} />
@@ -53,8 +71,10 @@ export function DebtListAccountant({
     loadMore,
     hasMore,
     loading,
-    onClick
-}: any) {
+    onClick,
+    capacities,
+    loadingCapacities,
+}: DebtListAccountantProps) {
     const loaderRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -78,9 +98,12 @@ export function DebtListAccountant({
 
     return (
         <Box>
-
-            <DebtTableAccountant debts={debts} onClick={onClick} />
-
+            <DebtTableAccountant
+                debts={debts}
+                onClick={onClick}
+                capacities={capacities}
+                loadingCapacities={loadingCapacities}
+            />
 
             {/* Invisible target for the observer */}
             <Box ref={loaderRef} sx={{ height: 20, mt: 2 }} />

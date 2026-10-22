@@ -90,13 +90,35 @@ export const FamilyReferenceForm = ({ control, index }: Props) => {
                 {...field}
                 label="Parentesco"
                 fullWidth
-                    sx={textFieldSX}
+                sx={textFieldSX}
                 error={!!fieldState.error}
                 helperText={fieldState.error?.message}
               />
             )}
           />
         </Grid>
+
+        <Grid sx={{ width: "100%" }}>
+          <Controller
+            name={name("observations")}
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                label="Observaciones"
+                placeholder="Observaciones de la referencia familiar..."
+                fullWidth
+                multiline
+                minRows={2}
+                sx={textFieldSX}
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+        </Grid>
+
         <Grid>
           <AddressForm control={control} prefix={name("address")} />
         </Grid>

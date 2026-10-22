@@ -31,6 +31,8 @@ export interface GoToActivateGateInput {
   installments: Installment[];
 }
 
+export type GetDebtsByRouteAndStatusError = { code: "UNKNOWN_ERROR" } | { code: "NETWORK_ERROR" };
+
 export interface DebtGateway {
   create(debt:
     CreateDebtUInput2
@@ -72,7 +74,7 @@ export interface DebtGateway {
     routeIds: string[];
     statuses: DebtStatus[];
     dateLimit?: string;
-  }): Promise<Result<GetDebtsOutput, any>>;
+  }): Promise<Result<GetDebtsOutput, GetDebtsByRouteAndStatusError>>;
 
   getDebtsByRoute(input: {
     companyId: string;

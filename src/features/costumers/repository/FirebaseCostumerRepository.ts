@@ -22,7 +22,7 @@ import type {
 import type CostumerGateway from "../domain/infraestructure/CostumerGateway";
 import { firestore, storage } from "../../../store/firebase/firebase";
 import { FirebaseError } from "firebase/app";
-//import type { FamilyReference } from "../domain/business/entities/FamilyReference"
+import type { FamilyReference } from "../domain/business/entities/FamilyReference";
 //import type { PersonalInfo } from "../domain/business/entities/PersonalInfo"
 //import type { Vehicle } from "../domain/business/entities/Vehicle"
 import type { DeleteCostumerInput } from "../domain/business/useCases/DeleteCostumerCase";
@@ -349,7 +349,17 @@ export class FirebaseCostumerRepository implements CostumerGateway {
       listId: data.listId,
       coSigner: data.coSigner ?? [],
       vehicle: data.vehicle ?? [],
-      familyReference: data.familyReference ?? [],
+      familyReference: (data.familyReference ?? []).map(
+        (ref: DocumentData): FamilyReference => ({
+          fullName: ref.fullName ?? "",
+          relationship: ref.relationship ?? "",
+          phone: ref.phone ?? "",
+          housingType: ref.housingType ?? "FAMILIAR",
+          address: ref.address ?? {},
+          workInfo: ref.workInfo ?? {},
+          observations: ref.observations ?? "",
+        })
+      ),
     };
   }
 
@@ -499,7 +509,14 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         /* =========================
                    ✏️ UPDATE CUSTOMER
                 ========================= */
-        tx.set(costumerRef, costumer, { merge: true });
+        const sanitizedCostumer = {
+          ...costumer,
+          familyReference: (costumer.familyReference ?? []).map((ref) => ({
+            ...ref,
+            observations: ref.observations ?? "",
+          })),
+        };
+        tx.set(costumerRef, sanitizedCostumer, { merge: true });
       });
 
       /* =========================
@@ -765,11 +782,17 @@ export class FirebaseCostumerRepository implements CostumerGateway {
         const costumerRef = doc(customersRef);
         createdCustomerId = costumerRef.id;
 
-        tx.set(costumerRef, {
+        const sanitizedCostumer = {
           ...costumer,
+          familyReference: (costumer.familyReference ?? []).map((ref) => ({
+            ...ref,
+            observations: ref.observations ?? "",
+          })),
           listId: currentListId,
           createdAt: serverTimestamp(),
-        });
+        };
+
+        tx.set(costumerRef, sanitizedCostumer);
 
         // 4. insertar en lista
         tx.update(targetListRef, {

@@ -10,7 +10,9 @@ import {
     writeBatch,
     getAggregateFromServer,
     sum,
+    increment,
     runTransaction,
+    Timestamp,
     type DocumentData,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
@@ -24,7 +26,13 @@ import type { DeletePaymentError, DeletePaymentInput, DeletePaymentOutput } from
 import type { Payment } from "../../domain/business/entities/Payment";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { UpdatePaymentInput, UpdatePaymentOutput, UpdatePaymentError } from "../../domain/business/useCases/payment/UpdatePaymentStatusUseCase";
-import type { UpdateMultiplePaymentsIsTightError } from "../../domain/business/useCases/payment/UpdateMultiplePaymentsIsTight";
+import type {
+    UpdateMultiplePaymentsIsTightRepositoryInput,
+    UpdateMultiplePaymentsIsTightRepositoryOutput,
+    UpdateMultiplePaymentsIsTightRepositoryError,
+    GetPaymentsByDateError
+} from "../../domain/infraestructure/PaymentGateway";
+import { paidPorcential } from "../../../../core/shared/helpers/calculate";
 import type { GetPaymentsByStatusInput, GetPaymentsByStatusOutput } from "../../domain/business/useCases/payment/GetPaymentsByStatusUseCase";
 import { encodeDate, decodeDate } from "../../../../core/shared/firebase/codeDecodeTime";
 import { removeUndefined } from "../../../../core/helpers/cleanFirestoreData";
@@ -272,23 +280,42 @@ export class FirebasePaymentRepository implements PaymentGateway {
         }
     }
 
-    async getAllByDate(companyId: string, date: string): Promise<Result<Payment[], any>> {
+    async getAllByDate(companyId: string, date: string): Promise<Result<Payment[], GetPaymentsByDateError>> {
         try {
             console.log("[FirebasePaymentRepository.getAllByDate]", companyId, date);
             const ref = collection(firestore, "companies", companyId, "payments");
 
-            // Calculamos el límite del día siguiente para el rango
-            const nextDayDate = new Date(date);
-            nextDayDate.setDate(nextDayDate.getDate() + 1);
-            const nextDay = nextDayDate.toISOString().split("T")[0];
+            // Rango de medianoche local a medianoche del siguiente día
+            const [year, month, day] = date.split("-").map(Number);
+            const startLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
+            const endLocal = new Date(year, month - 1, day + 1, 0, 0, 0, 0);
+            const startTimestamp = Timestamp.fromDate(startLocal);
+            const endTimestamp = Timestamp.fromDate(endLocal);
 
             const q = query(
                 ref,
-                where("paidAt", ">=", date),
-                where("paidAt", "<", nextDay)
+                where("paidAt", ">=", startTimestamp),
+                where("paidAt", "<", endTimestamp)
             );
 
-            const snapshot = await getDocs(q);
+            let snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                // Fallback para documentos que hayan guardado paidAt como string
+                const nextDayDate = new Date(date);
+                nextDayDate.setDate(nextDayDate.getDate() + 1);
+                const nextDay = nextDayDate.toISOString().split("T")[0];
+
+                const qString = query(
+                    ref,
+                    where("paidAt", ">=", date),
+                    where("paidAt", "<", nextDay)
+                );
+                const stringSnapshot = await getDocs(qString);
+                if (!stringSnapshot.empty) {
+                    snapshot = stringSnapshot;
+                }
+            }
 
             const payments: Payment[] = snapshot.docs.map(doc => documentToPayment(doc.id, doc.data()));
 
@@ -300,20 +327,364 @@ export class FirebasePaymentRepository implements PaymentGateway {
             return fail({ code: "UNKNOWN_ERROR" });
         }
     }
-    async updateMultipleIsTight(companyId: string, paymentIds: string[]): Promise<Result<void, UpdateMultiplePaymentsIsTightError>> {
-        try {
-            const batch = writeBatch(firestore);
-            const refCollection = collection(firestore, "companies", companyId, "payments");
+    async updateMultipleIsTight(
+        input: UpdateMultiplePaymentsIsTightRepositoryInput
+    ): Promise<Result<UpdateMultiplePaymentsIsTightRepositoryOutput, UpdateMultiplePaymentsIsTightRepositoryError>> {
+        const { companyId, payments } = input;
+        if (payments.length === 0) {
+            return ok({ updatedCount: 0 });
+        }
 
-            for (const id of paymentIds) {
-                const refDoc = doc(refCollection, id);
-                batch.update(refDoc, { isTight: true });
+        try {
+            const paymentChunks = this.chunkArray(payments, 50);
+            let totalUpdated = 0;
+
+            for (const chunk of paymentChunks) {
+                await runTransaction(firestore, async (tx) => {
+                    const distinctInstallmentIds = Array.from(
+                        new Set(chunk.map((p) => p.installmentId).filter((id): id is string => Boolean(id)))
+                    );
+                    const distinctDebtIds = Array.from(
+                        new Set(chunk.map((p) => p.debtId).filter((id): id is string => Boolean(id)))
+                    );
+                    const distinctCollectorIds = Array.from(
+                        new Set(
+                            chunk
+                                .filter((p) => p.method === "efectivo" && p.collectorId)
+                                .map((p) => p.collectorId)
+                                .filter((id): id is string => Boolean(id))
+                        )
+                    );
+
+                    // ==========================================
+                    // FASE 1: TODAS LAS LECTURAS (READS FIRST)
+                    // ==========================================
+
+                    // 1. Leer cuotas afectadas
+                    const installmentDocs = new Map<string, Installment>();
+                    for (const instId of distinctInstallmentIds) {
+                        const instRef = doc(firestore, "companies", companyId, "installments", instId);
+                        const snap = await tx.get(instRef);
+                        if (snap.exists()) {
+                            installmentDocs.set(instId, DocumentToInstallment(snap.id, snap.data() || {}));
+                        }
+                    }
+
+                    // 2. Leer deudas afectadas
+                    const debtDocs = new Map<string, Debt>();
+                    for (const debtId of distinctDebtIds) {
+                        const debtRef = doc(firestore, "companies", companyId, "debts", debtId);
+                        const snap = await tx.get(debtRef);
+                        if (snap.exists()) {
+                            debtDocs.set(debtId, documentToDebt(snap.data() || {}, snap.id));
+                        }
+                    }
+
+                    // 3. Leer cobradores (efectivo)
+                    const userDocs = new Map<string, DocumentData>();
+                    for (const colId of distinctCollectorIds) {
+                        const userRef = doc(firestore, "companies", companyId, "users", colId);
+                        const snap = await tx.get(userRef);
+                        if (snap.exists()) {
+                            userDocs.set(colId, snap.data() || {});
+                        }
+                    }
+
+                    // ==========================================
+                    // CÁLCULOS MATEMÁTICOS EN MEMORIA
+                    // ==========================================
+                    const tightDateStr = new Date().toISOString();
+                    const encodedTightDate = encodeDate(tightDateStr);
+
+                    // Agrupaciones
+                    const paymentsByInstallment = new Map<string, Payment[]>();
+                    for (const p of chunk) {
+                        if (p.installmentId) {
+                            const list = paymentsByInstallment.get(p.installmentId) ?? [];
+                            list.push(p);
+                            paymentsByInstallment.set(p.installmentId, list);
+                        }
+                    }
+
+                    const paymentsByDebt = new Map<string, Payment[]>();
+                    for (const p of chunk) {
+                        if (p.debtId) {
+                            const list = paymentsByDebt.get(p.debtId) ?? [];
+                            list.push(p);
+                            paymentsByDebt.set(p.debtId, list);
+                        }
+                    }
+
+                    const cashByCollector = new Map<string, Payment[]>();
+                    for (const p of chunk) {
+                        if (p.method === "efectivo" && p.collectorId) {
+                            const list = cashByCollector.get(p.collectorId) ?? [];
+                            list.push(p);
+                            cashByCollector.set(p.collectorId, list);
+                        }
+                    }
+
+                    const routeAmounts = new Map<string, number>();
+                    for (const p of chunk) {
+                        const rId = p.idRoute || "default";
+                        if (rId !== "default") {
+                            routeAmounts.set(rId, (routeAmounts.get(rId) ?? 0) + (p.amount ?? 0));
+                        }
+                    }
+
+                    // Cálculos de cuotas
+                    const installmentUpdates = new Map<string, DocumentData>();
+                    const newlyPaidInstallmentIds = new Set<string>();
+
+                    for (const [instId, instPayments] of paymentsByInstallment.entries()) {
+                        const currentInst = installmentDocs.get(instId);
+                        if (!currentInst) continue;
+
+                        let addCapital = 0;
+                        let addInterest = 0;
+                        let addArrears = 0;
+                        let addDeferment = 0;
+                        let addTotal = 0;
+                        const paymentIdsToAdd: string[] = [];
+
+                        for (const p of instPayments) {
+                            addCapital += (p.capitalPaid ?? 0);
+                            addInterest += (p.interestPaid ?? 0);
+                            addArrears += (p.arrearsPaid ?? 0);
+                            addDeferment += (p.defermentPaid ?? 0);
+                            addTotal += (p.amount ?? 0);
+                            paymentIdsToAdd.push(p.id);
+                        }
+
+                        const newCapitalPaid = (currentInst.capitalPaid ?? 0) + addCapital;
+                        const newInterestPaid = (currentInst.interestPaid ?? 0) + addInterest;
+                        const newAmountPaid = (currentInst.amountPaid ?? 0) + (addCapital + addInterest);
+                        const newArrearsPaid = (currentInst.arrearsPaid ?? 0) + addArrears;
+                        const newDefermentPaid = (currentInst.defermentPaid ?? 0) + addDeferment;
+                        const newTotalPaid = (currentInst.totalPaid ?? 0) + addTotal;
+
+                        const remainingCapital = Math.max(0, (currentInst.capital ?? 0) - newCapitalPaid);
+                        const remainingInterest = Math.max(0, (currentInst.interest ?? 0) - newInterestPaid);
+                        const remainingAmount = remainingCapital + remainingInterest;
+                        const remainingArrears = Math.max(0, (currentInst.arrears ?? 0) - newArrearsPaid);
+                        const remainingDeferment = Math.max(0, (currentInst.deferment ?? 0) - newDefermentPaid);
+                        const remainingTotal = remainingAmount + remainingArrears + remainingDeferment;
+
+                        const existingPayments = currentInst.payments ?? [];
+                        const updatedPayments = Array.from(new Set([...existingPayments, ...paymentIdsToAdd]));
+
+                        const pctCapital = paidPorcential(newCapitalPaid, currentInst.capital);
+                        const pctInterest = paidPorcential(newInterestPaid, currentInst.interest);
+                        const pctAmount = paidPorcential(newAmountPaid, currentInst.amount);
+                        const pctArrears = paidPorcential(newArrearsPaid, currentInst.arrears);
+                        const pctDeferment = paidPorcential(newDefermentPaid, currentInst.deferment);
+                        const pctTotal = paidPorcential(newTotalPaid, currentInst.total);
+
+                        const isFullyPaid = remainingTotal <= 0 || newAmountPaid >= currentInst.amount;
+                        const newStatus = isFullyPaid ? "pagada" : currentInst.status;
+                        const newIsLife = isFullyPaid ? false : currentInst.isLife;
+                        const newPaidAt = isFullyPaid ? (currentInst.paidAt || tightDateStr) : currentInst.paidAt;
+
+                        if (currentInst.status !== "pagada" && newStatus === "pagada") {
+                            newlyPaidInstallmentIds.add(instId);
+                        }
+
+                        installmentUpdates.set(instId, {
+                            capitalPaid: newCapitalPaid,
+                            interestPaid: newInterestPaid,
+                            amountPaid: newAmountPaid,
+                            arrearsPaid: newArrearsPaid,
+                            defermentPaid: newDefermentPaid,
+                            totalPaid: newTotalPaid,
+                            remainingCapitalToPay: remainingCapital,
+                            remainingInterestToPay: remainingInterest,
+                            remainingAmountToPay: remainingAmount,
+                            remainingArrearsToPay: remainingArrears,
+                            remainingDefermentToPay: remainingDeferment,
+                            remainingTotalToPay: remainingTotal,
+                            percentageOfCapitalPaid: pctCapital,
+                            percentageOfInterestPaid: pctInterest,
+                            percentageOfAmountPaid: pctAmount,
+                            porcentageOfArrearsPaid: pctArrears,
+                            percentageOfDefermentPaid: pctDeferment,
+                            percentageOfTotalPaid: pctTotal,
+                            payments: updatedPayments,
+                            status: newStatus,
+                            isLife: newIsLife,
+                            ...(newPaidAt ? { paidAt: encodeDate(newPaidAt) } : {}),
+                        });
+                    }
+
+                    // Cálculos de deudas
+                    const debtUpdates = new Map<string, DocumentData>();
+
+                    for (const [debtId, debtPayments] of paymentsByDebt.entries()) {
+                        const currentDebt = debtDocs.get(debtId);
+                        if (!currentDebt) continue;
+
+                        let addCapital = 0;
+                        let addInterest = 0;
+                        let addArrears = 0;
+                        let addDeferment = 0;
+                        let addTotal = 0;
+                        let latestPaymentDate = currentDebt.dateLastPayment;
+
+                        for (const p of debtPayments) {
+                            addCapital += (p.capitalPaid ?? 0);
+                            addInterest += (p.interestPaid ?? 0);
+                            addArrears += (p.arrearsPaid ?? 0);
+                            addDeferment += (p.defermentPaid ?? 0);
+                            addTotal += (p.amount ?? 0);
+                            if (p.paidAt && (!latestPaymentDate || p.paidAt > latestPaymentDate)) {
+                                latestPaymentDate = p.paidAt;
+                            }
+                        }
+
+                        const newCapitalPaid = (currentDebt.capitalPaid ?? 0) + addCapital;
+                        const newInterestPaid = (currentDebt.interestPaid ?? 0) + addInterest;
+                        const newAmountPaid = (currentDebt.amountPaid ?? 0) + (addCapital + addInterest);
+                        const newArrearsPaid = (currentDebt.arrearsPaid ?? 0) + addArrears;
+                        const newDefermentPaid = (currentDebt.defermentPaid ?? 0) + addDeferment;
+                        const newTotalPaid = (currentDebt.totalPaid ?? 0) + addTotal;
+
+                        const remainingCapital = Math.max(0, (currentDebt.capital ?? 0) - newCapitalPaid);
+                        const remainingInterest = Math.max(0, (currentDebt.interest ?? 0) - newInterestPaid);
+                        const remainingAmount = remainingCapital + remainingInterest;
+                        const remainingArrears = Math.max(0, (currentDebt.arrears ?? 0) - newArrearsPaid);
+                        const remainingDeferment = Math.max(0, (currentDebt.deferment ?? 0) - newDefermentPaid);
+                        const remainingTotal = remainingAmount + remainingArrears + remainingDeferment;
+
+                        const pctCapital = paidPorcential(newCapitalPaid, currentDebt.capital);
+                        const pctInterest = paidPorcential(newInterestPaid, currentDebt.interest);
+                        const pctAmount = paidPorcential(newAmountPaid, currentDebt.amount);
+                        const pctArrears = paidPorcential(newArrearsPaid, currentDebt.arrears);
+                        const pctDeferment = paidPorcential(newDefermentPaid, currentDebt.deferment);
+                        const pctTotal = paidPorcential(newTotalPaid, currentDebt.total);
+
+                        let newlyPaidCount = 0;
+                        for (const p of debtPayments) {
+                            if (p.installmentId && newlyPaidInstallmentIds.has(p.installmentId)) {
+                                newlyPaidCount++;
+                                newlyPaidInstallmentIds.delete(p.installmentId);
+                            }
+                        }
+
+                        const newInstallmentsPaid = (currentDebt.installmentsPaid ?? 0) + newlyPaidCount;
+                        const isDebtFullyPaid =
+                            remainingCapital <= 0 ||
+                            (currentDebt.installmentCount > 0 && newInstallmentsPaid >= currentDebt.installmentCount);
+
+                        const newStatus = isDebtFullyPaid ? "pagada" : currentDebt.status;
+                        const newIsLife = isDebtFullyPaid ? false : currentDebt.isLife;
+                        const newClosedAt = isDebtFullyPaid ? (currentDebt.closedAt || tightDateStr) : currentDebt.closedAt;
+
+                        debtUpdates.set(debtId, {
+                            capitalPaid: newCapitalPaid,
+                            interestPaid: newInterestPaid,
+                            amountPaid: newAmountPaid,
+                            arrearsPaid: newArrearsPaid,
+                            defermentPaid: newDefermentPaid,
+                            totalPaid: newTotalPaid,
+                            remainingCapitalToPay: remainingCapital,
+                            remainingInterestToPay: remainingInterest,
+                            remainingAmountToPay: remainingAmount,
+                            remainingArrearsToPay: remainingArrears,
+                            remainingDefermentToPay: remainingDeferment,
+                            remainingTotalToPay: remainingTotal,
+                            percentageOfCapitalPaid: pctCapital,
+                            percentageOfInteresPaid: pctInterest,
+                            percentageOfAmountPaid: pctAmount,
+                            porcentageOfArrearsPaid: pctArrears,
+                            percentageOfDefermentPaid: pctDeferment,
+                            percentageOfTotalPaid: pctTotal,
+                            installmentsPaid: newInstallmentsPaid,
+                            status: newStatus,
+                            isLife: newIsLife,
+                            ...(latestPaymentDate ? { dateLastPayment: encodeDate(latestPaymentDate) } : {}),
+                            ...(newClosedAt ? { closedAt: encodeDate(newClosedAt) } : {}),
+                        });
+                    }
+
+                    // Cálculos de cobradores
+                    const userUpdates = new Map<string, DocumentData>();
+                    for (const [collectorId, cashPayments] of cashByCollector.entries()) {
+                        const currentData = userDocs.get(collectorId);
+                        if (!currentData) continue;
+
+                        let totalCashAmount = 0;
+                        let capitalCashAmount = 0;
+                        let interestCashAmount = 0;
+                        let arrearsCashAmount = 0;
+                        let defermentCashAmount = 0;
+
+                        for (const p of cashPayments) {
+                            totalCashAmount += (p.amount ?? 0);
+                            capitalCashAmount += (p.capitalPaid ?? 0);
+                            interestCashAmount += (p.interestPaid ?? 0);
+                            arrearsCashAmount += (p.arrearsPaid ?? 0);
+                            defermentCashAmount += (p.defermentPaid ?? 0);
+                        }
+
+                        const currentTotal = currentData.totalAmount ?? 0;
+                        const currentCapital = currentData.capitalAmount ?? 0;
+                        const currentInterest = currentData.interestAmount ?? 0;
+                        const currentArrears = currentData.arrearsAmount ?? 0;
+                        const currentDeferment = currentData.defermentAmount ?? 0;
+
+                        userUpdates.set(collectorId, {
+                            totalAmount: Math.max(0, currentTotal - totalCashAmount),
+                            capitalAmount: Math.max(0, currentCapital - capitalCashAmount),
+                            interestAmount: Math.max(0, currentInterest - interestCashAmount),
+                            arrearsAmount: Math.max(0, currentArrears - arrearsCashAmount),
+                            defermentAmount: Math.max(0, currentDeferment - defermentCashAmount),
+                        });
+                    }
+
+                    // ==========================================
+                    // FASE 2: TODAS LAS ESCRITURAS (WRITES AFTER)
+                    // ==========================================
+
+                    // 1. Actualizar pagos
+                    for (const p of chunk) {
+                        const paymentRef = doc(firestore, "companies", companyId, "payments", p.id);
+                        tx.update(paymentRef, {
+                            isTight: true,
+                            tightDate: encodedTightDate,
+                            status: "confirmado",
+                        });
+                    }
+
+                    // 2. Actualizar cuotas
+                    for (const [instId, data] of installmentUpdates.entries()) {
+                        const instRef = doc(firestore, "companies", companyId, "installments", instId);
+                        tx.update(instRef, removeUndefined(data));
+                    }
+
+                    // 3. Actualizar deudas
+                    for (const [debtId, data] of debtUpdates.entries()) {
+                        const debtRef = doc(firestore, "companies", companyId, "debts", debtId);
+                        tx.update(debtRef, removeUndefined(data));
+                    }
+
+                    // 4. Actualizar cobradores
+                    for (const [colId, data] of userUpdates.entries()) {
+                        const userRef = doc(firestore, "companies", companyId, "users", colId);
+                        tx.update(userRef, removeUndefined(data));
+                    }
+
+                    // 5. Actualizar rutas
+                    for (const [routeId, amount] of routeAmounts.entries()) {
+                        const routeRef = doc(firestore, "companies", companyId, "routes", routeId);
+                        tx.set(routeRef, { totalCollected: increment(amount) }, { merge: true });
+                    }
+                });
+
+                totalUpdated += chunk.length;
             }
 
-            await batch.commit();
-            return ok(undefined);
+            return ok({ updatedCount: totalUpdated });
         } catch (error) {
-            console.error("Error updated payments isTight:", error);
+            console.error("Error updating payments isTight:", error);
             if (error instanceof FirebaseError) {
                 if (error.code === "unavailable") {
                     return fail({ code: "NETWORK_ERROR" });

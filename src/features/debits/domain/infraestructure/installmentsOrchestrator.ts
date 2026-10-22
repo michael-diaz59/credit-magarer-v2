@@ -24,6 +24,12 @@ import {
   type GetDebtPaymentCapacityOutput,
 } from "../business/useCases/installment/GetDebtPaymentCapacityCase";
 import {
+  GetDebtsPaymentCapacitiesUseCase,
+  type GetDebtsPaymentCapacitiesError,
+  type GetDebtsPaymentCapacitiesInput,
+  type GetDebtsPaymentCapacitiesOutput,
+} from "../business/useCases/installment/GetDebtsPaymentCapacitiesUseCase";
+import {
   GetInstallmentByDebtAndNumberUseCase,
   type GetInstallmentByDebtAndNumberError,
   type GetInstallmentByDebtAndNumberInput,
@@ -44,6 +50,7 @@ export default class InstallmentsOrchestrator {
   private readonly getNextByRouteCase: GetNextInstallmentsByRouteUseCase
   private readonly maxDueFromInstallmentCase: MaxDueFromInstallmentCase
   private readonly getDebtPaymentCapacityCase: GetDebtPaymentCapacityCase
+  private readonly getDebtsPaymentCapacitiesCase: GetDebtsPaymentCapacitiesUseCase
   private readonly getInstallmentsSummaryCase: GetInstallmentsSummaryUseCase
   private readonly getManagementInstallmentsCase: GetManagementInstallmentsUseCase
   private readonly getByDebtAndNumberUseCase: GetInstallmentByDebtAndNumberUseCase
@@ -56,6 +63,7 @@ export default class InstallmentsOrchestrator {
     this.maxDueFromInstallmentCase = new MaxDueFromInstallmentCase(installmentsGateway)
     this.balancesDueFromInstallmentCase = new BalancesDueFromInstallmentCase(installmentsGateway)
     this.getDebtPaymentCapacityCase = new GetDebtPaymentCapacityCase(installmentsGateway, debtGateway)
+    this.getDebtsPaymentCapacitiesCase = new GetDebtsPaymentCapacitiesUseCase(installmentsGateway, debtGateway)
 
 
     this.getManagementInstallmentsByRoutesUseCase = new GetManagementInstallmentsByRoutesUseCase(installmentsGateway)
@@ -76,6 +84,12 @@ export default class InstallmentsOrchestrator {
     input: GetDebtPaymentCapacityInput
   ): Promise<Result<GetDebtPaymentCapacityOutput, GetDebtPaymentCapacityError>> {
     return this.getDebtPaymentCapacityCase.execute(input);
+  }
+
+  async getDebtsPaymentCapacities(
+    input: GetDebtsPaymentCapacitiesInput
+  ): Promise<Result<GetDebtsPaymentCapacitiesOutput, GetDebtsPaymentCapacitiesError>> {
+    return this.getDebtsPaymentCapacitiesCase.execute(input);
   }
 
   async getInstallmentsSummary(input: GetInstallmentsSummaryInput): Promise<Result<GetInstallmentsSummaryOutput, GetInstallmentsSummaryError>> {

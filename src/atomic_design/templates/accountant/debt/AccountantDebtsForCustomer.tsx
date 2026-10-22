@@ -1,19 +1,21 @@
 import { Box, Typography, CircularProgress, Grid, useMediaQuery, useTheme } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppSelector } from "../../../../store/redux/coreRedux";
 import DebtOrchestrator from "../../../../features/debits/domain/infraestructure/DebtOrchestrator";
 import { DebtCard } from "../../../atoms/DebtCard";
 import { ScreenPaths } from "../../../../core/helpers/name_routes";
 import type { Debt } from "../../../../features/debits/domain/business/entities/Debt";
-import DebtTable from "../../../molecules/DebtTable";
+import { DebtTableAccountant } from "../../../molecules/DebtTable";
+import type { DebtPaymentCapacity } from "../../../../features/debits/domain/business/services/calculateDebtPaymentCapacity";
+import InstallmentsOrchestrator from "../../../../features/debits/domain/infraestructure/installmentsOrchestrator";
+import { getLocalDate } from "../../../../core/helpers/dates/calculateDays";
 
 export const AccountantDebtsForCustomer = () => {
   const navigate = useNavigate();
   const { docCostumer } = useParams<{ docCostumer: string }>();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const companyId = useAppSelector((state: any) => state.user.user?.companyId);
+  const companyId = useAppSelector((state) => state.user.user?.companyId);
 
   // detectar tamaño de pantalla
   const theme = useTheme();
@@ -22,6 +24,10 @@ export const AccountantDebtsForCustomer = () => {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const installmentsOrchestrator = useMemo(() => new InstallmentsOrchestrator(), []);
+  const [capacities, setCapacities] = useState<Record<string, DebtPaymentCapacity>>({});
+  const [loadingCapacities, setLoadingCapacities] = useState(false);
 
   useEffect(() => {
     if (!companyId || !docCostumer) return;
@@ -45,6 +51,23 @@ export const AccountantDebtsForCustomer = () => {
           );
 
           setDebts(sortedDebts);
+
+          // Cargar capacidades de pago con mora y aplazamiento a hoy
+          try {
+            setLoadingCapacities(true);
+            const capResult = await installmentsOrchestrator.getDebtsPaymentCapacities({
+              companyId,
+              debts: sortedDebts,
+              todayDateStr: getLocalDate(new Date()),
+            });
+            if (capResult.ok) {
+              setCapacities(capResult.value.capacities);
+            }
+          } catch (capErr) {
+            console.error("Error al calcular capacidades de pago:", capErr);
+          } finally {
+            setLoadingCapacities(false);
+          }
         } else {
           setError("No se pudieron cargar las deudas del cliente");
         }
@@ -56,7 +79,7 @@ export const AccountantDebtsForCustomer = () => {
     };
 
     loadDebts();
-  }, [companyId, docCostumer]);
+  }, [companyId, docCostumer, installmentsOrchestrator]);
 
   if (loading) {
     return (
@@ -100,8 +123,15 @@ export const AccountantDebtsForCustomer = () => {
             </Grid>
           )}
 
-          {/* Desktop → Tabla */}
-          {!isMobile && <DebtTable debts={debts} onClick={(d) => navigate(ScreenPaths.accountant.payment(d.id))} />}
+          {/* Desktop → Tabla de Contador */}
+          {!isMobile && (
+            <DebtTableAccountant
+              debts={debts}
+              onClick={(d) => navigate(ScreenPaths.accountant.payment(d.id))}
+              capacities={capacities}
+              loadingCapacities={loadingCapacities}
+            />
+          )}
         </>
       )}
     </Box>

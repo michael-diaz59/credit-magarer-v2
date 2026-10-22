@@ -1,14 +1,16 @@
-/** indica si una fecha es menor a la actual */
+/** indica si una fecha es menor a la actual (en hora local a medianoche) */
 export function IsPastDate(dateStr: string): boolean {
-    const inputDate = new Date(`${dateStr}`);
+    const cleanDateStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const inputDate = new Date(`${cleanDateStr}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return inputDate < today;
 }
 
-/** indica si la fecha es igual o mayor a la actual */
+/** indica si la fecha es igual o mayor a la actual (en hora local a medianoche) */
 export function IsFutureOrToday(dateStr: string): boolean {
-    const inputDate = new Date(`${dateStr}T00:00:00`);
+    const cleanDateStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const inputDate = new Date(`${cleanDateStr}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return inputDate >= today;

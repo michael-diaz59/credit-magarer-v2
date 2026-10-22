@@ -12,4 +12,5 @@ export interface FamilyReference {
   address: Address;
   housingType: HousingType;
   workInfo: WorkInfo;
+  observations: string;
 }
